@@ -45,6 +45,24 @@ posts the hallucination report; make it deployable on the team's test server.
 - Docs: `docs/DISCORD_BOT.md` (invite URL + scopes/permissions, run, troubleshoot),
   README Quickstart + structure row, `.env.example` (Discord section; **fixed the
   invalid default model ids** to `claude-haiku-4-5-20251001` / `claude-sonnet-4-6`).
+- Follow-ups (same session, after live use):
+  - **Duplicate commands** — `/check`/`/help`/`/ping` showed twice because a
+    global sync fired as a fallback (during testing, before the bot was invited)
+    and then a guild sync ran. `setup_hook` now clears global commands on a
+    successful guild sync (self-healing; global removal propagates in ~1h).
+  - **💰 Cost (USD)** field added to the result embed (was only in the footer);
+    agentic shows `$0.0000 (no LLM)`, claude_code shows real API spend.
+  - **CROSSREF_MAILTO not wired**: `paper_lookup` reads it from `os.environ` at
+    import, so the `.env` value was ignored (stayed in the slow anonymous pool).
+    The bot now bridges `.env` → `os.environ` in `main()`; also added it to the
+    cache fingerprint.
+  - **All-`unverified` episode diagnosed** = transient Crossref timeouts/throttle
+    after the heavy 108-citation run hammered it (no backoff in `_get`; sources
+    fail-soft to empty → no match → unverified). arXiv/DBLP stayed up; arXiv
+    keyword search is weak on messy reference strings. agentic recovers on
+    cooldown; `claude_code` is the resilient backend meanwhile. Proper fix
+    (retry/backoff + cleaner queries in the shared grounding module) left to a
+    follow-up — out of bot scope.
 
 **Verified by (live, using `.env` DISCORD_BOT_TOKEN + ANTHROPIC_API_KEY):**
 - Logged in as `main_branch_agent#5388`; after the bot was invited, guild sync

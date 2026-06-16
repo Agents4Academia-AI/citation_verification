@@ -160,12 +160,21 @@ def build_response(
         description=headline,
         color=color,
     )
+    u = result.usage
     embed.add_field(name="Citations checked", value=str(n))
     embed.add_field(name="Fabricated", value=str(len(fab)))
     embed.add_field(name="Unverified", value=str(len(unver)))
     embed.add_field(name="Doesn't support", value=str(len(no_support)))
     embed.add_field(name="High severity", value=str(len(high)))
     embed.add_field(name="Backend", value=f"`{backend}`")
+    # Cost accounting (always shown). agentic uses only free Crossref/arXiv
+    # lookups, so its USD cost is $0.0000; claude_code reports real API spend.
+    cost_str = f"**${u.cost_usd:.4f}**"
+    if u.cost_usd == 0:
+        cost_str += " (no LLM)"
+    embed.add_field(name="💰 Cost (USD)", value=cost_str)
+    embed.add_field(name="Tokens", value=f"{u.total_tokens:,}")
+    embed.add_field(name="Time", value=f"{u.wall_seconds:.1f}s")
 
     flagged = _flagged_records(records)
     if flagged:
@@ -191,7 +200,6 @@ def build_response(
             inline=False,
         )
 
-    u = result.usage
     footer = f"{backend} · {u.total_tokens:,} tok · ${u.cost_usd:.4f}"
     if u.wall_seconds:
         footer += f" · {u.wall_seconds:.1f}s"

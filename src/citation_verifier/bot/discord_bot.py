@@ -33,6 +33,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -113,6 +114,12 @@ class CitationBot(discord.Client):
                 self.tree.copy_global_to(guild=guild)
                 synced = await self.tree.sync(guild=guild)
                 log.info("Synced %d command(s) to guild %s", len(synced), self.cfg.guild_id)
+                # Remove any stale GLOBAL registrations so commands don't appear
+                # twice — a prior run may have global-synced as a fallback before
+                # the bot was invited. The guild copies above are unaffected.
+                self.tree.clear_commands(guild=None)
+                await self.tree.sync()
+                log.info("Cleared global commands (guild sync is authoritative)")
                 return
             except discord.HTTPException as exc:
                 # Almost always: the bot has not been invited to that guild yet.
@@ -311,7 +318,8 @@ class CitationBot(discord.Client):
         s = cfg.settings
         fp = hashlib.sha1(
             f"{s.model_judge}|{s.model_bulk}|{int(s.enable_web_search)}|"
-            f"{bool(s.s2_api_key)}|{bool(s.openalex_api_key)}".encode()
+            f"{bool(s.s2_api_key)}|{bool(s.openalex_api_key)}|"
+            f"{bool(s.crossref_mailto)}".encode()
         ).hexdigest()[:8]
         base = backend if not eff else f"{backend}-top{eff}"
         out_dir = Path(s.papers_dir) / arxiv_id / f"{base}-{fp}"
@@ -353,6 +361,13 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 2
+
+    # Bridge the Crossref polite-pool email from .env into the process env:
+    # grounding.paper_lookup reads CROSSREF_MAILTO from os.environ at import, so
+    # without this the .env value is silently ignored and we stay in the slower,
+    # easily-throttled anonymous pool.
+    if cfg.settings.crossref_mailto:
+        os.environ.setdefault("CROSSREF_MAILTO", cfg.settings.crossref_mailto)
 
     intents = discord.Intents.none()
     intents.guilds = True
