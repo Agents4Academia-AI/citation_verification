@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment / secrets — NEVER commit these
+.env
+.env.*
+secrets/
+*.key
+*.pem
+
+# Personal Claude Code overrides (team defaults live in .claude/settings.json)
+.claude/settings.local.json
+
+# Per-person progress logs (if you choose to use the per-person pattern)
+claude-progress-*.md
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data — adjust to your project
+data/raw/
+data/tmp/
+*.csv
+*.parquet
+*.pkl
+
+# Notebooks
+.ipynb_checkpoints/
