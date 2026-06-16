@@ -5,9 +5,10 @@
 
 ## How to run
 
-- Install: `pip install -r requirements.txt`
-- Run:     `python src/agent.py`
-- Test:    `pytest -q`
+- Install: `pip install -r requirements.txt` (Track 3 — needs Claude Code installed/authed, or `ANTHROPIC_API_KEY`)
+- Run:     `python src/agent.py <arxiv-id | arxiv-url | path-to.pdf>`
+- Check tool only (no LLM): `python src/paper_lookup.py "<a reference string>"`
+- Test:    `pytest -q`  (no tests yet)
 
 ## Conventions
 
@@ -25,8 +26,11 @@
 
 ## Where the important stuff lives
 
-- `src/` — the agent we're building
-- `tests/` — pytest tests
+- `src/agent.py` — Track-3 entry point: `@tool` + `query()`, arXiv/PDF → verification table
+- `src/paper_lookup.py` — grounding tool: Crossref + arXiv metadata lookup (stdlib only)
+- `.claude/skills/verify-citations/SKILL.md` — the verification method (rubrics + output table)
+- `papers/` — downloaded / input PDFs
+- `tests/` — pytest tests (none yet)
 - `evals/` — evaluation harness (if/when we add one)
 
 ## Operating principles

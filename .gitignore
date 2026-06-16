@@ -38,5 +38,9 @@ data/tmp/
 *.parquet
 *.pkl
 
+# Citation Verifier — downloaded papers & generated reports (don't commit)
+papers/*.pdf
+report-*.md
+
 # Notebooks
 .ipynb_checkpoints/

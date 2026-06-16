@@ -1,1 +1,7 @@
-anthropic>=0.40
+# Citation Verifier — Track 3 (Claude Agent SDK).
+# Requires Claude Code installed & authenticated (run `claude` to log in),
+# or set ANTHROPIC_API_KEY.
+claude-agent-sdk>=0.1.0
+
+# src/paper_lookup.py uses only the Python standard library (urllib, xml)
+# to query the Crossref and arXiv APIs — nothing else to install.
