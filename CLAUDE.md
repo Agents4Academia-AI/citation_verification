@@ -1,0 +1,36 @@
+# CLAUDE.md — Claude Code session guide
+
+Short pointer file. The real, maintained guidance lives elsewhere — read these
+first and do not duplicate them here:
+
+- **[`AGENTS.md`](AGENTS.md)** — how to run/test/lint, conventions, off-limits,
+  and where everything lives. Start here every session.
+- **[`docs/architecture.md`](docs/architecture.md)** — the layered design, the
+  `(claim, citation)` data flow, the two backends, and the extension points.
+- **[`docs/DECISIONS.md`](docs/DECISIONS.md)** — the frozen decisions (the seam,
+  derived severity, anti-circularity) and the open `[change]` proposals.
+- **[`docs/DATASET.md`](docs/DATASET.md)** — CitationHallucinationBench design.
+- **[`.claude/skills/verify-citations/SKILL.md`](.claude/skills/verify-citations/SKILL.md)**
+  — the verification *method* and the **frozen** output table + enum vocabularies.
+
+## The one thing to remember
+
+This repo is **four modules behind one frozen contract**. Depend only on
+`citation_verifier.schema` (`CitationRecord` + enums) and
+`citation_verifier.interfaces` (the Protocols) — never another module's
+internals. The core must import and run **without** `claude-agent-sdk` and
+**without** network; the SDK is a lazy/optional import and network calls fail
+soft.
+
+## Fast loop
+
+```bash
+make install   # uv pip install -e '.[dev]'  — offline floor
+make test      # full pytest suite, offline
+make smoke     # tests + run_eval on the in-repo smoke gold
+make schema    # regenerate + drift-check spec/v0.1/record.schema.json
+```
+
+If a task touches a **contract** file (`schema.py`, `interfaces.py`,
+`spec/…/record.schema.json`, `SKILL.md`), stop and flag it for team sign-off —
+those are frozen seams the other branches build against.

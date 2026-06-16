@@ -1,47 +1,76 @@
-# AGENTS.md — what Claude Code reads at session start
+# AGENTS.md — what an agent/contributor reads at session start
 
-> Replace placeholders with your team's actual commands and conventions. Keep
-> this file short — every line costs attention each session.
+> Keep this short — every line costs attention each session. Deep rationale lives
+> in `docs/architecture.md` and `docs/DECISIONS.md`; the verification *method* and
+> the frozen output table live in `.claude/skills/verify-citations/SKILL.md`.
 
 ## How to run
 
-- Install: `pip install -r requirements.txt` (Track 3 — needs Claude Code installed/authed, or `ANTHROPIC_API_KEY`)
-- Run:     `python src/agent.py <arxiv-id | arxiv-url | path-to.pdf>`
-- Check tool only (no LLM): `python src/paper_lookup.py "<a reference string>"`
-- Test:    `pytest -q`  (no tests yet)
+- **Install (offline floor):** `uv pip install -e '.[dev]'`  (or `make install`).
+  No `claude-agent-sdk`, no API key, no network needed for the core.
+- **Test:** `make test`  (full pytest suite, offline) · `make smoke` (tests +
+  `run_eval` on the in-repo smoke gold).
+- **Lint:** `make lint`  (ruff).
+- **Verify a paper (needs LLM backend + `.env`):**
+  `cverify <arxiv-id | arxiv-url | path.pdf> --backend agentic|claude_code`.
+- **Check one reference (no LLM):**
+  `python -m citation_verifier.grounding.paper_lookup "<reference string>"`.
+- **Regenerate / check the schema spec:** `make schema`.
+- **Build the dataset:** `chbench build` (full) — see `docs/DATASET.md`.
 
 ## Conventions
 
-- Python 3.11+
+- Python 3.11+. `pydantic` v2 for the schema.
 - Functions are short. If something needs a paragraph of comment to explain,
   refactor it.
-- Type-hint module boundaries; internal code can be untyped.
-- snake_case for functions, PascalCase for classes, ALL_CAPS for constants.
+- Type-hint module boundaries (the Protocols in `interfaces.py` are the seams);
+  internal code can be lighter.
+- `snake_case` functions, `PascalCase` classes, `ALL_CAPS` constants.
+- The core (schema + render + eval + grounding floor) MUST import and run
+  **without** the SDK and **without** network. `claude-agent-sdk` is a lazy,
+  optional import; network calls fail soft.
 
-## What's off-limits
+## What's off-limits (the frozen seams — changes need team sign-off)
 
-- Do not modify `data/raw/` — this is our golden dataset.
-- Do not commit anything under `secrets/`, `.env*`, or `*.key`.
-- Do not push directly to `main` — open a PR.
+- `src/citation_verifier/schema.py`, `interfaces.py`, `__init__.py`,
+  `spec/v0.1/record.schema.json`, and
+  `.claude/skills/verify-citations/SKILL.md` are the **contract**. The 8-column
+  table and the four enum vocabularies must stay token-for-token in sync (the
+  tests in `tests/test_schema.py` enforce this).
+- `evals/` is the scoring boundary: the agent never imports `evals/` and vice
+  versa. Gold is built by a **different** resolver than the agent uses
+  (anti-circularity).
+- Don't commit anything under `.env*` (except `.env.example`), `secrets/`, or
+  `*.key`. Per-paper artifacts under `papers/<id>/` are gitignored.
+- Don't push directly to `main` — open a PR.
 
 ## Where the important stuff lives
 
-- `src/agent.py` — Track-3 entry point: `@tool` + `query()`, arXiv/PDF → verification table
-- `src/paper_lookup.py` — grounding tool: Crossref + arXiv metadata lookup (stdlib only)
-- `.claude/skills/verify-citations/SKILL.md` — the verification method (rubrics + output table)
-- `papers/` — downloaded / input PDFs
-- `tests/` — pytest tests (none yet)
-- `evals/` — evaluation harness (if/when we add one)
+- `src/citation_verifier/schema.py` — `CitationRecord` (the contract) + enums +
+  `derive_severity`.
+- `src/citation_verifier/interfaces.py` — Extractor / Resolver /
+  VerificationBackend / StageFn Protocols + `PaperSource` / `RunUsage` /
+  `VerificationResult`.
+- `src/citation_verifier/orchestrator.py` — `run_verification(source, backend=...)`.
+- `src/citation_verifier/{ingest,extract,grounding,stages,backends,render,cli}` —
+  the pipeline modules (see the structure table in `README.md`).
+- `src/chbench/` — CitationHallucinationBench (dataset).
+- `evals/` — `run_eval.py`, `metrics.py`, `smoke/gold.jsonl`.
+- `config/{sources,venues}.yaml` — source params + venue normalization (no secrets).
+- `papers/` — per-paper input/artifact dirs.
 
 ## Operating principles
 
-1. *Think before coding* — state assumptions, surface confusion first.
-2. *Simplicity first* — nothing beyond what was asked.
-3. *Surgical changes* — touch only what the request requires.
-4. *Goal-driven* — give success criteria, let it loop.
+1. *Think before coding* — state assumptions; surface confusion first.
+2. *Respect the seam* — depend only on `schema` + `interfaces`, never another
+   module's internals.
+3. *Degrade, don't crash* — a stuck `(claim, citation)` pair becomes one
+   `unverified` row; the run continues.
+4. *Never decide correctness from memory* — ground every verdict in retrieved
+   evidence, or mark it `unverified`.
 
 ## When in doubt
 
 - Ask a clarifying question before generating code.
 - Prefer surgical changes over big refactors.
-- If the task affects multiple files, sketch the diff first and ask before applying.
+- If a change touches a contract file, raise it with the team first.

@@ -1,0 +1,43 @@
+# config/venues.yaml — venue normalization + harvest scope for chbench.
+#
+# Two jobs:
+#   1. normalize: map the many spellings of a venue to one canonical token so
+#      metadata-error detection (CitedAs.venue vs Resolved.venue) does not fire
+#      on cosmetic differences ("NeurIPS" vs "Advances in Neural Information ...").
+#   2. scope: declare which venues chbench harvests papers from, and the harvest
+#      window, so harvest.py knows what to collect.
+#
+# No secrets. Consumed by chbench.parse / chbench.resolve (normalization) and
+# chbench.harvest (scope).
+
+# Canonical venue token -> list of accepted aliases (case-insensitive, fuzzy).
+normalize:
+  NeurIPS:
+    - "NeurIPS"
+    - "NIPS"
+    - "Neural Information Processing Systems"
+    - "Advances in Neural Information Processing Systems"
+    - "Conference on Neural Information Processing Systems"
+  ICLR:
+    - "ICLR"
+    - "International Conference on Learning Representations"
+  ICML:
+    - "ICML"
+    - "International Conference on Machine Learning"
+  ACL:
+    - "ACL"
+    - "Annual Meeting of the Association for Computational Linguistics"
+  arXiv:
+    - "arXiv"
+    - "arXiv (preprint)"
+    - "CoRR"
+    - "Computing Research Repository"
+
+# Which venues chbench collects from, and how much.
+harvest_scope:
+  - venue: NeurIPS
+    year: 2025
+    max_papers: 120
+  - venue: ICLR
+    year: 2026
+    max_papers: 80

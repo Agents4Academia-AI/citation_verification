@@ -1,7 +1,12 @@
-# Citation Verifier — Track 3 (Claude Agent SDK).
-# Requires Claude Code installed & authenticated (run `claude` to log in),
-# or set ANTHROPIC_API_KEY.
-claude-agent-sdk>=0.1.0
-
-# src/paper_lookup.py uses only the Python standard library (urllib, xml)
-# to query the Crossref and arXiv APIs — nothing else to install.
+# requirements.txt — pointer for pip-only users; pyproject.toml is the source of truth.
+#
+#   pip install -r requirements.txt        # core + Claude Code (Agent-SDK) backend
+#
+# Prefer the project extras directly:
+#   uv pip install -e '.[dev]'             # core + test/lint tooling (offline floor)
+#   uv pip install -e '.[llm]'             # + claude-agent-sdk (claude_code backend)
+#   uv pip install -e '.[sources]'         # + requests (keyed grounding sources)
+#   uv pip install -e '.[all]'             # everything
+#
+# The core (schema + render + eval + Crossref/arXiv grounding) runs with NO extras.
+-e .[llm]

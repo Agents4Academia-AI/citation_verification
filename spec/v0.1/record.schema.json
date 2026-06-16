@@ -1,0 +1,709 @@
+{
+  "$defs": {
+    "CitedAs": {
+      "additionalProperties": false,
+      "description": "The reference exactly as written in the draft's bibliography (claimed metadata).",
+      "properties": {
+        "raw": {
+          "default": "",
+          "description": "The full reference string as written.",
+          "title": "Raw",
+          "type": "string"
+        },
+        "authors": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Authors",
+          "type": "array"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "year": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Year"
+        },
+        "venue": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Venue"
+        },
+        "doi": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Doi"
+        },
+        "arxiv_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Arxiv Id"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "title": "CitedAs",
+      "type": "object"
+    },
+    "Claim": {
+      "additionalProperties": false,
+      "description": "A single in-text claim site that carries the citation.",
+      "properties": {
+        "claim_id": {
+          "description": "Deterministic id for the claim site (stable across runs).",
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "text": {
+          "default": "",
+          "description": "The sentence/claim the citation is attached to.",
+          "title": "Text",
+          "type": "string"
+        },
+        "section": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Section/heading the claim appears in.",
+          "title": "Section"
+        },
+        "char_span": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "(start, end) offsets in the extracted source text, if known.",
+          "title": "Char Span"
+        }
+      },
+      "required": [
+        "claim_id"
+      ],
+      "title": "Claim",
+      "type": "object"
+    },
+    "Evidence": {
+      "additionalProperties": false,
+      "description": "A retrieved snippet/record backing a verdict. NEVER from model memory.",
+      "properties": {
+        "kind": {
+          "description": "'metadata' | 'abstract' | 'web' | 'snippet'.",
+          "title": "Kind",
+          "type": "string"
+        },
+        "source": {
+          "description": "Provenance: api name, URL, or DOI/arXiv id.",
+          "title": "Source",
+          "type": "string"
+        },
+        "quote": {
+          "default": "",
+          "description": "The exact retrieved text supporting the verdict.",
+          "title": "Quote",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "kind",
+        "source"
+      ],
+      "title": "Evidence",
+      "type": "object"
+    },
+    "Exists": {
+      "description": "Does the cited work exist / could it be resolved? (SKILL.md 'Exists?')",
+      "enum": [
+        "yes",
+        "no",
+        "unverified"
+      ],
+      "title": "Exists",
+      "type": "string"
+    },
+    "Labels": {
+      "additionalProperties": false,
+      "description": "Ground-truth labels for CitationHallucinationBench. None on agent output.\n\nMirrors the judged axes of `CitationRecord` so a gold record is just a\n`CitationRecord` whose verdicts ARE the truth; this nested form lets a single\nrecord additionally carry gold for join-and-score without a parallel schema.",
+      "properties": {
+        "exists": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Exists"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "supports_claim": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SupportsClaim"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "priority": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Priority"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "severity": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Severity"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "is_hallucinated": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Positive class for correctness P/R/F1 (fabricated/wrong-metadata).",
+          "title": "Is Hallucinated"
+        },
+        "provenance": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "How gold was made (human / different-resolver); for anti-circularity audit.",
+          "title": "Provenance"
+        }
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "MatchMethod": {
+      "description": "How the resolver matched the cited reference to a canonical record.",
+      "enum": [
+        "doi",
+        "arxiv",
+        "fuzzy_title",
+        "none"
+      ],
+      "title": "MatchMethod",
+      "type": "string"
+    },
+    "ModelTier": {
+      "description": "Which routed model produced this record (two-tier routing, logged per record).",
+      "enum": [
+        "bulk",
+        "judge",
+        "none"
+      ],
+      "title": "ModelTier",
+      "type": "string"
+    },
+    "Paper": {
+      "additionalProperties": false,
+      "description": "The draft under verification (the citing paper).",
+      "properties": {
+        "paper_id": {
+          "description": "Stable id, e.g. arXiv id '2310.06825' or a content hash.",
+          "title": "Paper Id",
+          "type": "string"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "arxiv_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Arxiv Id"
+        },
+        "doi": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Doi"
+        },
+        "source_kind": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "How it was ingested: 'arxiv_latex' | 'arxiv_pdf' | 'pdf'.",
+          "title": "Source Kind"
+        },
+        "tex_available": {
+          "default": false,
+          "description": "True if LaTeX e-print (.bbl/.bib + \\cite sites) was used.",
+          "title": "Tex Available",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "paper_id"
+      ],
+      "title": "Paper",
+      "type": "object"
+    },
+    "Priority": {
+      "description": "Is the citation obligatory or merely helpful? (SKILL.md 'Priority')",
+      "enum": [
+        "obligatory",
+        "helpful"
+      ],
+      "title": "Priority",
+      "type": "string"
+    },
+    "Resolved": {
+      "additionalProperties": false,
+      "description": "The canonical record the reference resolved to (ground for correctness).",
+      "properties": {
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "'crossref' | 'arxiv' | 'dblp' | 's2' | 'openalex'.",
+          "title": "Source"
+        },
+        "match_method": {
+          "$ref": "#/$defs/MatchMethod",
+          "default": "none"
+        },
+        "match_score": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Match Score"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "authors": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Authors",
+          "type": "array"
+        },
+        "year": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Year"
+        },
+        "venue": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Venue"
+        },
+        "doi": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Doi"
+        },
+        "arxiv_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Arxiv Id"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        },
+        "url_valid": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Result of validating the cited/resolved URL.",
+          "title": "Url Valid"
+        },
+        "abstract": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Used as relevance evidence when available.",
+          "title": "Abstract"
+        }
+      },
+      "title": "Resolved",
+      "type": "object"
+    },
+    "Severity": {
+      "description": "Issue severity for the row. (SKILL.md 'Issue / Severity')\n\nMay be judged by the model OR derived deterministically from\n``(exists, supports_claim, priority)`` via :func:`derive_severity`\n(see docs/DECISIONS.md). The schema permits either; the field records\nwhichever was used.",
+      "enum": [
+        "high",
+        "medium",
+        "low",
+        "ok"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "SupportsClaim": {
+      "description": "Does the cited work support the specific claim? (SKILL.md 'Supports claim?')\n\nNOTE the token is ``does_not`` (a valid identifier); the renderer prints the\nSKILL.md table string ``does not``.",
+      "enum": [
+        "supports",
+        "partial",
+        "does_not",
+        "unverified"
+      ],
+      "title": "SupportsClaim",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One verified (claim, citation) pair — one row of the SKILL.md table.\n\nPrimary key: ``(paper_id, claim_id, cite_key)``. This is also the eval/gold\njoin key. One pair per record (a reference cited in N places => N records).",
+  "properties": {
+    "schema_version": {
+      "default": "0.1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "paper_id": {
+      "title": "Paper Id",
+      "type": "string"
+    },
+    "claim_id": {
+      "title": "Claim Id",
+      "type": "string"
+    },
+    "cite_key": {
+      "description": "BibTeX key / \\cite key, e.g. 'vaswani2017attention'.",
+      "title": "Cite Key",
+      "type": "string"
+    },
+    "paper": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Paper"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "claim": {
+      "$ref": "#/$defs/Claim"
+    },
+    "cited_as": {
+      "$ref": "#/$defs/CitedAs"
+    },
+    "exists": {
+      "$ref": "#/$defs/Exists",
+      "default": "unverified"
+    },
+    "resolved": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Resolved"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "metadata_issues": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Metadata Issues",
+      "type": "array"
+    },
+    "supports_claim": {
+      "$ref": "#/$defs/SupportsClaim",
+      "default": "unverified"
+    },
+    "priority": {
+      "$ref": "#/$defs/Priority",
+      "default": "helpful"
+    },
+    "severity": {
+      "$ref": "#/$defs/Severity",
+      "default": "ok"
+    },
+    "compared_against": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "For obligatory baselines: was it actually compared against? None=n/a/unchecked.",
+      "title": "Compared Against"
+    },
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/Evidence"
+      },
+      "title": "Evidence",
+      "type": "array"
+    },
+    "confidence": {
+      "anyOf": [
+        {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Confidence"
+    },
+    "model_tier": {
+      "$ref": "#/$defs/ModelTier",
+      "default": "none"
+    },
+    "notes": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Notes"
+    },
+    "error": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Set when a pair degraded instead of crashing.",
+      "title": "Error"
+    },
+    "labels": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Labels"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "paper_id",
+    "claim_id",
+    "cite_key",
+    "claim",
+    "cited_as"
+  ],
+  "title": "CitationRecord",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agents4academia/citation_verifier/spec/0.1/record.schema.json",
+  "x-schema-version": "0.1"
+}

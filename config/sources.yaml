@@ -1,0 +1,81 @@
+# config/sources.yaml — grounding & dataset source registry (NO secrets).
+#
+# Used by both the agent's grounding layer (citation_verifier.grounding) and the
+# dataset pipeline (chbench). Secrets (API keys, mailto) come from .env via
+# citation_verifier.config; this file holds only per-source params, timeouts,
+# enable flags, and the source -> verification-dimension mapping.
+#
+# The "keyless floor" (crossref + arxiv over urllib) MUST stay enabled and needs
+# no secrets; keyed sources are skipped automatically when their .env key is
+# absent (see citation_verifier.config / chbench.resolve).
+
+defaults:
+  timeout_seconds: 20
+  max_results: 4
+  user_agent: "citation-verifier/0.1"
+
+# Grounding sources. `dimension` records what each source is trusted for
+# (decisions-phy.md "source -> dimension mapping"):
+#   correctness : title/authors/venue/year/DOI for existence + metadata checks
+#   relevance   : abstract / citation-intent signal for supports_claim
+sources:
+  crossref:
+    enabled: true
+    needs_key: false                 # CROSSREF_MAILTO only opts into the polite pool
+    base_url: "https://api.crossref.org/works"
+    dimension: [correctness]
+    timeout_seconds: 20
+
+  arxiv:
+    enabled: true
+    needs_key: false
+    base_url: "http://export.arxiv.org/api/query"
+    dimension: [correctness, relevance]
+    timeout_seconds: 20
+
+  dblp:
+    enabled: true
+    needs_key: false
+    base_url: "https://dblp.org/search/publ/api"
+    dimension: [correctness]
+    timeout_seconds: 20
+
+  semantic_scholar:
+    enabled: false                   # flip on once S2_API_KEY is set in .env
+    needs_key: true
+    env_key: S2_API_KEY
+    base_url: "https://api.semanticscholar.org/graph/v1"
+    dimension: [correctness, relevance]
+    timeout_seconds: 25
+
+  openalex:
+    enabled: false                   # flip on once OPENALEX_API_KEY is set in .env
+    needs_key: true
+    env_key: OPENALEX_API_KEY
+    base_url: "https://api.openalex.org/works"
+    dimension: [correctness]
+    timeout_seconds: 25
+
+# ── chbench dataset-collection sources (seed descriptors) ─────────────────────
+# These drive sources.py: where to harvest candidate papers and known-natural
+# hallucination labels from. URLs are the authoritative GPTZero lists.
+dataset_sources:
+  gptzero_neurips_2025:
+    kind: gptzero_hallucination_list
+    url: "https://gptzero.me/news/neurips/"
+    venue: "NeurIPS 2025"
+    expected_count: 100              # "~100 hallucinations" per the Notion plan
+    enabled: true
+
+  gptzero_iclr_2026:
+    kind: gptzero_hallucination_list
+    url: "https://gptzero.me/news/iclr-2026/"
+    venue: "ICLR 2026"
+    expected_count: 50              # "50+" per the Notion plan
+    enabled: true
+
+  openreview:
+    kind: openreview_venue
+    base_url: "https://api2.openreview.net"
+    enabled: false                  # opt-in; broad collection, off by default
+    venues: ["NeurIPS.cc/2025/Conference", "ICLR.cc/2026/Conference"]
