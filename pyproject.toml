@@ -28,6 +28,9 @@ llm = ["claude-agent-sdk>=0.1.0"]
 # Keyed/extra grounding sources (DBLP/S2/OpenAlex/Crossref-polite over HTTP).
 # The stdlib floor (Crossref + arXiv via urllib) needs nothing here.
 sources = ["requests>=2.31"]
+# The Discord front-end (cverify-bot). pypdf gives the PDF extractor a real
+# text path; discord.py drives the gateway + /check slash command.
+bot = ["discord.py>=2.3", "pypdf>=5"]
 dev = [
   "pytest>=8",
   "pytest-cov>=5",
@@ -37,6 +40,8 @@ dev = [
 all = [
   "claude-agent-sdk>=0.1.0",
   "requests>=2.31",
+  "discord.py>=2.3",
+  "pypdf>=5",
   "pytest>=8",
   "pytest-cov>=5",
   "ruff>=0.5",
@@ -46,6 +51,7 @@ all = [
 [project.scripts]
 cverify = "citation_verifier.cli:main"
 chbench = "chbench.cli:main"
+cverify-bot = "citation_verifier.bot:main"
 
 [project.urls]
 Homepage = "https://github.com/Agents4Academia/citation_verification"

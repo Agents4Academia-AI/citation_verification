@@ -69,6 +69,10 @@ cverify https://arxiv.org/abs/2005.14165 --backend claude_code
 
 # 4. Check a single reference against the grounding sources (no LLM)
 python -m citation_verifier.grounding.paper_lookup "Vaswani et al. Attention Is All You Need 2017"
+
+# 5. Run the Discord bot (slash command /check <arxiv>) — see docs/DISCORD_BOT.md
+uv pip install -e '.[bot]'
+cverify-bot                       # reads DISCORD_BOT_TOKEN from .env
 ```
 
 The **keyless floor** — schema + render + eval + Crossref/arXiv grounding — runs
@@ -89,6 +93,7 @@ only when their `.env` keys are present.
 | `src/citation_verifier/grounding/` | multi-source resolver + `lookup_paper` + URL validation |
 | `src/citation_verifier/stages/` | `fill_correctness` / `fill_relevance` / `fill_comparison` |
 | `src/citation_verifier/backends/` | `claude_code` (Agent-SDK) and `agentic` (staged) + usage accounting |
+| `src/citation_verifier/bot/` | Discord front-end (`cverify-bot`): `/check`, `/help`, `/ping` → [`docs/DISCORD_BOT.md`](docs/DISCORD_BOT.md) |
 | `src/chbench/` | CitationHallucinationBench: harvest → parse → resolve → label → splits |
 | `evals/` | scoring boundary (`run_eval.py`, `metrics.py`); `smoke/gold.jsonl` for CI |
 | `spec/v0.1/record.schema.json` | **[contract]** committed JSON Schema for one record |

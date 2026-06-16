@@ -145,12 +145,24 @@ def _dedupe_evidence(items: list[Evidence]) -> list[Evidence]:
 
 
 def _reference_string(record: CitationRecord) -> str:
-    """Best available reference text: the raw string, else assembled fields."""
-    raw = (record.cited_as.raw or "").strip()
-    if raw:
-        return raw
+    """Best available reference text for grounding.
+
+    Starts from the raw bibliography string (or assembled fields), then appends
+    the structured identifiers the extractor already parsed (``arxiv_id`` / ``doi``).
+    The rendered ``.bib`` raw string omits those identifiers, so without this the
+    resolver's DOI/arXiv exact-match cascade can never fire and every id-bearing
+    citation falls back to slow, lower-recall fuzzy-title matching. Including them
+    is still *grounded*: the resolver only accepts an id that a fetched candidate
+    also carries — it never trusts the draft's claim on its own.
+    """
     c = record.cited_as
-    parts = [_join(c.authors), c.title or "", str(c.year or ""), c.venue or ""]
+    raw = (c.raw or "").strip()
+    parts = [raw] if raw else [_join(c.authors), c.title or "", str(c.year or ""), c.venue or ""]
+    raw_lower = raw.lower()
+    if c.arxiv_id and "arxiv" not in raw_lower:
+        parts.append(f"arXiv:{c.arxiv_id}")
+    if c.doi and c.doi.lower() not in raw_lower:
+        parts.append(f"doi:{c.doi}")
     return " ".join(p for p in parts if p).strip()
 
 

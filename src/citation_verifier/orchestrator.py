@@ -36,8 +36,8 @@ from .interfaces import (
 )
 from .schema import (
     CitationRecord,
-    Claim,
     CitedAs,
+    Claim,
     Exists,
     ModelTier,
     Severity,
@@ -107,6 +107,41 @@ def _load_resume(work_dir: Path) -> list[CitationRecord] | None:
     try:
         return [CitationRecord.model_validate(item) for item in items]
     except Exception:
+        return None
+
+
+def _load_run(work_dir: Path) -> RunUsage | None:
+    """Reload the persisted :class:`RunUsage` from ``run.json`` (for resume).
+
+    Returns ``None`` when there is nothing to reload (no file / unreadable /
+    malformed). Restoring the real token/cost accounting on a cache hit keeps
+    the resumed result honest instead of reporting a zeroed usage — and lets the
+    resume path rewrite ``run.json`` with the genuine numbers rather than zeros.
+    """
+    run = work_dir / "run.json"
+    if not run.exists():
+        return None
+    try:
+        raw = json.loads(run.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    u = raw.get("usage") if isinstance(raw, dict) else None
+    if not isinstance(u, dict):
+        return None
+    try:
+        return RunUsage(
+            backend=str(u.get("backend", "")),
+            model=str(u.get("model", "")),
+            input_tokens=int(u.get("input_tokens", 0) or 0),
+            output_tokens=int(u.get("output_tokens", 0) or 0),
+            cache_read_tokens=int(u.get("cache_read_tokens", 0) or 0),
+            cache_creation_tokens=int(u.get("cache_creation_tokens", 0) or 0),
+            cost_usd=float(u.get("cost_usd", 0.0) or 0.0),
+            num_turns=int(u.get("num_turns", 0) or 0),
+            tool_calls=int(u.get("tool_calls", 0) or 0),
+            wall_seconds=float(u.get("wall_seconds", 0.0) or 0.0),
+        )
+    except (TypeError, ValueError):
         return None
 
 
@@ -199,6 +234,7 @@ def run_verification(
     settings: Settings | None = None,
     resume: bool = True,
     out_dir: str | Path | None = None,
+    max_citations: int = 0,
 ) -> VerificationResult:
     """Verify the citations in a paper draft and return a :class:`VerificationResult`.
 
@@ -210,6 +246,9 @@ def run_verification(
         resume: Reuse a prior ``papers/<id>/report.json`` if present.
         out_dir: Override for the per-paper artifact dir (defaults to the
             ingested ``work_dir`` under ``settings.papers_dir``).
+        max_citations: When > 0, verify only the first N extracted
+            ``(claim, citation)`` stubs (keeps a run bounded in time/cost on a
+            large bibliography); a note is appended to ``.errors``. 0 = all.
 
     Returns:
         A :class:`VerificationResult` with filled records, aggregated
@@ -241,6 +280,12 @@ def run_verification(
         if prior is not None:
             result.records = prior
             finalize_severity(result.records)
+            # Restore the real token/cost accounting so a cached hit reports the
+            # genuine usage (and does not overwrite run.json with zeros).
+            prior_usage = _load_run(work_dir)
+            if prior_usage is not None:
+                prior_usage.backend = backend
+                result.usage = prior_usage
             result.usage.wall_seconds = time.monotonic() - started
             _write_report(work_dir, result)
             _write_run(work_dir, result)
@@ -260,6 +305,14 @@ def run_verification(
         except Exception as exc:  # degrade-not-crash at the extraction boundary
             result.errors.append(f"extraction failed: {exc!r}")
             stubs = []
+
+    # Optional bound: verify only the first N (claim, citation) stubs.
+    if max_citations and len(stubs) > max_citations:
+        result.errors.append(
+            f"limited to first {max_citations} of {len(stubs)} citation pairs "
+            "(max_citations); the rest were not verified"
+        )
+        stubs = stubs[:max_citations]
 
     # 3) Run the chosen backend over the stubs.
     backend_impl = _get_backend(backend)

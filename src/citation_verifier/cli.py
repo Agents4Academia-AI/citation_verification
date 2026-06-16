@@ -55,6 +55,13 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Ignore any prior report.json and re-run from scratch.",
     )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=0,
+        metavar="N",
+        help="Verify only the first N (claim, citation) pairs (0 = all).",
+    )
     return parser
 
 
@@ -81,6 +88,7 @@ def main(argv: list[str] | None = None) -> int:
             backend=args.backend,
             resume=not args.no_resume,
             out_dir=args.out,
+            max_citations=args.limit,
         )
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)

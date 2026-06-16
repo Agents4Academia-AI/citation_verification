@@ -6,6 +6,74 @@
 
 ---
 
+## 2026-06-16 — session: Discord bot front-end (`/check`) (phy)
+
+**Goal:** ship a Discord bot that pipelines citation verification behind a
+`/check <arxiv>` slash command (accepting bare id, `/abs/` and `/pdf/` URLs) and
+posts the hallucination report; make it deployable on the team's test server.
+
+**Done:**
+- New `src/citation_verifier/bot/` package (import-safe; `discord` is a runtime-
+  only import): `config.py` (token/guild/backend/cap from env+.env, reuses
+  `load_settings`), `discord_bot.py` (`CitationBot` + `/check`, `/help`, `/ping`),
+  `report.py` (compact embed: headline + counts + emoji-tagged flagged list +
+  full report attached as `.md`). Console script `cverify-bot` + `[bot]` extra
+  (`discord.py`, `pypdf`). `/check` defers then runs the SAME
+  `run_verification` on a worker thread (`asyncio.to_thread`).
+- Orchestrator/CLI gained an optional `max_citations` (CLI `--limit`) bound — a
+  clean truncation at the right layer (the bot caps per-command runs so a big
+  bibliography can't exceed Discord's 15-min interaction window).
+- Ran an adversarial review **workflow** (6 dimensions → verify): 11/12 findings
+  confirmed and fixed —
+  - guarded the post-verify render+send and added a `CommandTree.on_error`
+    backstop (no more hung "thinking…" interactions);
+  - clipped all user/exception text under Discord's 2000-char content cap +
+    `max_length` on the `paper` option;
+  - per-cache-key in-flight **coalescing** (concurrent identical `/check`s share
+    one run; no `report.json` write race);
+  - cache key now includes a **settings fingerprint** (model/web/keys) so a
+    config change never serves a stale verdict;
+  - oversize-attachment guard; `allowed_mentions=none`;
+  - **orchestrator resume bug:** the cache-hit path overwrote `run.json` with a
+    zeroed `RunUsage` and showed `0 tok`. Added `_load_run` to restore the real
+    token/cost on resume (fixes the footer + stops clobbering accounting).
+- Recall bug fix in `stages/correctness.py`: `_reference_string` dropped the
+  `arxiv_id`/`doi` the extractor parsed, so the resolver's DOI/arXiv exact-match
+  cascade never fired. Now appended (still grounded — only accepts an id a
+  fetched candidate also carries). Real papers with a DOI/surfaced-arXiv id now
+  resolve to `exists=yes` instead of `unverified`.
+- Docs: `docs/DISCORD_BOT.md` (invite URL + scopes/permissions, run, troubleshoot),
+  README Quickstart + structure row, `.env.example` (Discord section; **fixed the
+  invalid default model ids** to `claude-haiku-4-5-20251001` / `claude-sonnet-4-6`).
+
+**Verified by (live, using `.env` DISCORD_BOT_TOKEN + ANTHROPIC_API_KEY):**
+- Logged in as `main_branch_agent#5388`; after the bot was invited, guild sync
+  registered `/check`, `/help`, `/ping` to the test server (guild
+  1516408471208202260) — confirmed via `tree.fetch_commands(guild=…)`.
+- End-to-end through the bot's exact path on `2505.03335` (182 stubs / 108 cites):
+  capped runs produce the embed + attached report; `guo2025deepseek` →
+  `exists=yes` (DOI) after the recall fix; cap shown as a "Scope" field; resume
+  restores real usage (2,635 tok / $0.0036, non-zero).
+- `pytest tests/` → 32 passed; bot package imports with no network/SDK touched.
+
+**Not done / blocked:**
+- arXiv-id-only citations whose title has LaTeX escapes (e.g. T\"ULU 3) still
+  read `unverified` under `agentic`: the multi-source *search* doesn't surface
+  the id-bearing candidate, and a robust fix needs a direct arXiv-id fetch in the
+  resolver (deliberately out of scope — "don't optimise"). `claude_code` handles
+  these; it's the recommended deep-check backend.
+- `agentic` grounding is ~12 s/citation (sequential multi-source fan-out); hence
+  the `BOT_MAX_CITATIONS=25` default. Not optimised by design.
+
+**Next session — start here:**
+1. (Optional) direct arXiv-id/DOI fetch path in the resolver to lift `agentic`
+   recall + speed on id-bearing refs (then raise/remove the bot cap).
+2. Wire the LLM `relevance_judge` into `agentic` so `/check` reports STEP-2
+   relevance without the full `claude_code` loop.
+3. Add a `fresh:true` `/check` option (resume=False) for forced re-verification.
+
+---
+
 ## 2026-06-16 — session: integrate the initialization + workable demo (phy)
 
 **Goal:** materialize the workflow-designed initialization onto `main`, refactor
