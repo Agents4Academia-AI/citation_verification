@@ -211,18 +211,20 @@ def _get_extractor(source: PaperSource):
         return None
 
 
-def _get_backend(name: str):
+def _get_backend(name: str, settings: Settings | None = None):
     """Lazily fetch a backend from the registry (sibling 'backends' package).
 
-    Import-safe: returns ``None`` if the backends package (or the named backend)
-    is unavailable, so the orchestrator degrades to an honest, empty result.
+    Forwards ``settings`` so model routing / the relevance-judge toggle from
+    ``.env`` actually reach the backend. Import-safe: returns ``None`` if the
+    backends package (or the named backend) is unavailable, so the orchestrator
+    degrades to an honest, empty result.
     """
     try:
         from .backends import get_backend  # type: ignore
     except Exception:
         return None
     try:
-        return get_backend(name)
+        return get_backend(name, settings=settings)
     except Exception:
         return None
 
@@ -315,7 +317,7 @@ def run_verification(
         stubs = stubs[:max_citations]
 
     # 3) Run the chosen backend over the stubs.
-    backend_impl = _get_backend(backend)
+    backend_impl = _get_backend(backend, settings)
     if backend_impl is None:
         result.errors.append(
             f"backend {backend!r} unavailable (sibling 'backends' package not "

@@ -6,6 +6,54 @@
 
 ---
 
+## 2026-06-17 — session: wire LLM relevance judge into agentic (L0/L1) (yunqiao)
+
+**Goal:** make the `agentic` backend actually do STEP 2 (relevance) via an LLM judge
+on the Claude Code subscription (Opus 4.6), judging from abstract (L0) or
+abstract+intro (L1), honestly abstaining instead of guessing. No L2 (deep full-text
+retrieval): finding a paraphrased passage needs semantic retrieval — out of scope.
+
+**Done (branch `yunqiao`):**
+- New `backends/relevance_judge.py`: `LLMRelevanceJudge` (lazy SDK → subscription,
+  `model_judge`=Opus 4.6) + `build_relevance_judge` (None if SDK absent → caller
+  abstains, keyless floor stays up). Evidence = abstract + best-effort arXiv
+  `_fetch_intro` (arxiv.org/html/<id>, sliced Introduction, fail-soft → L0). Honest
+  prompt: judge ONLY from provided text; specific evidence absent => partial/
+  unverified, never guess. Robust verdict parse ("does not"→does_not, fenced JSON).
+- `stages/relevance.py`: `RelevanceJudge` Protocol + `fill_relevance` now pass the
+  resolved record to the judge (so it can fetch the intro for L1).
+- `backends/agentic.py`: builds the judge when `ENABLE_RELEVANCE_JUDGE` is on (an
+  explicit injected `relevance_judge` still wins); also fixed the leftover invalid
+  `claude-opus-4-5`/`claude-haiku-4-5` default literals here.
+- `config.py` + `.env.example`: `ENABLE_RELEVANCE_JUDGE` (default false → agentic
+  stays keyless/abstaining).
+- `orchestrator.py`: thread `settings` into `get_backend` — also fixes a latent bug
+  where `.env` model routing / toggles never reached the backend in the cverify path.
+
+**Verified by:**
+- `pytest` → 40 passed (32 + 8 new offline tests: verdict parse incl. "does not",
+  intro slice, honest abstain without evidence (no SDK/network touched), and
+  fill_relevance applies an injected judge / abstains without one).
+- Offline wiring: `ENABLE_RELEVANCE_JUDGE` off → `agentic.judge is None`; on → an
+  `LLMRelevanceJudge(model=claude-opus-4-6)`; env flag flows load_settings → backend.
+- **Not yet** run live (no subscription LLM call made; L1 intro fetch not exercised
+  against real arXiv HTML).
+
+**Not done / blocked:**
+- Live run + L1 intro-fetch on real papers not yet exercised (next).
+- Real judge token/cost not threaded back into RunUsage (agentic still records an
+  *estimated* JUDGE-tier usage) — fine for now, note for the cost comparison.
+- L1 intro is arXiv-HTML only; non-arXiv full-text stays at L0 (by design).
+
+**Next session — start here:**
+1. Live: `ENABLE_RELEVANCE_JUDGE=true cverify <arxiv> --backend agentic --no-resume`
+   (logged in to Claude Code, ANTHROPIC_API_KEY blank); check supports_claim + that
+   abstain fires when the abstract lacks the specific point.
+2. Spot-check `_fetch_intro` on a few arXiv ids (HTML availability varies).
+3. PR `yunqiao` → `main`.
+
+---
+
 ## 2026-06-17 — session: claude_code cost/speed fixes (yunqiao)
 
 **Goal:** cut the `claude_code` backend's latency + token blow-up (it re-sent the

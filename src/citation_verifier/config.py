@@ -53,6 +53,11 @@ class Settings(BaseModel):
     cost_ceiling_usd: float = Field(
         default=0.50, ge=0.0, description="Per-run USD ceiling; 0 disables the cap. Orchestrator aborts gracefully past it."
     )
+    enable_relevance_judge: bool = Field(
+        default=False,
+        description="Turn on the LLM relevance judge (STEP 2) in the 'agentic' backend. "
+        "False => agentic stays keyless and abstains on supports_claim.",
+    )
 
     # ── Grounding sources ──
     crossref_mailto: str | None = Field(
@@ -158,6 +163,7 @@ def load_settings(env_file: str | Path | None = ".env") -> Settings:
         model_bulk=_opt(get("MODEL_BULK")) or _DEFAULT_MODEL_BULK,
         model_judge=_opt(get("MODEL_JUDGE")) or _DEFAULT_MODEL_JUDGE,
         cost_ceiling_usd=_as_float(get("COST_CEILING_USD"), 0.50),
+        enable_relevance_judge=_as_bool(get("ENABLE_RELEVANCE_JUDGE"), False),
         crossref_mailto=_opt(get("CROSSREF_MAILTO")),
         s2_api_key=_opt(get("S2_API_KEY")),
         openalex_api_key=_opt(get("OPENALEX_API_KEY")),

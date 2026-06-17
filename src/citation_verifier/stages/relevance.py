@@ -67,6 +67,7 @@ class RelevanceJudge(Protocol):
         abstract: str,
         cited_title: str = "",
         resolved_title: str = "",
+        resolved: object | None = None,
     ) -> RelevanceVerdict: ...
 
 
@@ -171,6 +172,7 @@ def _fill_relevance(
             abstract=abstract,
             cited_title=record.cited_as.title or "",
             resolved_title=(record.resolved.title if record.resolved else "") or "",
+            resolved=record.resolved,
         )
         record.supports_claim = verdict.supports_claim
         if verdict.priority is not None:

@@ -55,14 +55,22 @@ class AgenticBackend(BaseBackend):
 
     def __init__(self, *, settings: Any | None = None) -> None:
         self.settings = settings
-        self.bulk_model = _setting(settings, "model_bulk", "claude-haiku-4-5")
-        self.judge_model = _setting(settings, "model_judge", "claude-opus-4-5")
+        self.bulk_model = _setting(settings, "model_bulk", "claude-haiku-4-5-20251001")
+        self.judge_model = _setting(settings, "model_judge", "claude-opus-4-6")
         self.cost_ceiling = float(_setting(settings, "cost_ceiling_usd", 0.0) or 0.0)
         self.pricing = _setting(settings, "pricing", None)
-        # Optional injected relevance judge (the SKILL.md relevance seam). The
-        # deterministic baseline runs WITHOUT one and honestly abstains on
-        # relevance; an LLM judge can be wired in to fill supports_claim.
+        # The relevance seam. The deterministic baseline runs WITHOUT a judge and
+        # honestly abstains on relevance. A judge fills supports_claim:
+        #   - an explicitly injected `relevance_judge` wins (tests / custom), else
+        #   - if ENABLE_RELEVANCE_JUDGE is on, build the LLM judge (Claude Code
+        #     subscription; STEP 2 via abstract[+intro]). SDK absent => None => abstain.
         self.judge = _setting(settings, "relevance_judge", None)
+        if self.judge is None and _setting(settings, "enable_relevance_judge", False):
+            try:
+                from .relevance_judge import build_relevance_judge
+                self.judge = build_relevance_judge(settings)
+            except Exception:  # noqa: BLE001 — never let judge wiring break the run
+                self.judge = None
 
     # ──────────────────────────────────────────────────────────────
     def verify(
