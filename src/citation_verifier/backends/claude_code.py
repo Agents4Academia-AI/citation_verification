@@ -102,7 +102,7 @@ class ClaudeCodeBackend(BaseBackend):
 
     def __init__(self, *, settings: Any | None = None) -> None:
         self.settings = settings
-        self.model = _setting(settings, "model_judge", "claude-opus-4-5")
+        self.model = _setting(settings, "model_judge", "claude-opus-4-6")
         self.max_turns = int(_setting(settings, "max_turns", 80) or 80)
         self.enable_web = bool(_setting(settings, "enable_web_search", False))
 
@@ -153,7 +153,13 @@ class ClaudeCodeBackend(BaseBackend):
         lookup_paper_tool = self._build_lookup_tool(tool)
         papers_server = create_sdk_mcp_server(name="papers", tools=[lookup_paper_tool])
 
-        allowed = ["mcp__papers__lookup_paper", "Read"]
+        # Only let the model read the FULL paper when we have no extracted stubs to
+        # work from. With stubs we pass each reference string inline (see
+        # _user_prompt), which keeps the whole paper out of the accumulating context
+        # — the dominant cost/latency driver of this single-loop backend.
+        allowed = ["mcp__papers__lookup_paper"]
+        if not stubs:
+            allowed.append("Read")
         if self.enable_web:
             allowed += ["WebSearch", "WebFetch"]
 
@@ -202,6 +208,11 @@ class ClaudeCodeBackend(BaseBackend):
         )
         async def _lookup(args: dict[str, Any]) -> dict[str, Any]:
             payload = lookup_paper(args["reference"], source=args.get("source") or "auto")
+            # Keep the tool result compact so it doesn't bloat the accumulating
+            # context: the model only needs the top few candidates to adjudicate.
+            cands = payload.get("candidates") if isinstance(payload, dict) else None
+            if isinstance(cands, list) and len(cands) > 3:
+                payload = {**payload, "candidates": cands[:3]}
             return {"content": [{"type": "text", "text": json.dumps(payload, ensure_ascii=False)}]}
 
         return _lookup
@@ -222,31 +233,47 @@ class ClaudeCodeBackend(BaseBackend):
             "supports_claim supports|partial|does_not|unverified; priority "
             "obligatory|helpful. Include claim, cited_as, metadata_issues, and "
             "evidence. Do not hand-author the Markdown table — the JSON is the "
-            "source of truth."
+            "source of truth. When the user message provides each reference inline, "
+            "ground via lookup_paper and do not attempt to read the full paper."
         )
 
     def _user_prompt(self, source: PaperSource, stubs: list[CitationRecord]) -> str:
-        """User prompt: where the paper is + the stub pairs to verify."""
-        where = source.tex_dir or source.pdf_path or source.work_dir or source.paper_id
-        lines = [
-            f"Verify the citations in the paper at: {where}",
-            f"paper_id: {source.paper_id}",
-        ]
+        """User prompt: the (claim, reference) pairs to verify.
+
+        We pass the extractor's reference STRING for each pair so the model can
+        ground each citation directly via lookup_paper WITHOUT reading the whole
+        paper into context (the dominant cost/latency driver of this single-loop
+        backend). Only when there are no stubs do we fall back to reading the draft.
+        """
+        lines = [f"paper_id: {source.paper_id}"]
         if stubs:
             pairs = [
-                {"claim_id": s.claim_id, "cite_key": s.cite_key, "claim": s.claim.text}
+                {
+                    "claim_id": s.claim_id,
+                    "cite_key": s.cite_key,
+                    "claim": s.claim.text,
+                    "reference": _reference_text(s),
+                }
                 for s in stubs
             ]
             lines.append(
-                "Verify exactly these (claim_id, cite_key) pairs and key your "
-                "output records by them:\n" + json.dumps(pairs, ensure_ascii=False, indent=2)
+                "Verify exactly these (claim_id, cite_key) pairs and key your output "
+                "records by them. For each: call lookup_paper with the given "
+                "reference, compare the returned record against it (authors / venue / "
+                "year / title), and judge whether it supports the claim:\n"
+                + json.dumps(pairs, ensure_ascii=False, indent=2)
+            )
+            lines.append(
+                "Ground every check via lookup_paper — do NOT read the full paper. "
+                "Then emit the JSON array of CitationRecords as specified."
             )
         else:
-            lines.append("Extract the references and claim sites yourself, then verify each.")
-        lines.append(
-            "Read the draft, ground every check, then emit the JSON array of "
-            "CitationRecords as specified."
-        )
+            where = source.tex_dir or source.pdf_path or source.work_dir or source.paper_id
+            lines.append(f"Read the draft at: {where}")
+            lines.append(
+                "Extract the references and claim sites yourself, ground every check, "
+                "then emit the JSON array of CitationRecords as specified."
+            )
         return "\n".join(lines)
 
     # ──────────────────────────────────────────────────────────────
@@ -436,6 +463,26 @@ def _coerce_evidence(v: Any) -> list[Evidence]:
         elif isinstance(it, str) and it.strip():
             out.append(Evidence(kind="snippet", source="model", quote=it.strip()[:600]))
     return out
+
+
+def _reference_text(rec: CitationRecord) -> str:
+    """Best reference string for a stub: the raw bibliography line plus any
+    structured ids the extractor parsed (arXiv/DOI), so lookup_paper's exact-match
+    cascade can fire. Mirrors stages.correctness._reference_string.
+    """
+    c = rec.cited_as
+    raw = (c.raw or "").strip()
+    parts = (
+        [raw]
+        if raw
+        else [", ".join(a for a in c.authors if a), c.title or "", str(c.year or ""), c.venue or ""]
+    )
+    low = raw.lower()
+    if c.arxiv_id and "arxiv" not in low:
+        parts.append(f"arXiv:{c.arxiv_id}")
+    if c.doi and c.doi.lower() not in low:
+        parts.append(f"doi:{c.doi}")
+    return " ".join(p for p in parts if p).strip()
 
 
 def _setting(settings: Any | None, attr: str, default: Any) -> Any:

@@ -28,8 +28,8 @@ __all__ = ["Settings", "load_settings", "model_for"]
 
 # Default per-tier model ids. Overridable via MODEL_BULK / MODEL_JUDGE so the
 # real model strings live in config, not in source.
-_DEFAULT_MODEL_BULK = "claude-haiku-4-5"
-_DEFAULT_MODEL_JUDGE = "claude-opus-4-5"
+_DEFAULT_MODEL_BULK = "claude-haiku-4-5-20251001"
+_DEFAULT_MODEL_JUDGE = "claude-opus-4-6"
 
 
 class Settings(BaseModel):
