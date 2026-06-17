@@ -46,6 +46,7 @@ from ..schema import (
     SupportsClaim,
     derive_severity,
 )
+from ..config import apply_auth
 from .base import BaseBackend, register
 from .usage import usage_from_result_message
 
@@ -118,6 +119,7 @@ class ClaudeCodeBackend(BaseBackend):
         extractor's stubs and the eval join key.
         """
         sdk = _require_sdk()
+        apply_auth(self.settings)  # API key if configured, else the subscription
         result = self._empty_result(source)
 
         with self._timer() as sw:

@@ -15,11 +15,12 @@ passage under paraphrase needs semantic retrieval, which is the complexity we ar
 avoiding. When the abstract(+intro) does not contain the specific claimed evidence,
 the judge HONESTLY abstains (`partial`/`unverified`) instead of guessing.
 
-Auth: this uses the Claude Agent SDK, i.e. the Claude Code SUBSCRIPTION quota — no
-per-token API key needed (leave ANTHROPIC_API_KEY blank and stay logged in to Claude
-Code). The SDK is a lazy import: with it absent, :func:`build_relevance_judge`
-returns ``None`` and the agentic backend falls back to its honest deterministic
-abstain (the keyless floor stays up).
+Auth: the Claude Agent SDK uses ``ANTHROPIC_API_KEY`` if one is configured (env or
+``.env``), else the authenticated Claude Code SUBSCRIPTION — so the default (no key)
+is the subscription, and providing a key switches to the per-token API (see
+:func:`citation_verifier.config.apply_auth`). The SDK is a lazy import: with it
+absent, :func:`build_relevance_judge` returns ``None`` and the agentic backend falls
+back to its honest deterministic abstain (the keyless floor stays up).
 """
 
 from __future__ import annotations
@@ -30,6 +31,7 @@ import re
 import urllib.request
 from typing import Any
 
+from ..config import apply_auth
 from ..schema import ModelTier, Priority, SupportsClaim
 from ..stages.relevance import RelevanceVerdict
 
@@ -123,6 +125,7 @@ class LLMRelevanceJudge:
             f"CITED WORK{(' — ' + title) if title else ''} — provided text:\n{evidence}\n\n"
             "Return the JSON verdict."
         )
+        apply_auth(self.settings)  # API key if configured, else the subscription
         text = asyncio.run(self._run(sdk, system, user))
         return _parse_verdict(text)
 

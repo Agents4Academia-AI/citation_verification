@@ -24,7 +24,7 @@ from pydantic import BaseModel, Field
 
 from .schema import ModelTier
 
-__all__ = ["Settings", "load_settings", "model_for"]
+__all__ = ["Settings", "load_settings", "model_for", "apply_auth"]
 
 # Default per-tier model ids. Overridable via MODEL_BULK / MODEL_JUDGE so the
 # real model strings live in config, not in source.
@@ -171,6 +171,24 @@ def load_settings(env_file: str | Path | None = ".env") -> Settings:
         papers_dir=Path(papers),
         chbench_data_dir=Path(chbench),
     )
+
+
+def apply_auth(settings: Settings | None = None) -> str:
+    """Select the SDK auth source: the API key if configured, else the subscription.
+
+    The Claude Agent SDK reads ``ANTHROPIC_API_KEY`` from the process environment
+    and otherwise falls back to the authenticated Claude Code session (the
+    subscription). A key set only in ``.env`` would never reach the SDK, so we
+    bridge it into the environment here. When no key is configured we leave the
+    environment untouched, so the SDK uses the Claude Code subscription.
+
+    Returns ``"api_key"`` or ``"subscription"`` — which path the SDK will use
+    (for logging only; this function makes the choice take effect).
+    """
+    key = getattr(settings, "anthropic_api_key", None) if settings is not None else None
+    if key:
+        os.environ["ANTHROPIC_API_KEY"] = key
+    return "api_key" if (key or os.environ.get("ANTHROPIC_API_KEY")) else "subscription"
 
 
 def model_for(tier: ModelTier | str, settings: Settings) -> str:
