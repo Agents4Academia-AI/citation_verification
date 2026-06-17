@@ -38,6 +38,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -54,6 +55,11 @@ USER_AGENT = (
 )
 TIMEOUT = 20
 
+# HTTP statuses worth retrying: rate-limiting + transient server/gateway errors.
+# These are exactly what a burst of concurrent lookups provokes; a short backoff
+# turns a spurious "unverified" into a real match.
+_RETRY_CODES = frozenset({429, 500, 502, 503, 504})
+
 # Source identifiers used in the returned candidate dicts and in
 # ``schema.Resolved.source`` — keep these in sync with the schema docstring.
 SOURCE_CROSSREF = "crossref"
@@ -66,14 +72,36 @@ SOURCE_OPENALEX = "openalex"
 # ───────────────────────────────────────────────────────────────
 # Low-level helpers (stdlib only)
 # ───────────────────────────────────────────────────────────────
-def _get(url: str, *, accept: str | None = None, timeout: int = TIMEOUT) -> bytes:
-    """HTTP GET via stdlib urllib. Raises on failure (callers fail soft)."""
+def _get(
+    url: str, *, accept: str | None = None, timeout: int = TIMEOUT, retries: int = 2
+) -> bytes:
+    """HTTP GET via stdlib urllib, with backoff on transient errors.
+
+    Retries a few times on rate-limit / 5xx / timeout — the failure modes a burst
+    of concurrent lookups provokes — then raises so callers still fail soft. A
+    permanent error (e.g. 404) is raised immediately without retrying.
+    """
     headers = {"User-Agent": USER_AGENT}
     if accept:
         headers["Accept"] = accept
     req = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 (trusted hosts)
-        return resp.read()
+    delay = 0.5
+    last_exc: Exception = RuntimeError("no attempt made")
+    for attempt in range(retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
+                return resp.read()
+        except urllib.error.HTTPError as exc:
+            last_exc = exc
+            if exc.code not in _RETRY_CODES or attempt == retries:
+                raise
+        except (urllib.error.URLError, TimeoutError) as exc:
+            last_exc = exc
+            if attempt == retries:
+                raise
+        time.sleep(delay)
+        delay *= 2
+    raise last_exc  # pragma: no cover — loop returns or raises above
 
 
 def _clean(text: str | None, limit: int = 600) -> str:
@@ -110,32 +138,49 @@ def search_crossref(query: str, rows: int = 4) -> list[dict]:
         data = json.loads(_get(f"https://api.crossref.org/works?{params}"))
     except Exception:  # network / rate-limit / parse — fail soft  # noqa: BLE001
         return []
+    return [_parse_crossref_item(it) for it in data.get("message", {}).get("items", [])]
 
-    out: list[dict] = []
-    for it in data.get("message", {}).get("items", []):
-        authors = [
-            " ".join(p for p in (a.get("given"), a.get("family")) if p)
-            for a in it.get("author", [])
-        ]
-        year = None
-        parts = (it.get("issued") or {}).get("date-parts") or [[None]]
-        if parts and parts[0]:
-            year = _coerce_year(parts[0][0])
-        out.append(
-            {
-                "source": SOURCE_CROSSREF,
-                "title": _clean((it.get("title") or [""])[0], limit=400),
-                "authors": authors,
-                "year": year,
-                "venue": (it.get("container-title") or [""])[0],
-                "type": it.get("type", ""),
-                "doi": (it.get("DOI") or "").lower(),
-                "arxiv_id": "",
-                "url": it.get("URL", ""),
-                "abstract": _clean(it.get("abstract")),
-            }
-        )
-    return out
+
+def _parse_crossref_item(it: dict) -> dict:
+    """Map one Crossref work object to a candidate dict."""
+    authors = [
+        " ".join(p for p in (a.get("given"), a.get("family")) if p)
+        for a in it.get("author", [])
+    ]
+    year = None
+    parts = (it.get("issued") or {}).get("date-parts") or [[None]]
+    if parts and parts[0]:
+        year = _coerce_year(parts[0][0])
+    return {
+        "source": SOURCE_CROSSREF,
+        "title": _clean((it.get("title") or [""])[0], limit=400),
+        "authors": authors,
+        "year": year,
+        "venue": (it.get("container-title") or [""])[0],
+        "type": it.get("type", ""),
+        "doi": (it.get("DOI") or "").lower(),
+        "arxiv_id": "",
+        "url": it.get("URL", ""),
+        "abstract": _clean(it.get("abstract")),
+    }
+
+
+def fetch_crossref_by_doi(doi: str) -> list[dict]:
+    """Fetch the exact Crossref work for ``doi`` (``/works/{doi}``).
+
+    A direct DOI lookup guarantees the cited record is a candidate even when a
+    noisy bibliographic search would not surface it. Returns ``[]`` on any
+    failure or when the DOI is empty.
+    """
+    doi = (doi or "").strip().lower()
+    if not doi:
+        return []
+    try:
+        data = json.loads(_get(f"https://api.crossref.org/works/{urllib.parse.quote(doi)}"))
+    except Exception:  # noqa: BLE001 — fail soft (bad DOI / network / 404)
+        return []
+    msg = data.get("message")
+    return [_parse_crossref_item(msg)] if isinstance(msg, dict) and msg.get("title") else []
 
 
 # ───────────────────────────────────────────────────────────────
@@ -159,33 +204,69 @@ def search_arxiv(query: str, max_results: int = 4) -> list[dict]:
         root = ET.fromstring(_get(url))
     except Exception:  # noqa: BLE001
         return []
+    return [_parse_arxiv_entry(e) for e in root.findall(f"{_ATOM}entry")]
 
-    out: list[dict] = []
-    for e in root.findall(f"{_ATOM}entry"):
 
-        def text(tag: str, node: ET.Element = e) -> str:
-            el = node.find(tag)
-            return el.text.strip() if el is not None and el.text else ""
+def _parse_arxiv_entry(e: ET.Element) -> dict:
+    """Map one arXiv Atom <entry> to a candidate dict."""
 
-        arxiv_url = text(f"{_ATOM}id")
-        out.append(
-            {
-                "source": SOURCE_ARXIV,
-                "title": _clean(text(f"{_ATOM}title"), limit=400),
-                "authors": [
-                    a.findtext(f"{_ATOM}name", "").strip()
-                    for a in e.findall(f"{_ATOM}author")
-                ],
-                "year": _coerce_year(text(f"{_ATOM}published")),
-                "venue": text(f"{_ARXIV}journal_ref") or "arXiv (preprint)",
-                "type": "preprint",
-                "doi": (text(f"{_ARXIV}doi") or "").lower(),
-                "url": arxiv_url,
-                "arxiv_id": arxiv_url.rsplit("/", 1)[-1] if arxiv_url else "",
-                "abstract": _clean(text(f"{_ATOM}summary")),
-            }
-        )
-    return out
+    def text(tag: str) -> str:
+        el = e.find(tag)
+        return el.text.strip() if el is not None and el.text else ""
+
+    arxiv_url = text(f"{_ATOM}id")
+    return {
+        "source": SOURCE_ARXIV,
+        "title": _clean(text(f"{_ATOM}title"), limit=400),
+        "authors": [a.findtext(f"{_ATOM}name", "").strip() for a in e.findall(f"{_ATOM}author")],
+        "year": _coerce_year(text(f"{_ATOM}published")),
+        "venue": text(f"{_ARXIV}journal_ref") or "arXiv (preprint)",
+        "type": "preprint",
+        "doi": (text(f"{_ARXIV}doi") or "").lower(),
+        "url": arxiv_url,
+        "arxiv_id": arxiv_url.rsplit("/", 1)[-1] if arxiv_url else "",
+        "abstract": _clean(text(f"{_ATOM}summary")),
+    }
+
+
+def fetch_arxiv_by_id(arxiv_id: str) -> list[dict]:
+    """Fetch the exact arXiv paper for ``arxiv_id`` (the API ``id_list`` query).
+
+    A direct id lookup guarantees the cited record is a candidate even when a
+    noisy ``all:`` title search would not surface it. The version suffix is
+    stripped (``2207.12598v3`` -> ``2207.12598``). Returns ``[]`` on any failure
+    or when the id is empty. A bad id can't produce a false match: the resolver's
+    arXiv-exact step still compares ids before accepting.
+    """
+    stem = (arxiv_id or "").split("v")[0].strip()
+    if not stem:
+        return []
+    url = f"http://export.arxiv.org/api/query?id_list={urllib.parse.quote(stem)}&max_results=1"
+    try:
+        root = ET.fromstring(_get(url))
+    except Exception:  # noqa: BLE001 — fail soft (bad id / network)
+        return []
+    return [_parse_arxiv_entry(e) for e in root.findall(f"{_ATOM}entry")]
+
+
+def search_arxiv_by_title(title: str, max_results: int = 3) -> list[dict]:
+    """Search arXiv by the TITLE field (``ti:``).
+
+    A title-field phrase query surfaces a known preprint far more reliably than
+    an ``all:`` search over a noisy full reference (author names + venue drown
+    out the title). Best for venue-cited preprints that carry no arXiv id in the
+    reference. Returns ``[]`` for an empty/too-short title or on any failure.
+    """
+    title = (title or "").strip()
+    if len(title) < 6:
+        return []
+    q = "ti:" + urllib.parse.quote(f'"{title}"')
+    url = f"http://export.arxiv.org/api/query?search_query={q}&start=0&max_results={max_results}"
+    try:
+        root = ET.fromstring(_get(url))
+    except Exception:  # noqa: BLE001 — fail soft
+        return []
+    return [_parse_arxiv_entry(e) for e in root.findall(f"{_ATOM}entry")]
 
 
 # ───────────────────────────────────────────────────────────────

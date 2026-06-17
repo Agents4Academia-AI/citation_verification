@@ -98,6 +98,36 @@ def _extract_arxiv_id(reference: str) -> str:
     return m.group(1).lower() if m else ""
 
 
+# A quoted segment in a reference is almost always the title (e.g.
+# `Authors. "Title". Venue. Year`). Straight or curly quotes, >= 8 chars.
+_QUOTED_TITLE_RE = re.compile(r"[\"“‘]([^\"“”‘’]{8,})[\"”’]")
+
+
+def _likely_title(reference: str) -> str:
+    """Best-effort extraction of the cited work's TITLE for a ``ti:`` search.
+
+    Prefers a quoted segment (the common ``Authors. "Title". Venue`` form); else
+    falls back to the longest dotted clause that is not an author list, a venue,
+    a year, or an id/url. Returns ``""`` when nothing title-like is found — the
+    caller then simply skips the title search (no regression).
+    """
+    ref = (reference or "").strip()
+    m = _QUOTED_TITLE_RE.search(ref)
+    if m:
+        return m.group(1).strip()
+    head = re.split(r"(?i)\b(?:arxiv|doi|https?://)", ref)[0]
+    best = ""
+    for clause in re.split(r"\.\s+", head):
+        c = clause.strip(" .,")
+        if len(c) < 12 or re.search(r"\b(19|20)\d{2}\b", c):
+            continue  # too short, or a year/venue tail
+        if " and " in f" {c.lower()} " or c.count(",") >= 2:
+            continue  # looks like an author list
+        if len(c) > len(best):
+            best = c
+    return best
+
+
 def _fuzzy_title_score(reference: str, candidate_title: str) -> float:
     """Similarity (0..100) between a candidate *title* and a *reference* string.
 
@@ -161,6 +191,33 @@ class MultiSourceResolver:
         happen in :meth:`resolve`).
         """
         rows: list[Candidate] = []
+        # Direct id lookups first: when the reference carries an arXiv id or DOI,
+        # fetch that exact record so a noisy title-only search can't miss it (the
+        # arXiv `all:` query in particular often fails to surface a known paper).
+        ref_arxiv = _extract_arxiv_id(reference)
+        if ref_arxiv:
+            try:
+                rows += [_dict_to_candidate(d) for d in paper_lookup.fetch_arxiv_by_id(ref_arxiv)]
+            except Exception:  # noqa: BLE001 — fail soft
+                pass
+        ref_doi = _extract_doi(reference)
+        if ref_doi:
+            try:
+                rows += [_dict_to_candidate(d) for d in paper_lookup.fetch_crossref_by_doi(ref_doi)]
+            except Exception:  # noqa: BLE001 — fail soft
+                pass
+        # Title-field arXiv search: surfaces a venue-cited preprint (no arXiv id
+        # in the reference) that a noisy `all:` search over the full reference
+        # misses — e.g. "...Generative modeling by estimating gradients...".
+        ref_title = _likely_title(reference)
+        if ref_title:
+            try:
+                rows += [
+                    _dict_to_candidate(d)
+                    for d in paper_lookup.search_arxiv_by_title(ref_title)
+                ]
+            except Exception:  # noqa: BLE001 — fail soft
+                pass
         for src in self.sources:
             try:
                 raw = self._search_source(src, reference, max_results)
