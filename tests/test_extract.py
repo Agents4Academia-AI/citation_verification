@@ -38,3 +38,34 @@ def test_parse_inline_bib_from_tex_dir(tmp_path):
 
 def test_parse_inline_bib_no_dir_is_empty():
     assert parse_inline_bib(None) == {}
+
+
+# LaTeX tie `~` is a non-breaking space; stripping it (instead of converting to a
+# space) concatenated author names — e.g. real 1706.03762 entries produced
+# "MoYu" / "Nogueirados Santos" / "vanden Oord" / "QuocVV Le", which lowered the
+# grounding resolver's author-gate recall. The tie must become a space.
+_TIES = r"""
+\begin{thebibliography}{99}
+\bibitem{lin2017structured}
+Zhouhan Lin, Cicero Nogueira~dos Santos, Mo~Yu, and Aaron van~den Oord.
+\newblock A structured self-attentive sentence embedding.
+\newblock arXiv:1703.03130, 2017.
+\bibitem{sutskever14}
+Ilya Sutskever, Oriol Vinyals, and Quoc~VV Le.
+\newblock Sequence to sequence learning with neural networks.
+\newblock 2014.
+\end{thebibliography}
+"""
+
+
+def test_latex_tie_becomes_space_not_concatenation():
+    refs = _parse_bibitems(_TIES)
+    raw = refs["lin2017structured"].raw
+    # tie-joined name parts must be space-separated, not glued together
+    assert "Mo Yu" in raw and "MoYu" not in raw
+    assert "Nogueira dos Santos" in raw and "Nogueirados Santos" not in raw
+    assert "van den Oord" in raw and "vanden Oord" not in raw
+    # title past the tie-bearing author list is preserved
+    assert "structured self-attentive sentence embedding" in raw.lower()
+    # second entry: the source's own "VV" typo is faithful, but no glue
+    assert "Quoc VV Le" in refs["sutskever14"].raw

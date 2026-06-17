@@ -91,7 +91,7 @@ def _split_authors(raw: str | None) -> list[str]:
     """Split a BibTeX/bbl author string ("A and B and C") into a clean list."""
     if not raw:
         return []
-    raw = re.sub(r"[{}]", "", raw)
+    raw = re.sub(r"[{}]", "", raw.replace("~", " "))  # LaTeX tie ~ -> space
     parts = re.split(r"\s+and\s+", raw)
     return [p.strip().strip(",").strip() for p in parts if p.strip()]
 
@@ -202,7 +202,8 @@ def _strip_tex(text: str) -> str:
     text = re.sub(r"\\(emph|textit|textbf|texttt|url|href)\s*\{([^}]*)\}", r"\2", text)
     text = re.sub(r"\\&", "&", text)
     text = re.sub(r"\\[a-zA-Z]+\*?", " ", text)  # drop remaining commands
-    text = re.sub(r"[{}~]", "", text)
+    text = text.replace("~", " ")  # LaTeX tie ~ is a non-breaking space, NOT a deletion
+    text = re.sub(r"[{}]", "", text)
     return re.sub(r"\s+", " ", text).strip(" .,")
 
 
