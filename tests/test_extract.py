@@ -6,7 +6,11 @@ inline `\\begin{thebibliography}` path (arXiv e-prints that ship NO separate
 
 from __future__ import annotations
 
-from citation_verifier.extract.latex import _parse_bibitems, parse_inline_bib
+from citation_verifier.extract.latex import (
+    _parse_bibitems,
+    _strip_line_comments,
+    parse_inline_bib,
+)
 
 _SAMPLE = r"""
 \begin{thebibliography}{99}
@@ -69,3 +73,19 @@ def test_latex_tie_becomes_space_not_concatenation():
     assert "structured self-attentive sentence embedding" in raw.lower()
     # second entry: the source's own "VV" typo is faithful, but no glue
     assert "Quoc VV Le" in refs["sutskever14"].raw
+
+
+def test_strip_line_comments_drops_commented_cites():
+    # A commented-out \cite must not survive the citation-site scan; a real one
+    # on the same kind of line (and an escaped \% ) must.
+    src = (
+        "Real claim \\cite{real}.\n"
+        "% fully commented \\cite{ghost}\n"
+        "Mid line \\cite{keep} % \\cite{ghost2}\n"
+        "Escaped 50\\% done \\cite{also_keep}.\n"
+    )
+    out = _strip_line_comments(src)
+    assert "\\cite{real}" in out
+    assert "\\cite{keep}" in out
+    assert "\\cite{also_keep}" in out  # escaped \% is not a comment
+    assert "ghost" not in out and "ghost2" not in out

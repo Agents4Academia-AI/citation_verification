@@ -117,7 +117,7 @@ class ClaudeCodeBackend(BaseBackend):
         self.chunk_size = int(_setting(settings, "claude_code_chunk_size", 8) or 8)
         self.concurrency = int(_setting(settings, "claude_code_concurrency", 5) or 5)
         self.ground_concurrency = int(
-            _setting(settings, "claude_code_ground_concurrency", 8) or 8
+            _setting(settings, "claude_code_ground_concurrency", 5) or 5
         )
         # L1 = abstract + the cited work's introduction (best-effort, arXiv only).
         self.use_intro = bool(_setting(settings, "claude_code_use_intro", True))
