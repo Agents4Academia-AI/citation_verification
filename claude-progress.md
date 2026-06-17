@@ -6,6 +6,138 @@
 
 ---
 
+## 2026-06-17 — session: batch the relevance judge + fix inline-bib extractor (yunqiao)
+
+**Goal:** kill the per-citation `query()` overhead in the agentic judge (each
+`query()` re-pays Claude Code's session overhead, so one call per citation
+multiplied it by N), and unblock papers whose bibliography is inline in the .tex.
+
+**Done (branch `yunqiao`):**
+- **Inline bibliography** (`extract/latex.py`): parse `\bibitem` from inline
+  `\begin{thebibliography}` in .tex too (arXiv ships no separate .bbl for many
+  papers, e.g. 1706.03762). Was the real blocker — empty cited_as => nothing
+  grounded => both backends all-unverified instantly.
+- **Batched judge** (`relevance_judge.LLMRelevanceJudge.judge_batch`): judge
+  citations chunked at `batch_size` (default 40) — ONE `query()` per chunk;
+  `__call__` delegates to it. Real usage via `usage_from_result_message` into
+  `self.usage`.
+- `stages/relevance.fill_relevance_batch`: assemble (claim, abstract) per record,
+  judge in one batch, apply verdicts back.
+- `agentic.verify` is now TWO passes (correctness per record → one batched
+  relevance pass) and folds the judge's REAL token/cost into `run.usage`.
+- **Auth** (`config.apply_auth`, both backends): default = Claude Code subscription;
+  `ANTHROPIC_API_KEY` (env or .env) switches to the per-token API.
+
+**Verified by:**
+- `pytest` → 49 passed (offline; new: inline-bib parse, batch parse, batch abstain
+  w/o model call, fill_relevance_batch, apply_auth).
+- Live 10-citation run on 1706.03762: **query() calls = 1** (was 10), cost
+  = **$0.0767** (~$0.0077/citation, ~12× cheaper than the per-call ~$0.09); exists
+  8 yes/2 unverified, supports 3/3 partial/4 unverified, priority 4 oblig/6 helpful.
+- => 25 citations now ≈ ONE judge call, ~$0.1 (was ~$2.3).
+
+**Not done / blocked:**
+- `run.usage.input_tokens` displays small (~3): the SDK reports input under a
+  different usage key; `cost_usd` (from `total_cost_usd`) is correct. Cosmetic.
+- Grounding is still sequential (~13s/citation) — now the wall-time bottleneck
+  (~15s/citation, judge is 1 call). Parallelize next.
+
+**Next session — start here:**
+1. Parallelize the per-citation grounding fan-out (wall time, not cost).
+2. Fix the input-token display key in `usage_from_result_message`.
+3. PR `yunqiao` → `main`.
+
+---
+
+## 2026-06-17 — session: wire LLM relevance judge into agentic (L0/L1) (yunqiao)
+
+**Goal:** make the `agentic` backend actually do STEP 2 (relevance) via an LLM judge
+on the Claude Code subscription (Opus 4.6), judging from abstract (L0) or
+abstract+intro (L1), honestly abstaining instead of guessing. No L2 (deep full-text
+retrieval): finding a paraphrased passage needs semantic retrieval — out of scope.
+
+**Done (branch `yunqiao`):**
+- New `backends/relevance_judge.py`: `LLMRelevanceJudge` (lazy SDK → subscription,
+  `model_judge`=Opus 4.6) + `build_relevance_judge` (None if SDK absent → caller
+  abstains, keyless floor stays up). Evidence = abstract + best-effort arXiv
+  `_fetch_intro` (arxiv.org/html/<id>, sliced Introduction, fail-soft → L0). Honest
+  prompt: judge ONLY from provided text; specific evidence absent => partial/
+  unverified, never guess. Robust verdict parse ("does not"→does_not, fenced JSON).
+- `stages/relevance.py`: `RelevanceJudge` Protocol + `fill_relevance` now pass the
+  resolved record to the judge (so it can fetch the intro for L1).
+- `backends/agentic.py`: builds the judge when `ENABLE_RELEVANCE_JUDGE` is on (an
+  explicit injected `relevance_judge` still wins); also fixed the leftover invalid
+  `claude-opus-4-5`/`claude-haiku-4-5` default literals here.
+- `config.py` + `.env.example`: `ENABLE_RELEVANCE_JUDGE` (default false → agentic
+  stays keyless/abstaining).
+- `orchestrator.py`: thread `settings` into `get_backend` — also fixes a latent bug
+  where `.env` model routing / toggles never reached the backend in the cverify path.
+
+**Verified by:**
+- `pytest` → 40 passed (32 + 8 new offline tests: verdict parse incl. "does not",
+  intro slice, honest abstain without evidence (no SDK/network touched), and
+  fill_relevance applies an injected judge / abstains without one).
+- Offline wiring: `ENABLE_RELEVANCE_JUDGE` off → `agentic.judge is None`; on → an
+  `LLMRelevanceJudge(model=claude-opus-4-6)`; env flag flows load_settings → backend.
+- **Not yet** run live (no subscription LLM call made; L1 intro fetch not exercised
+  against real arXiv HTML).
+
+**Not done / blocked:**
+- Live run + L1 intro-fetch on real papers not yet exercised (next).
+- Real judge token/cost not threaded back into RunUsage (agentic still records an
+  *estimated* JUDGE-tier usage) — fine for now, note for the cost comparison.
+- L1 intro is arXiv-HTML only; non-arXiv full-text stays at L0 (by design).
+
+**Next session — start here:**
+1. Live: `ENABLE_RELEVANCE_JUDGE=true cverify <arxiv> --backend agentic --no-resume`
+   (logged in to Claude Code, ANTHROPIC_API_KEY blank); check supports_claim + that
+   abstain fires when the abstract lacks the specific point.
+2. Spot-check `_fetch_intro` on a few arXiv ids (HTML availability varies).
+3. PR `yunqiao` → `main`.
+
+---
+
+## 2026-06-17 — session: claude_code cost/speed fixes (yunqiao)
+
+**Goal:** cut the `claude_code` backend's latency + token blow-up (it re-sent the
+whole paper every turn in one accumulating loop), and run it on our Claude Code
+subscription with Opus 4.6 (no per-token API).
+
+**Done (branch `yunqiao`):**
+- **Stop reading the whole paper.** `_user_prompt` now inlines each stub's
+  reference string (new `_reference_text`, carrying the extractor's arXiv/DOI ids);
+  `Read` is dropped from `allowed_tools` when stubs exist (kept only as the
+  no-stub fallback). Removes the per-turn whole-paper context — the dominant cost.
+- **Compact tool results:** `lookup_paper` output trimmed to top-3 candidates.
+- **Model = Opus 4.6 via subscription:** fixed the invalid default model ids
+  (`claude-opus-4-5` does not exist) → `model_judge=claude-opus-4-6`,
+  `model_bulk=claude-haiku-4-5-20251001` in `config.py`, the `claude_code` fallback,
+  and `.env.example`. `.env.example` now says leave `ANTHROPIC_API_KEY` blank to use
+  the Claude Code subscription quota (set a key only to bill the API instead).
+
+**Verified by:**
+- `pytest` → 32 passed (offline).
+- Backend imports; `ClaudeCodeBackend().model == "claude-opus-4-6"`.
+- `_user_prompt` with a stub inlines the reference + says "do NOT read the full
+  paper"; `_reference_text` appends the parsed `arXiv:` id.
+- **Not yet** run live end-to-end (no before/after token numbers captured).
+
+**Not done / blocked:**
+- No live before/after measurement on a real paper yet (next).
+- Bigger win left for a follow-up: wire an LLM `relevance_judge` into `agentic`
+  (the seam exists) so the cheap deterministic backend also does STEP-2 relevance
+  instead of paying claude_code's loop for it.
+- `agentic.py:59` still carries the same dead `claude-opus-4-5` literal fallback
+  (harmless — Settings always overrides it — left to the agentic owner's branch).
+
+**Next session — start here:**
+1. Run `cverify <arxiv> --backend claude_code --no-resume` before/after this branch
+   and record tokens + wall-time to confirm the drop.
+2. Decide whether to also wire `relevance_judge` into `agentic`.
+3. PR `yunqiao` → `main` for review.
+
+---
+
 ## 2026-06-16 — session: Discord bot front-end (`/check`) (phy)
 
 **Goal:** ship a Discord bot that pipelines citation verification behind a

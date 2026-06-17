@@ -67,6 +67,7 @@ class RelevanceJudge(Protocol):
         abstract: str,
         cited_title: str = "",
         resolved_title: str = "",
+        resolved: object | None = None,
     ) -> RelevanceVerdict: ...
 
 
@@ -171,6 +172,7 @@ def _fill_relevance(
             abstract=abstract,
             cited_title=record.cited_as.title or "",
             resolved_title=(record.resolved.title if record.resolved else "") or "",
+            resolved=record.resolved,
         )
         record.supports_claim = verdict.supports_claim
         if verdict.priority is not None:
@@ -191,6 +193,54 @@ def _fill_relevance(
     record.supports_claim = SupportsClaim.UNVERIFIED
     record.confidence = None
     return record
+
+
+def fill_relevance_batch(
+    records: list[CitationRecord], *, resolver: Resolver, judge_batch
+) -> list[CitationRecord]:
+    """Batched STEP 2: judge many records in one go (the judge chunks internally).
+
+    For each record we set the priority heuristic and retrieve its abstract, then
+    hand the whole list to ``judge_batch`` — a callable taking
+    ``[{"claim","abstract","resolved"}]`` and returning a list of
+    :class:`RelevanceVerdict` aligned to the input. Verdicts are applied back in
+    place. Degrade-not-crash: on a batch error every record abstains to
+    ``unverified``; a missing/`None` verdict abstains that one record.
+
+    This exists so an LLM judge pays the per-call SDK/session overhead once per
+    chunk instead of once per citation (see backends/relevance_judge.py).
+    """
+    if not records:
+        return records
+
+    items: list[dict] = []
+    for rec in records:
+        rec.priority = _infer_priority(rec.claim.text)
+        abstract = _retrieve_abstract(rec, resolver)
+        items.append({"claim": rec.claim.text, "abstract": abstract, "resolved": rec.resolved})
+
+    try:
+        verdicts = judge_batch(items)
+    except Exception as exc:  # noqa: BLE001 — degrade-not-crash
+        for rec in records:
+            rec.error = (rec.error + "; " if rec.error else "") + f"relevance batch: {exc!r}"
+            rec.supports_claim = SupportsClaim.UNVERIFIED
+        return records
+
+    for rec, item, verdict in zip(records, items, verdicts):
+        if verdict is None:
+            rec.supports_claim = SupportsClaim.UNVERIFIED
+            continue
+        rec.supports_claim = verdict.supports_claim
+        if verdict.priority is not None:
+            rec.priority = verdict.priority
+        rec.confidence = verdict.confidence
+        rec.model_tier = verdict.model_tier
+        if verdict.justification:
+            rec.notes = (rec.notes + "\n" if rec.notes else "") + verdict.justification
+        if item["abstract"]:
+            rec.evidence = _add_evidence(rec.evidence, _abstract_evidence(rec, item["abstract"]))
+    return records
 
 
 # ───────────────────────────────────────────────────────────────

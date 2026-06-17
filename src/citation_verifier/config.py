@@ -24,12 +24,12 @@ from pydantic import BaseModel, Field
 
 from .schema import ModelTier
 
-__all__ = ["Settings", "load_settings", "model_for"]
+__all__ = ["Settings", "load_settings", "model_for", "apply_auth"]
 
 # Default per-tier model ids. Overridable via MODEL_BULK / MODEL_JUDGE so the
 # real model strings live in config, not in source.
-_DEFAULT_MODEL_BULK = "claude-haiku-4-5"
-_DEFAULT_MODEL_JUDGE = "claude-opus-4-5"
+_DEFAULT_MODEL_BULK = "claude-haiku-4-5-20251001"
+_DEFAULT_MODEL_JUDGE = "claude-opus-4-6"
 
 
 class Settings(BaseModel):
@@ -52,6 +52,11 @@ class Settings(BaseModel):
     )
     cost_ceiling_usd: float = Field(
         default=0.50, ge=0.0, description="Per-run USD ceiling; 0 disables the cap. Orchestrator aborts gracefully past it."
+    )
+    enable_relevance_judge: bool = Field(
+        default=False,
+        description="Turn on the LLM relevance judge (STEP 2) in the 'agentic' backend. "
+        "False => agentic stays keyless and abstains on supports_claim.",
     )
 
     # ── Grounding sources ──
@@ -158,6 +163,7 @@ def load_settings(env_file: str | Path | None = ".env") -> Settings:
         model_bulk=_opt(get("MODEL_BULK")) or _DEFAULT_MODEL_BULK,
         model_judge=_opt(get("MODEL_JUDGE")) or _DEFAULT_MODEL_JUDGE,
         cost_ceiling_usd=_as_float(get("COST_CEILING_USD"), 0.50),
+        enable_relevance_judge=_as_bool(get("ENABLE_RELEVANCE_JUDGE"), False),
         crossref_mailto=_opt(get("CROSSREF_MAILTO")),
         s2_api_key=_opt(get("S2_API_KEY")),
         openalex_api_key=_opt(get("OPENALEX_API_KEY")),
@@ -165,6 +171,24 @@ def load_settings(env_file: str | Path | None = ".env") -> Settings:
         papers_dir=Path(papers),
         chbench_data_dir=Path(chbench),
     )
+
+
+def apply_auth(settings: Settings | None = None) -> str:
+    """Select the SDK auth source: the API key if configured, else the subscription.
+
+    The Claude Agent SDK reads ``ANTHROPIC_API_KEY`` from the process environment
+    and otherwise falls back to the authenticated Claude Code session (the
+    subscription). A key set only in ``.env`` would never reach the SDK, so we
+    bridge it into the environment here. When no key is configured we leave the
+    environment untouched, so the SDK uses the Claude Code subscription.
+
+    Returns ``"api_key"`` or ``"subscription"`` — which path the SDK will use
+    (for logging only; this function makes the choice take effect).
+    """
+    key = getattr(settings, "anthropic_api_key", None) if settings is not None else None
+    if key:
+        os.environ["ANTHROPIC_API_KEY"] = key
+    return "api_key" if (key or os.environ.get("ANTHROPIC_API_KEY")) else "subscription"
 
 
 def model_for(tier: ModelTier | str, settings: Settings) -> str:

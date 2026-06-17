@@ -55,20 +55,33 @@ class AgenticBackend(BaseBackend):
 
     def __init__(self, *, settings: Any | None = None) -> None:
         self.settings = settings
-        self.bulk_model = _setting(settings, "model_bulk", "claude-haiku-4-5")
-        self.judge_model = _setting(settings, "model_judge", "claude-opus-4-5")
+        self.bulk_model = _setting(settings, "model_bulk", "claude-haiku-4-5-20251001")
+        self.judge_model = _setting(settings, "model_judge", "claude-opus-4-6")
         self.cost_ceiling = float(_setting(settings, "cost_ceiling_usd", 0.0) or 0.0)
         self.pricing = _setting(settings, "pricing", None)
-        # Optional injected relevance judge (the SKILL.md relevance seam). The
-        # deterministic baseline runs WITHOUT one and honestly abstains on
-        # relevance; an LLM judge can be wired in to fill supports_claim.
+        # The relevance seam. The deterministic baseline runs WITHOUT a judge and
+        # honestly abstains on relevance. A judge fills supports_claim:
+        #   - an explicitly injected `relevance_judge` wins (tests / custom), else
+        #   - if ENABLE_RELEVANCE_JUDGE is on, build the LLM judge (Claude Code
+        #     subscription; STEP 2 via abstract[+intro]). SDK absent => None => abstain.
         self.judge = _setting(settings, "relevance_judge", None)
+        if self.judge is None and _setting(settings, "enable_relevance_judge", False):
+            try:
+                from .relevance_judge import build_relevance_judge
+                self.judge = build_relevance_judge(settings)
+            except Exception:  # noqa: BLE001 — never let judge wiring break the run
+                self.judge = None
 
     # ──────────────────────────────────────────────────────────────
     def verify(
         self, source: PaperSource, stubs: list[CitationRecord]
     ) -> VerificationResult:
-        """Run correctness -> (gated) relevance over each stub; aggregate usage."""
+        """Two passes: correctness per record, then BATCHED relevance.
+
+        Correctness is per-record (deterministic grounding). Relevance is a single
+        pass over the records that resolved, so a batched LLM judge pays the
+        per-call SDK/session overhead once per chunk instead of once per citation.
+        """
         result = self._empty_result(source)
         usage: RunUsage = result.usage
         usage.model = f"bulk={self.bulk_model};judge={self.judge_model}"
@@ -76,35 +89,42 @@ class AgenticBackend(BaseBackend):
         fill_correctness, fill_relevance, resolver = self._load_pipeline()
 
         with self._timer() as sw:
+            # Pass 1 — correctness (bulk tier), per record.
             for stub in stubs:
-                rec = self._verify_one(
-                    stub, fill_correctness, fill_relevance, resolver, usage, result
-                )
+                rec = self._correctness_one(stub, fill_correctness, resolver, usage, result)
                 result.records.append(rec)
                 if self.cost_ceiling and usage.cost_usd >= self.cost_ceiling:
                     result.errors.append(
-                        f"cost ceiling ${self.cost_ceiling:.2f} reached after "
+                        f"cost ceiling ${self.cost_ceiling:.2f} reached after correctness on "
                         f"{len(result.records)}/{len(stubs)} records; remaining left unverified"
                     )
                     result.records.extend(stubs[len(result.records):])
                     break
+
+            # Pass 2 — relevance over records that resolved (exists != no).
+            eligible = [r for r in result.records if _exists(r) is not Exists.NO]
+            self._relevance_pass(eligible, fill_relevance, resolver, usage, result)
+
+        # Fold a self-accounting LLM judge's REAL token/cost usage into the run.
+        self._fold_judge_usage(usage)
         usage.wall_seconds = sw.seconds
 
+        # Deterministic severity for every record (never judged).
+        for rec in result.records:
+            rec.severity = derive_severity(_exists(rec), _supports(rec), _priority(rec)).value
         self._stamp_paper_id(result.records, source.paper_id)
         return result
 
     # ──────────────────────────────────────────────────────────────
-    def _verify_one(
+    def _correctness_one(
         self,
         rec: CitationRecord,
         fill_correctness: Any,
-        fill_relevance: Any,
         resolver: Any,
         usage: RunUsage,
         result: VerificationResult,
     ) -> CitationRecord:
-        """Run the staged pipeline for a single record (degrade-not-crash)."""
-        # Stage 1 — correctness (bulk tier).
+        """STEP 1 for one record (degrade-not-crash); records bulk-tier usage."""
         try:
             rec = fill_correctness(rec, resolver=resolver)
         except Exception as exc:  # noqa: BLE001 — degrade-not-crash boundary
@@ -122,35 +142,69 @@ class AgenticBackend(BaseBackend):
             )
             if rec.model_tier in (ModelTier.NONE.value, ModelTier.NONE):
                 rec.model_tier = ModelTier.BULK.value
+        return rec
 
-        # Stage 2 — relevance, gated on the citation not being fabricated.
-        if _exists(rec) is not Exists.NO:
+    # ──────────────────────────────────────────────────────────────
+    def _relevance_pass(
+        self,
+        eligible: list[CitationRecord],
+        fill_relevance: Any,
+        resolver: Any,
+        usage: RunUsage,
+        result: VerificationResult,
+    ) -> None:
+        """STEP 2 over resolved records — batched when the judge supports it."""
+        if not eligible:
+            return
+
+        # Batched judge: one query() per chunk amortizes the session overhead.
+        if self.judge is not None and hasattr(self.judge, "judge_batch"):
             try:
-                rec = fill_relevance(rec, resolver=resolver, judge=self.judge)
-            except Exception as exc:  # noqa: BLE001 — degrade-not-crash boundary
+                from ..stages.relevance import fill_relevance_batch
+
+                fill_relevance_batch(eligible, resolver=resolver, judge_batch=self.judge.judge_batch)
+            except Exception as exc:  # noqa: BLE001 — degrade-not-crash
+                result.errors.append(f"relevance batch failed: {exc!r}")
+                for rec in eligible:
+                    rec.supports_claim = SupportsClaim.UNVERIFIED.value
+            for rec in eligible:
+                rec.model_tier = ModelTier.JUDGE.value
+            return
+
+        # Per-record path: an injected non-batch judge, or deterministic abstain.
+        for rec in eligible:
+            try:
+                fill_relevance(rec, resolver=resolver, judge=self.judge)
+            except Exception as exc:  # noqa: BLE001 — degrade-not-crash
                 rec.error = (rec.error + "; " if rec.error else "") + f"relevance stage failed: {exc}"
                 result.errors.append(f"{rec.cite_key}: relevance stage failed: {exc}")
-            finally:
-                # Only an actual LLM judge spends judge-tier budget; the
-                # deterministic baseline abstains and keeps its bulk/none tier.
-                if self.judge is not None:
-                    claim_len = estimate_tokens(rec.claim.text) + estimate_tokens(
-                        (rec.resolved.abstract if rec.resolved else "") or ""
-                    )
+            if self.judge is not None:
+                rec.model_tier = ModelTier.JUDGE.value
+                # Estimate only for judges that do NOT self-account (a real LLM
+                # judge folds its true usage in _fold_judge_usage).
+                if not hasattr(self.judge, "usage"):
                     record_tier_usage(
                         usage,
                         ModelTier.JUDGE,
-                        input_tokens=claim_len,
+                        input_tokens=estimate_tokens(rec.claim.text),
                         output_tokens=_OUTPUT_TOKEN_FLOOR,
                         tool_calls=0,
                         model=self.judge_model,
                         pricing=self.pricing,
                     )
-                    rec.model_tier = ModelTier.JUDGE.value
 
-        # Deterministic severity from the three judged axes (never judged).
-        rec.severity = derive_severity(_exists(rec), _supports(rec), _priority(rec)).value
-        return rec
+    # ──────────────────────────────────────────────────────────────
+    def _fold_judge_usage(self, usage: RunUsage) -> None:
+        """Fold a self-accounting LLM judge's REAL usage into the run + JUDGE tier."""
+        ju = getattr(self.judge, "usage", None)
+        if ju is None:
+            return
+        usage.add(ju)
+        bucket = usage.by_tier.get(ModelTier.JUDGE.value)
+        if bucket is None:
+            bucket = RunUsage(backend=self.name, model=ju.model)
+            usage.by_tier[ModelTier.JUDGE.value] = bucket
+        bucket.add(ju)
 
     # ──────────────────────────────────────────────────────────────
     def _load_pipeline(self) -> tuple[Any, Any, Any]:
