@@ -24,8 +24,14 @@ secrets/
 *.key
 *.pem
 
-# Personal Claude Code overrides (team defaults live in .claude/settings.json)
+# Claude Code — personal & runtime state stays OUT of the (deployable) main branch.
+#   Committed: .claude/skills/ (team contract) and *.example deploy templates.
+#   Ignored:   live settings (machine-specific paths) + channel runtime state
+#              (bot token in .env, per-deployer allowlist in access.json).
+# To set up locally: cp .claude/settings.json.example .claude/settings.json
+.claude/settings.json
 .claude/settings.local.json
+.claude/channels/
 
 # Per-person progress logs (if you choose to use the per-person pattern)
 claude-progress-*.md

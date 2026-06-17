@@ -13,6 +13,21 @@ first and do not duplicate them here:
 - **[`.claude/skills/verify-citations/SKILL.md`](.claude/skills/verify-citations/SKILL.md)**
   — the verification *method* and the **frozen** output table + enum vocabularies.
 
+## Team workflow & deployment
+
+- **Team:** Agents4Academia. The dataset is **shared** at `/scratch/datasets/`
+  (not in the repo). Everyone works on their **own branch** and merges into
+  `main` via PR — never push directly to `main` (see `AGENTS.md`).
+- **`main` is the deployment branch.** It must stay deployable at all times: the
+  Discord front-end bot (`/check`) is run from `main`. Keep it green
+  (`make smoke`) and free of personal/machine-specific config.
+- **Local bot setup (gitignored — never committed):**
+  `cp .claude/settings.json.example .claude/settings.json`, then put your
+  `DISCORD_BOT_TOKEN` in `.claude/channels/discord/.env`. The live
+  `.claude/settings.json`, `.claude/channels/` (token + allowlist) are
+  per-deployer state and stay out of git. Only `.claude/skills/` (the team
+  contract) and `*.example` templates are committed.
+
 ## The one thing to remember
 
 This repo is **four modules behind one frozen contract**. Depend only on

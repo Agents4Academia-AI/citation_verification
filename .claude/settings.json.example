@@ -1,0 +1,8 @@
+{
+  "enabledPlugins": {
+    "discord@claude-plugins-official": true
+  },
+  "env": {
+    "DISCORD_STATE_DIR": ".claude/channels/discord"
+  }
+}
