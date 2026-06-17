@@ -16,11 +16,11 @@ Pipeline, end to end, per ``/check``:
      caller (so a slow verification still delivers instead of vanishing).
 
 The blocking verifier is the *same* code path the CLI uses — the bot adds no
-verification logic. Repeat checks of one paper are instant: ``resume=True`` reads
-the cached ``report.json``. Results are cached per (backend, limit, and a
-fingerprint of the verdict-affecting settings) so switching backend/model/limit
-never returns a stale verdict, and concurrent identical requests are coalesced
-onto a single run.
+verification logic. Caching is **off by default** during the testing phase
+(``resume=cfg.use_cache``) so every ``/check`` runs fresh; when it is enabled the
+artifact dir is keyed per (backend, test-vs-full mode, and a fingerprint of the
+verdict-affecting settings) so a test-sample dir and a full-run dir never
+collide. Concurrent identical requests are coalesced onto a single run.
 
 Robustness invariants (every interaction is answered exactly once):
   - all user/exception text is clipped below Discord's 2000-char content limit;
@@ -46,7 +46,7 @@ from discord import app_commands
 from ..ingest import parse_arxiv_id
 from ..orchestrator import run_verification
 from .config import BotConfig, load_bot_config
-from .report import _clip, build_response
+from .report import _TOO_LARGE, _clip, build_response
 
 __all__ = ["CitationBot", "main"]
 
@@ -59,8 +59,8 @@ _INVITE_SCOPES = "bot+applications.commands"
 _CONTENT_LIMIT = 1900  # safely under Discord's 2000-char message-content cap
 
 _BACKEND_CHOICES = [
-    app_commands.Choice(name="agentic — fast, free, grounds existence", value="agentic"),
-    app_commands.Choice(name="claude_code — deeper LLM check (slower, costs tokens)", value="claude_code"),
+    app_commands.Choice(name="agentic — fast, free; grounds existence", value="agentic"),
+    app_commands.Choice(name="claude_code — deeper LLM check; slower, costs tokens", value="claude_code"),
 ]
 
 
@@ -158,25 +158,33 @@ class CitationBot(discord.Client):
             title="📚 Citation Verifier — help",
             description=(
                 "I check whether the citations in an arXiv paper are **real** and "
-                "**support the claims** that cite them, then flag the hallucinated ones."
+                "**support the claims** that cite them, then flag the hallucinated "
+                "ones. 🧪 By default I verify only a small **test sample** (the first "
+                f"{self.cfg.test_limit}); pass `full:true` for a complete, whole-paper "
+                "verdict."
             ),
             color=0x4263EB,
         )
         embed.add_field(
-            name="/check `paper` [backend] [limit]",
+            name="/check `paper` [backend] [full]",
             value=(
                 "Verify a paper. `paper` accepts any of:\n"
                 "• `2505.03335` (bare id)\n"
                 "• `https://arxiv.org/abs/2505.03335`\n"
                 "• `https://arxiv.org/pdf/2505.03335`\n"
-                f"**backend** — `agentic` (fast, free; default `{self.cfg.default_backend}`) "
-                "or `claude_code` (deeper LLM check; slower, costs tokens).\n"
-                "**limit** — check only the first N citations (0 = all)."
+                f"🧪 **Default = test sample.** I verify only the first {self.cfg.test_limit} "
+                "citations and label the result loudly as PARTIAL — it is **not** a "
+                "full-paper verdict.\n"
+                "**full** — pass `full:true` to verify **every** citation. That result "
+                "is the real verdict (no test banner).\n"
+                "**backend** — `agentic` (fast, free) or `claude_code` (deeper LLM "
+                "check; slower, costs tokens)."
             ),
             inline=False,
         )
+        embed.add_field(name="Default backend", value=f"`{self.cfg.default_backend}`", inline=True)
         embed.add_field(name="/help", value="Show this message.", inline=True)
-        embed.add_field(name="/ping", value="Health + latency.", inline=True)
+        embed.add_field(name="/ping", value="Health, latency + current mode.", inline=True)
         embed.add_field(
             name="How to read a result",
             value=(
@@ -202,37 +210,45 @@ class CitationBot(discord.Client):
 
         @self.tree.command(
             name="ping",
-            description="Health check — is the bot alive and how fast?",
+            description="Health check — is the bot alive, and what mode is it in?",
         )
         async def ping(interaction: discord.Interaction) -> None:
             latency_ms = round(self.latency * 1000)
+            cache = "on" if self.cfg.use_cache else "off"
             await interaction.response.send_message(
-                f"🏓 Pong! Gateway latency `{latency_ms} ms` · default backend `{self.cfg.default_backend}`.",
+                f"🏓 Pong! Gateway `{latency_ms} ms` · default backend "
+                f"`{self.cfg.default_backend}` · 🧪 test sample: first "
+                f"{self.cfg.test_limit} (pass full:true for all) · cache {cache}.",
                 ephemeral=True,
             )
 
+        # NOTE: Discord caps a command description and each describe() value at
+        # 100 chars — keep these short (the /help card carries the long form).
         @self.tree.command(
             name="check",
-            description="Verify the citations in an arXiv paper and report hallucinations.",
+            description="Verify an arXiv paper's citations (🧪 test sample by default; full:true = whole paper).",
         )
         @app_commands.describe(
             paper="arXiv id or URL — e.g. 2505.03335, https://arxiv.org/abs/2505.03335, /pdf/2505.03335",
-            backend="Verification backend (default: agentic).",
-            limit="Max citations to check (0 = all; useful to keep a run quick/cheap).",
+            backend="Verification backend. Default: agentic.",
+            full=(
+                "Verify ALL citations (the whole-paper verdict). "
+                f"Off = a 🧪 test sample of the first {self.cfg.test_limit}."
+            ),
         )
         @app_commands.choices(backend=_BACKEND_CHOICES)
         async def check(
             interaction: discord.Interaction,
             paper: app_commands.Range[str, 1, 256],
             backend: app_commands.Choice[str] | None = None,
-            limit: app_commands.Range[int, 0, 500] = 0,
+            full: bool = False,
         ) -> None:
             backend_name = backend.value if backend else self.cfg.default_backend
-            await self._handle_check(interaction, str(paper), backend_name, int(limit))
+            await self._handle_check(interaction, str(paper), backend_name, full=bool(full))
 
     # ── the command body ─────────────────────────────────────────
     async def _handle_check(
-        self, interaction: discord.Interaction, paper: str, backend: str, limit: int
+        self, interaction: discord.Interaction, paper: str, backend: str, *, full: bool
     ) -> None:
         arxiv_id = parse_arxiv_id(paper)
         if not arxiv_id:
@@ -247,27 +263,20 @@ class CitationBot(discord.Client):
         await interaction.response.defer(thinking=True)
 
         try:
-            result = await self._run_coalesced(arxiv_id, backend, limit)
+            result, cache_hit = await self._run_coalesced(arxiv_id, backend, full=full)
         except Exception as exc:  # noqa: BLE001 — never let the command hang
             log.exception("verification failed for %s", arxiv_id)
-            await self._safe_followup(
-                interaction,
-                _clip(
-                    f"⚠️ Verification failed for `{arxiv_id}` (`{backend}`): "
-                    f"`{type(exc).__name__}: {exc}`",
-                    _CONTENT_LIMIT,
-                ),
-            )
+            await self._safe_followup(interaction, self._failure_message(arxiv_id, backend, exc))
             return
 
         try:
-            await self._deliver_report(interaction, arxiv_id, backend, result)
+            await self._deliver_report(
+                interaction, arxiv_id, backend, result, is_test=not full, cached=cache_hit
+            )
         except discord.HTTPException:
             log.exception("failed to post report for %s", arxiv_id)
             await self._safe_followup(
-                interaction,
-                f"⚠️ Verified `{arxiv_id}` but couldn't post the report (too large or a "
-                "transient Discord error). Try again with a smaller `limit`.",
+                interaction, f"⚠️ Verified `{arxiv_id}`, but couldn't post it. {_TOO_LARGE}"
             )
         except Exception:  # noqa: BLE001 — rendering must never hang the interaction
             log.exception("failed to render report for %s", arxiv_id)
@@ -276,9 +285,39 @@ class CitationBot(discord.Client):
                 f"⚠️ Verified `{arxiv_id}` but couldn't render the report. See the bot logs.",
             )
 
+    @staticmethod
+    def _failure_message(arxiv_id: str, backend: str, exc: Exception) -> str:
+        """A friendly, clipped failure line; raw exception detail goes to logs only.
+
+        The common case is a valid-shape-but-nonexistent arXiv id — ``parse``
+        accepts the shape, then ingest 404s on download — so map fetch/404
+        failures to a "does that paper exist?" hint instead of a stack-ish dump.
+        """
+        text = str(exc).lower()
+        if getattr(exc, "status", 0) == 404 or any(
+            k in text for k in ("404", "not found", "download", "fetch")
+        ):
+            return _clip(
+                f"❌ Couldn't fetch `{arxiv_id}` from arXiv — does that paper exist? "
+                "Double-check the id.",
+                _CONTENT_LIMIT,
+            )
+        return _clip(
+            f"⚠️ Verification failed for `{arxiv_id}` (`{backend}`). The team can see "
+            "details in the bot logs. Please try again.",
+            _CONTENT_LIMIT,
+        )
+
     # ── result delivery (survives Discord's 15-min interaction-token expiry) ──
     async def _deliver_report(
-        self, interaction: discord.Interaction, arxiv_id: str, backend: str, result
+        self,
+        interaction: discord.Interaction,
+        arxiv_id: str,
+        backend: str,
+        result,
+        *,
+        is_test: bool,
+        cached: bool = False,
     ) -> None:
         """Post the finished report, even when the run outlived the interaction.
 
@@ -290,7 +329,7 @@ class CitationBot(discord.Client):
         so the embed/file is rebuilt for the fallback — the first attempt consumed
         the attachment's byte buffer.
         """
-        embed, files = build_response(result, arxiv_id, backend)
+        embed, files = build_response(result, arxiv_id, backend, is_test=is_test, cached=cached)
         try:
             await interaction.followup.send(embed=embed, files=files)
             return
@@ -305,11 +344,14 @@ class CitationBot(discord.Client):
         if channel is None:
             log.warning("no channel available to deliver late report for %s", arxiv_id)
             return
-        embed, files = build_response(result, arxiv_id, backend)  # rebuild: buffers were consumed
+        # rebuild: the first attempt consumed the attachment's byte buffer
+        embed, files = build_response(result, arxiv_id, backend, is_test=is_test, cached=cached)
         mention = interaction.user.mention if interaction.user else ""
+        suffix = "" if is_test else " full:true"
         await channel.send(
             content=_clip(
-                f"{mention} ⏱️ `/check {arxiv_id}` took over 15 min — here's the result:".strip(),
+                f"{mention} ⏱️ `/check {arxiv_id}{suffix}` took over 15 min — "
+                "here's the result:".strip(),
                 _CONTENT_LIMIT,
             ),
             embed=embed,
@@ -354,57 +396,64 @@ class CitationBot(discord.Client):
         return getattr(exc, "code", 0) in (50027, 10015) or getattr(exc, "status", 0) in (401, 404)
 
     # ── run coalescing + cache keying ─────────────────────────────
-    async def _run_coalesced(self, arxiv_id: str, backend: str, limit: int):
+    async def _run_coalesced(self, arxiv_id: str, backend: str, *, full: bool):
         """Run (or join) a verification for this cache key on a worker thread.
 
-        Concurrent identical requests await the SAME task instead of spawning a
-        second thread that would duplicate the network work and race on
-        ``report.json``.
+        Returns ``(result, cache_hit)``. ``cache_hit`` is True only when caching
+        is enabled (``BOT_USE_CACHE``) AND a prior ``report.json`` already existed
+        for this key, so the footer can be marked ♻️ CACHED. Concurrent identical
+        requests await the SAME task instead of spawning a second thread that
+        would duplicate the network work and race on ``report.json``.
         """
-        key, out_dir, eff = self._cache_key(arxiv_id, backend, limit)
+        key, out_dir, max_cit = self._cache_key(arxiv_id, backend, full)
+        # Detect a genuine cache hit BEFORE the run writes a fresh report.json.
+        cache_hit = self.cfg.use_cache and (out_dir / "report.json").exists()
         existing = self._inflight.get(key)
         if existing is not None:
-            return await existing
+            return await existing, cache_hit
         task = asyncio.create_task(
-            asyncio.to_thread(self._run_at, arxiv_id, backend, eff, out_dir)
+            asyncio.to_thread(self._run_at, arxiv_id, backend, max_cit, out_dir)
         )
         self._inflight[key] = task
         try:
-            return await task
+            return await task, cache_hit
         finally:
             self._inflight.pop(key, None)
 
-    def _cache_key(self, arxiv_id: str, backend: str, limit: int) -> tuple[str, Path, int]:
-        """Derive (cache-key, out_dir, effective_limit) for a request.
+    def _cache_key(self, arxiv_id: str, backend: str, full: bool) -> tuple[str, Path, int]:
+        """Derive (cache-key, out_dir, max_citations) for a request.
 
-        The artifact dir — and thus the resume cache — is keyed by backend, the
-        effective citation limit, AND a fingerprint of the settings that change a
-        verdict (models, web-search gate, source-key presence), so a config
-        change never serves a stale cached result.
+        The artifact dir is keyed by backend, the test-vs-full *mode*, AND a
+        fingerprint of the settings that change a verdict (models, web-search
+        gate, source-key presence). A test-sample dir (``-test5-…``) and a full
+        dir (``-full-…``) can never collide, so enabling caching later can never
+        serve a 5-pair sample as a whole-paper verdict.
         """
         cfg = self.cfg
-        eff = limit
-        if cfg.max_citations:
-            eff = min(limit, cfg.max_citations) if limit else cfg.max_citations
         s = cfg.settings
+        max_cit = 0 if full else cfg.test_limit
         fp = hashlib.sha1(
             f"{s.model_judge}|{s.model_bulk}|{int(s.enable_web_search)}|"
             f"{bool(s.s2_api_key)}|{bool(s.openalex_api_key)}|"
             f"{bool(s.crossref_mailto)}".encode()
         ).hexdigest()[:8]
-        base = backend if not eff else f"{backend}-top{eff}"
+        base = f"{backend}-full" if full else f"{backend}-test{cfg.test_limit}"
         out_dir = Path(s.papers_dir) / arxiv_id / f"{base}-{fp}"
-        return str(out_dir), out_dir, eff
+        return str(out_dir), out_dir, max_cit
 
-    def _run_at(self, arxiv_id: str, backend: str, effective_limit: int, out_dir: Path):
-        """Blocking verification (runs in a worker thread)."""
+    def _run_at(self, arxiv_id: str, backend: str, max_citations: int, out_dir: Path):
+        """Blocking verification (runs in a worker thread).
+
+        ``resume`` is gated on ``BOT_USE_CACHE`` (off by default during the
+        testing phase), so every ``/check`` runs fresh unless caching is enabled.
+        """
         return run_verification(
             arxiv_id,
             backend=backend,
             settings=self.cfg.settings,
-            resume=True,
+            resume=self.cfg.use_cache,
             out_dir=str(out_dir),
-            max_citations=effective_limit,
+            max_citations=max_citations,
         )
 
 
@@ -449,10 +498,11 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     log.info(
-        "Starting bot (default backend=%s, guild=%s, max_citations=%s)",
+        "Starting bot (default backend=%s, guild=%s, test_limit=%d, cache=%s)",
         cfg.default_backend,
         cfg.guild_id or "global",
-        cfg.max_citations or "∞",
+        cfg.test_limit,
+        "on" if cfg.use_cache else "off",
     )
     try:
         client.run(cfg.token, log_handler=None)

@@ -16,6 +16,7 @@ import discord
 import pytest
 
 import citation_verifier.bot.discord_bot as dbot
+from citation_verifier.bot.config import load_bot_config
 from citation_verifier.bot.discord_bot import CitationBot
 
 
@@ -74,6 +75,22 @@ def _stub_build_response(monkeypatch):
     monkeypatch.setattr(dbot, "build_response", lambda *a, **k: (discord.Embed(), []))
 
 
+# ── command registration (Discord caps description/describe at 100 chars) ──
+def test_slash_commands_register_within_discord_limits(monkeypatch):
+    # Build a real client so discord.py's length validation runs at registration;
+    # a too-long /check description or describe() would raise here (it does NOT
+    # show up in the embed/delivery tests, which bypass __init__).
+    for k in ("BOT_TEST_LIMIT", "BOT_USE_CACHE", "DISCORD_GUILD_ID"):
+        monkeypatch.delenv(k, raising=False)
+    bot = CitationBot(load_bot_config(None), intents=discord.Intents.none())
+    cmds = {c.name: c for c in bot.tree.get_commands()}
+    assert {"check", "help", "ping"} <= set(cmds)
+    for cmd in cmds.values():
+        assert 1 <= len(cmd.description) <= 100, (cmd.name, len(cmd.description))
+        for param in getattr(cmd, "parameters", ()):
+            assert len(param.description or "") <= 100, (cmd.name, param.name)
+
+
 # ── _token_expired ────────────────────────────────────────────────
 def test_token_expired_detects_expiry_codes_and_statuses():
     assert CitationBot._token_expired(_http_exc(50027, 401))  # Invalid Webhook Token
@@ -87,7 +104,7 @@ def test_token_expired_detects_expiry_codes_and_statuses():
 def test_fast_path_uses_followup_no_channel_fallback():
     fu, ch = FakeFollowup(), FakeChannel()
     inter = FakeInteraction(fu, ch)
-    asyncio.run(_bot()._deliver_report(inter, "2505.03335", "agentic", object()))
+    asyncio.run(_bot()._deliver_report(inter, "2505.03335", "agentic", object(), is_test=False))
     assert len(fu.sent) == 1  # delivered via the interaction
     assert ch.sent == []      # no fallback needed
 
@@ -96,10 +113,11 @@ def test_expired_token_falls_back_to_channel_with_mention():
     fu = FakeFollowup(fail=_http_exc(50027, 401))  # token died mid-run (> 15 min)
     ch = FakeChannel()
     inter = FakeInteraction(fu, ch)
-    asyncio.run(_bot()._deliver_report(inter, "2505.03335", "agentic", object()))
+    asyncio.run(_bot()._deliver_report(inter, "2505.03335", "agentic", object(), is_test=False))
     assert len(ch.sent) == 1
     content = ch.sent[0][1]["content"]
     assert "<@123>" in content and "2505.03335" in content
+    assert "full:true" in content  # a >15-min run is always a full run
     assert ch.sent[0][1]["embed"] is not None  # the report still rides along
 
 
@@ -108,7 +126,7 @@ def test_non_expiry_httpexception_propagates_and_skips_channel():
     ch = FakeChannel()
     inter = FakeInteraction(fu, ch)
     with pytest.raises(discord.HTTPException):
-        asyncio.run(_bot()._deliver_report(inter, "x", "agentic", object()))
+        asyncio.run(_bot()._deliver_report(inter, "x", "agentic", object(), is_test=False))
     assert ch.sent == []  # caller's except-block handles it, not the fallback
 
 
