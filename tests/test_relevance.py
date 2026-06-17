@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from citation_verifier.backends.relevance_judge import (
     LLMRelevanceJudge,
+    _parse_batch_verdicts,
     _parse_verdict,
     _slice_intro,
 )
@@ -20,7 +21,11 @@ from citation_verifier.schema import (
     Priority,
     SupportsClaim,
 )
-from citation_verifier.stages.relevance import RelevanceVerdict, fill_relevance
+from citation_verifier.stages.relevance import (
+    RelevanceVerdict,
+    fill_relevance,
+    fill_relevance_batch,
+)
 
 
 class _NullResolver:
@@ -99,3 +104,40 @@ def test_fill_relevance_without_judge_abstains():
     rec = _stub()
     out = fill_relevance(rec, resolver=_NullResolver(), judge=None)
     assert SupportsClaim(out.supports_claim) is SupportsClaim.UNVERIFIED
+
+
+# ── batched judging ──────────────────────────────────────────────────
+def test_parse_batch_verdicts_maps_by_index():
+    text = '[{"i":0,"supports_claim":"supports","priority":"obligatory"},{"i":1,"supports_claim":"does not"}]'
+    got = _parse_batch_verdicts(text)
+    assert set(got) == {0, 1}
+    assert got[0].supports_claim is SupportsClaim.SUPPORTS
+    assert got[0].priority is Priority.OBLIGATORY
+    assert got[1].supports_claim is SupportsClaim.DOES_NOT
+
+
+def test_judge_batch_abstains_without_evidence():
+    judge = LLMRelevanceJudge(settings=None)
+    out = judge.judge_batch([
+        {"claim": "X improves Y.", "abstract": "", "resolved": None},
+        {"claim": "Z does W.", "abstract": "", "resolved": None},
+    ])
+    assert len(out) == 2
+    assert all(v.supports_claim is SupportsClaim.UNVERIFIED for v in out)
+    assert judge.calls == 0  # no model call when there is no evidence
+
+
+def test_fill_relevance_batch_applies_verdicts():
+    r1, r2 = _stub("We use method M as a baseline."), _stub("See also surveys.")
+
+    def judge_batch(items):
+        assert len(items) == 2
+        return [
+            RelevanceVerdict(supports_claim="supports", priority="obligatory"),
+            RelevanceVerdict(supports_claim="partial", priority="helpful"),
+        ]
+
+    out = fill_relevance_batch([r1, r2], resolver=_NullResolver(), judge_batch=judge_batch)
+    assert SupportsClaim(out[0].supports_claim) is SupportsClaim.SUPPORTS
+    assert Priority(out[0].priority) is Priority.OBLIGATORY
+    assert SupportsClaim(out[1].supports_claim) is SupportsClaim.PARTIAL

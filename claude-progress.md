@@ -6,6 +6,49 @@
 
 ---
 
+## 2026-06-17 — session: batch the relevance judge + fix inline-bib extractor (yunqiao)
+
+**Goal:** kill the per-citation `query()` overhead in the agentic judge (each
+`query()` re-pays Claude Code's session overhead, so one call per citation
+multiplied it by N), and unblock papers whose bibliography is inline in the .tex.
+
+**Done (branch `yunqiao`):**
+- **Inline bibliography** (`extract/latex.py`): parse `\bibitem` from inline
+  `\begin{thebibliography}` in .tex too (arXiv ships no separate .bbl for many
+  papers, e.g. 1706.03762). Was the real blocker — empty cited_as => nothing
+  grounded => both backends all-unverified instantly.
+- **Batched judge** (`relevance_judge.LLMRelevanceJudge.judge_batch`): judge
+  citations chunked at `batch_size` (default 40) — ONE `query()` per chunk;
+  `__call__` delegates to it. Real usage via `usage_from_result_message` into
+  `self.usage`.
+- `stages/relevance.fill_relevance_batch`: assemble (claim, abstract) per record,
+  judge in one batch, apply verdicts back.
+- `agentic.verify` is now TWO passes (correctness per record → one batched
+  relevance pass) and folds the judge's REAL token/cost into `run.usage`.
+- **Auth** (`config.apply_auth`, both backends): default = Claude Code subscription;
+  `ANTHROPIC_API_KEY` (env or .env) switches to the per-token API.
+
+**Verified by:**
+- `pytest` → 49 passed (offline; new: inline-bib parse, batch parse, batch abstain
+  w/o model call, fill_relevance_batch, apply_auth).
+- Live 10-citation run on 1706.03762: **query() calls = 1** (was 10), cost
+  = **$0.0767** (~$0.0077/citation, ~12× cheaper than the per-call ~$0.09); exists
+  8 yes/2 unverified, supports 3/3 partial/4 unverified, priority 4 oblig/6 helpful.
+- => 25 citations now ≈ ONE judge call, ~$0.1 (was ~$2.3).
+
+**Not done / blocked:**
+- `run.usage.input_tokens` displays small (~3): the SDK reports input under a
+  different usage key; `cost_usd` (from `total_cost_usd`) is correct. Cosmetic.
+- Grounding is still sequential (~13s/citation) — now the wall-time bottleneck
+  (~15s/citation, judge is 1 call). Parallelize next.
+
+**Next session — start here:**
+1. Parallelize the per-citation grounding fan-out (wall time, not cost).
+2. Fix the input-token display key in `usage_from_result_message`.
+3. PR `yunqiao` → `main`.
+
+---
+
 ## 2026-06-17 — session: wire LLM relevance judge into agentic (L0/L1) (yunqiao)
 
 **Goal:** make the `agentic` backend actually do STEP 2 (relevance) via an LLM judge
