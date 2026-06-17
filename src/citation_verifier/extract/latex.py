@@ -323,6 +323,20 @@ _SECTION_RE = re.compile(
 _SENT_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Z\\])")
 
 
+def _strip_line_comments(text: str) -> str:
+    """Drop LaTeX line comments so commented-out ``\\cite`` sites aren't counted.
+
+    An unescaped ``%`` starts a comment to end of line; an escaped ``\\%`` is
+    kept. Applied only to the citation-site scan (not bibliography parsing, where
+    a ``%`` may legitimately appear inside a URL).
+    """
+    out: list[str] = []
+    for line in text.split("\n"):
+        m = re.search(r"(?<!\\)%", line)
+        out.append(line if m is None else line[: m.start()])
+    return "\n".join(out)
+
+
 def _read_tex_files(tex_dir: str | Path) -> list[tuple[Path, str]]:
     """Read all ``.tex`` files under ``tex_dir`` (sorted for determinism)."""
     root = Path(tex_dir)
@@ -500,6 +514,7 @@ class LatexExtractor:
         seen: set[tuple[str, str, str]] = set()
 
         for _path, text in _read_tex_files(source.tex_dir or ""):
+            text = _strip_line_comments(text)  # ignore commented-out \cite call-sites
             for cm in _CITE_RE.finditer(text):
                 keys = [k.strip() for k in cm.group(1).split(",") if k.strip()]
                 if not keys:
