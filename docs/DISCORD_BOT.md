@@ -13,9 +13,9 @@ lives in [`src/citation_verifier/bot/`](../src/citation_verifier/bot/).
 
 | Command | What it does |
 | --- | --- |
-| `/check paper [backend] [limit]` | Verify the citations in an arXiv paper. |
+| `/check paper [backend] [full]` | Verify the citations in an arXiv paper (🧪 test sample by default). |
 | `/help` | Usage + how to read a result (the verdict legend). |
-| `/ping` | Health check (gateway latency). |
+| `/ping` | Health check (gateway latency + current mode). |
 
 `/check` accepts **any** of these for `paper` (all normalize to the same id):
 
@@ -26,15 +26,29 @@ lives in [`src/citation_verifier/bot/`](../src/citation_verifier/bot/).
 Options:
 - **backend** — `agentic` (default; fast, free, grounds existence against
   Crossref/arXiv) or `claude_code` (deeper LLM check; slower, spends tokens).
-- **limit** — verify only the first N citations (`0` = all). Handy to keep a
-  single check quick/cheap on a large bibliography.
+- **full** — `false` (default) runs a 🧪 **test sample** of the first
+  `BOT_TEST_LIMIT` (default 5) citations, loudly labeled PARTIAL; `true`
+  verifies **all** citations — the real, whole-paper verdict.
 
 The reply is a compact embed (headline + counts + the flagged citations) with
 the **full per-citation report attached as a `.md` file**.
 
-> First check of a fresh paper grounds every reference over the network and can
-> take a few minutes; the result is cached, so repeat `/check`s of the same
-> paper (e.g. the same id via `/abs/` then `/pdf/`) return **instantly**.
+## Test phase: the default is a sample
+
+During the testing phase a bare `/check` is **not** a full-paper verdict — it
+verifies only the first `BOT_TEST_LIMIT` (default 5) citations and labels the
+result loudly: a 🧪 **TEST SAMPLE** banner, an amber embed (never green), counts
+shown as "5 of 142 (sample)", and a `-sample.md` report. Pass **`full:true`** for
+the real, whole-paper verdict (a green embed when clean, a `-full.md` report).
+
+A `full:true` run on a large bibliography may take minutes; it still delivers —
+past Discord's 15-min interaction window the bot posts a channel message that
+@-mentions you. There is **no** silent global cap.
+
+> Caching is **off by default** during the testing phase (`BOT_USE_CACHE=0`), so
+> every `/check` runs fresh. Set `BOT_USE_CACHE=1` to resume a prior
+> `report.json` — repeat checks of the same paper then return instantly, marked
+> ♻️ CACHED.
 
 ---
 
@@ -65,7 +79,7 @@ MODEL_JUDGE=claude-sonnet-4-6
 ```
 
 See [`.env.example`](../.env.example) for every knob (`BOT_DEFAULT_BACKEND`,
-`BOT_MAX_CITATIONS`, …).
+`BOT_TEST_LIMIT`, `BOT_USE_CACHE`, …).
 
 ### 3. Invite the bot to your server  ← the step that "makes it available"
 
@@ -104,10 +118,10 @@ In any channel the bot can see (e.g. your test channel
 `#…` / id `1516409153906540554`):
 
 ```
-/check 2505.03335
+/check 2505.03335                                      # 🧪 test sample (first 5)
 /check https://arxiv.org/abs/2505.03335
 /check https://arxiv.org/pdf/2505.03335
-/check paper:2505.03335 backend:claude_code limit:20
+/check paper:2505.03335 backend:claude_code full:true   # full, whole-paper verdict
 ```
 
 ---
@@ -121,8 +135,9 @@ In any channel the bot can see (e.g. your test channel
 | 🟡 **Unverified** | Couldn't confirm (no DOI/arXiv match — e.g. a blog post or system card). |
 | 🟢 **OK** | Exists and supports the claim. |
 
-The attached `citation-report-<id>.md` is the full SKILL.md table + summary +
-token/cost footer for every citation.
+The attached report (`citation-report-<id>-sample.md` for a test run, `-full.md`
+for `full:true`) is the full SKILL.md table + summary + token/cost footer for
+every citation; a test-sample report opens with a 🧪 scope header.
 
 ## Troubleshooting
 
@@ -132,5 +147,5 @@ token/cost footer for every citation.
 | `LoginFailure` | Token is wrong/rotated — reset it in the Developer Portal. |
 | `Guild sync … 403 Missing Access` | Bot isn't in that server yet — use the invite URL, then restart. |
 | `/check` not showing up | Guild sync needs the bot invited; global sync takes ~1h. Set `DISCORD_GUILD_ID`. |
-| Check takes minutes | First grounding pass on a fresh paper; repeats are cached/instant. Use `limit:` or `backend:agentic` to bound it. |
+| Check takes minutes | A bare `/check` is already a fast 5-citation 🧪 test sample; a `full:true` run on a large bibliography may take minutes but still delivers (the bot @mentions you past the 15-min window). Don't add a global cap. |
 | `claude_code` errors on model id | Set a valid `MODEL_JUDGE` in `.env` (e.g. `claude-sonnet-4-6`). |
