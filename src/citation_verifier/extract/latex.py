@@ -233,20 +233,8 @@ def _parse_bbl_body(body: str) -> CitedAs:
     )
 
 
-def parse_bbl(bbl_path: str | Path) -> dict[str, CitedAs]:
-    """Tolerant ``.bbl`` parser -> ``{cite_key: CitedAs}``.
-
-    Handles the common ``\\bibitem[..]{key} ... \\bibitem ...`` layout produced by
-    BibTeX/natbib. Fails soft (missing/garbled file -> ``{}``).
-    """
-    path = Path(bbl_path)
-    if not path.is_file():
-        return {}
-    try:
-        text = path.read_text(encoding="utf-8", errors="replace")
-    except Exception:
-        return {}
-
+def _parse_bibitems(text: str) -> dict[str, CitedAs]:
+    """Parse every ``\\bibitem`` entry in ``text`` into ``{cite_key: CitedAs}``."""
     matches = list(_BIBITEM_RE.finditer(text))
     out: dict[str, CitedAs] = {}
     for i, m in enumerate(matches):
@@ -262,17 +250,56 @@ def parse_bbl(bbl_path: str | Path) -> dict[str, CitedAs]:
     return out
 
 
-def load_references(source: PaperSource) -> dict[str, CitedAs]:
-    """Load references from ``.bib`` (preferred) then ``.bbl`` (fallback).
+def parse_bbl(bbl_path: str | Path) -> dict[str, CitedAs]:
+    """Tolerant ``.bbl`` parser -> ``{cite_key: CitedAs}``.
 
-    Entries from the richer ``.bib`` win; ``.bbl`` fills any keys ``.bib`` did
-    not cover.
+    Handles the common ``\\bibitem[..]{key} ... \\bibitem ...`` layout produced by
+    BibTeX/natbib. Fails soft (missing/garbled file -> ``{}``).
+    """
+    path = Path(bbl_path)
+    if not path.is_file():
+        return {}
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return {}
+    return _parse_bibitems(text)
+
+
+# Inline bibliography pasted directly into a .tex file (no separate .bbl/.bib).
+_THEBIB_RE = re.compile(r"\\begin\{thebibliography\}.*?\\end\{thebibliography\}", re.DOTALL)
+
+
+def parse_inline_bib(tex_dir: str | Path | None) -> dict[str, CitedAs]:
+    """Parse ``\\bibitem`` entries from inline ``thebibliography`` blocks in .tex.
+
+    Many arXiv e-prints ship NO separate ``.bbl``/``.bib`` — the compiled
+    bibliography is pasted into the main ``.tex`` as a ``thebibliography``
+    environment (e.g. arXiv:1706.03762). Without this those references are
+    invisible and every citation resolves to an empty ``cited_as``, so nothing
+    grounds. Fails soft (no blocks -> ``{}``).
+    """
+    out: dict[str, CitedAs] = {}
+    if not tex_dir:
+        return out
+    for _path, text in _read_tex_files(tex_dir):
+        for block in _THEBIB_RE.findall(text):
+            out.update(_parse_bibitems(block))
+    return out
+
+
+def load_references(source: PaperSource) -> dict[str, CitedAs]:
+    """Load references from inline ``thebibliography`` + ``.bbl`` + ``.bib``.
+
+    Inline (.tex) entries are the base; a separate ``.bbl`` overrides them, and
+    the richer ``.bib`` (structured authors/venue) overrides both.
     """
     refs: dict[str, CitedAs] = {}
+    refs.update(parse_inline_bib(source.tex_dir))
     if source.bbl_path:
         refs.update(parse_bbl(source.bbl_path))
     if source.bib_path:
-        # .bib is richer (structured authors/venue); let it override .bbl.
+        # .bib is richer (structured authors/venue); let it override .bbl/inline.
         refs.update(parse_bib(source.bib_path))
     return refs
 

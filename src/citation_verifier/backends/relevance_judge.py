@@ -56,6 +56,12 @@ class LLMRelevanceJudge:
     def __init__(self, *, settings: Any | None = None) -> None:
         self.settings = settings
         self.model = _setting(settings, "model_judge", "claude-opus-4-6")
+        # Real usage captured from each query()'s ResultMessage (the agentic
+        # backend otherwise only *estimates* JUDGE-tier usage).
+        self.calls = 0
+        self.cost_usd = 0.0
+        self.input_tokens = 0
+        self.output_tokens = 0
 
     def __call__(
         self,
@@ -133,6 +139,13 @@ class LLMRelevanceJudge:
                 for block in message.content:
                     if isinstance(block, sdk.TextBlock):
                         out.append(block.text)
+            elif isinstance(message, sdk.ResultMessage):
+                self.cost_usd += getattr(message, "total_cost_usd", 0.0) or 0.0
+                u = getattr(message, "usage", None)
+                if isinstance(u, dict):
+                    self.input_tokens += int(u.get("input_tokens", 0) or 0)
+                    self.output_tokens += int(u.get("output_tokens", 0) or 0)
+        self.calls += 1
         return "".join(out)
 
 
