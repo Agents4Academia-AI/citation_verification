@@ -70,3 +70,6 @@ report-*.json
 chbench_data/
 
 # NOTE: spec/ , config/ , evals/smoke/ and tests/fixtures/ ARE committed.
+
+# cverify-bot runtime log (from `python -m citation_verifier.bot`)
+logs_bot.log

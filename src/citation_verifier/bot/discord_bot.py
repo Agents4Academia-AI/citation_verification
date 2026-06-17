@@ -10,7 +10,10 @@ Pipeline, end to end, per ``/check``:
      work may take minutes on a fresh paper);
   3. run :func:`citation_verifier.orchestrator.run_verification` in a worker
      thread (it is blocking/network-bound) so the gateway heartbeat keeps going;
-  4. post a compact embed + the full Markdown report (see :mod:`.report`).
+  4. post a compact embed + the full Markdown report (see :mod:`.report`) — via
+     the interaction followup, or, when the run outlives Discord's 15-minute
+     interaction-token window, a plain channel message that @-mentions the
+     caller (so a slow verification still delivers instead of vanishing).
 
 The blocking verifier is the *same* code path the CLI uses — the bot adds no
 verification logic. Repeat checks of one paper are instant: ``resume=True`` reads
@@ -258,8 +261,7 @@ class CitationBot(discord.Client):
             return
 
         try:
-            embed, files = build_response(result, arxiv_id, backend)
-            await interaction.followup.send(embed=embed, files=files)
+            await self._deliver_report(interaction, arxiv_id, backend, result)
         except discord.HTTPException:
             log.exception("failed to post report for %s", arxiv_id)
             await self._safe_followup(
@@ -274,13 +276,82 @@ class CitationBot(discord.Client):
                 f"⚠️ Verified `{arxiv_id}` but couldn't render the report. See the bot logs.",
             )
 
-    @staticmethod
-    async def _safe_followup(interaction: discord.Interaction, message: str) -> None:
-        """Send a followup that itself never raises (last-resort answer)."""
+    # ── result delivery (survives Discord's 15-min interaction-token expiry) ──
+    async def _deliver_report(
+        self, interaction: discord.Interaction, arxiv_id: str, backend: str, result
+    ) -> None:
+        """Post the finished report, even when the run outlived the interaction.
+
+        Discord invalidates the interaction token ~15 min after ``defer()``, so a
+        long verification can no longer answer through ``interaction.followup``.
+        The fast path still uses the followup (it threads neatly under the slash
+        command); on token expiry we fall back to a plain channel message that
+        @-mentions the caller so they still get pinged. ``build_response`` is pure,
+        so the embed/file is rebuilt for the fallback — the first attempt consumed
+        the attachment's byte buffer.
+        """
+        embed, files = build_response(result, arxiv_id, backend)
+        try:
+            await interaction.followup.send(embed=embed, files=files)
+            return
+        except discord.HTTPException as exc:
+            if not self._token_expired(exc):
+                raise  # genuine size/transient error — handled by the caller
+            log.info(
+                "interaction token expired for %s (run > 15 min); posting to channel", arxiv_id
+            )
+
+        channel = self._channel_of(interaction)
+        if channel is None:
+            log.warning("no channel available to deliver late report for %s", arxiv_id)
+            return
+        embed, files = build_response(result, arxiv_id, backend)  # rebuild: buffers were consumed
+        mention = interaction.user.mention if interaction.user else ""
+        await channel.send(
+            content=_clip(
+                f"{mention} ⏱️ `/check {arxiv_id}` took over 15 min — here's the result:".strip(),
+                _CONTENT_LIMIT,
+            ),
+            embed=embed,
+            files=files,
+        )
+
+    async def _safe_followup(self, interaction: discord.Interaction, message: str) -> None:
+        """Deliver a last-resort answer that never raises — past the token expiry too.
+
+        Tries the interaction followup first; if the token has expired (the run
+        took > 15 min) it falls back to a channel message that pings the caller.
+        """
         try:
             await interaction.followup.send(message)
+            return
         except discord.HTTPException:
+            pass
+        channel = self._channel_of(interaction)
+        if channel is None:
             log.warning("could not deliver followup to interaction")
+            return
+        try:
+            mention = interaction.user.mention if interaction.user else ""
+            await channel.send(_clip(f"{mention} {message}".strip(), _CONTENT_LIMIT))
+        except discord.HTTPException:
+            log.warning("could not deliver followup to channel")
+
+    def _channel_of(self, interaction: discord.Interaction):
+        """The channel the command came from, re-resolved from the client if absent."""
+        channel = interaction.channel
+        if channel is None and interaction.channel_id is not None:
+            channel = self.get_channel(interaction.channel_id)
+        return channel
+
+    @staticmethod
+    def _token_expired(exc: discord.HTTPException) -> bool:
+        """True when a followup failed because Discord expired the interaction token.
+
+        ~15 min after ``defer()`` the webhook send returns 401/404 — Discord error
+        code 50027 (Invalid Webhook Token) or 10015 (Unknown Webhook).
+        """
+        return getattr(exc, "code", 0) in (50027, 10015) or getattr(exc, "status", 0) in (401, 404)
 
     # ── run coalescing + cache keying ─────────────────────────────
     async def _run_coalesced(self, arxiv_id: str, backend: str, limit: int):
