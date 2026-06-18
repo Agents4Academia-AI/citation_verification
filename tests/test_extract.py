@@ -11,7 +11,24 @@ from citation_verifier.extract.latex import (
     _strip_line_comments,
     parse_inline_bib,
 )
-from citation_verifier.extract.pdf import _INTEXT_NUM_RE, _expand_num_marker
+from citation_verifier.extract.pdf import (
+    _INTEXT_NUM_RE,
+    _expand_num_marker,
+    _normalize_pdf_text,
+)
+
+
+def test_normalize_pdf_text_dehyphenates_and_despaces():
+    # 1) line-break hyphenation joined; real compounds preserved
+    norm = _normalize_pdf_text("knowl- edge of state-of-the-art GPT-3 Lan-\nguage models")
+    assert "knowledge" in norm and "Language" in norm
+    assert "state-of-the-art" in norm and "GPT-3" in norm
+    # 2) a char-spaced line collapses (entry number + title become readable);
+    #    a normal line is left untouched.
+    spaced = "1 1 .Y a n gZ ,G a nZ ,W a n gJ . An empirical study of GPT-3"
+    out = _normalize_pdf_text(spaced + "\nThis normal sentence stays intact.")
+    assert "11." in out and "YangZ" in out
+    assert "This normal sentence stays intact." in out
 
 
 def test_pdf_intext_markers_tolerate_pypdf_spacing():

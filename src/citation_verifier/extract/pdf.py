@@ -53,9 +53,46 @@ def extract_pdf_text(pdf_path: str | Path) -> str:
         reader = PdfReader(str(path))
         pages = [page.extract_text() or "" for page in reader.pages]
         text = "\n".join(pages).strip()
-        return text if text else _read_sidecar(path)
+        return _normalize_pdf_text(text) if text else _read_sidecar(path)
     except Exception:
         return _read_sidecar(path)
+
+
+# Line-break hyphenation: "knowl- edge" / "Lan-\nguage" -> "knowledge" / "Language".
+# Only join when a lowercase letter follows (real compounds like "state-of-the-art"
+# or "GPT-3" have no following lowercase-after-whitespace and are preserved).
+_DEHYPHEN_RE = re.compile(r"(?<=[A-Za-z])-\s+(?=[a-z])")
+# Restore a space after a separator inside a de-spaced run ("11.YangZ" -> "11. YangZ").
+_SEP_RESPACE_RE = re.compile(r"([.,;])(?=[A-Za-z0-9])")
+
+
+def _normalize_pdf_text(text: str) -> str:
+    """Repair two common pypdf artifacts that wreck downstream grounding.
+
+    1. **De-hyphenation** — pypdf keeps the hyphen of a word split across a line
+       break ("Lan- guage"), so cited titles never match their canonical form.
+    2. **Character-spacing** — some lines come out with a space between every
+       glyph ("1 1 .Y a n gZ ,G a nZ"), which hides the reference number from the
+       entry parser and garbles the authors. Collapsed per line (only on lines
+       that are clearly char-spaced), so normal prose is untouched.
+    """
+    text = _DEHYPHEN_RE.sub("", text)
+    return "\n".join(_despace_line(line) for line in text.split("\n"))
+
+
+def _despace_line(line: str) -> str:
+    """Collapse pypdf character-spacing on a single line; leave normal lines as-is.
+
+    A line is treated as char-spaced only when it has many tokens and at least
+    half are single characters — a signature normal academic prose never has.
+    """
+    toks = [t for t in line.split(" ") if t]
+    singles = sum(len(t) == 1 for t in toks)
+    # Char-spaced lines have many single-char tokens; the comma/period merges
+    # (",G", ".Y") keep the ratio below 0.5, so gate on an absolute floor too.
+    if len(toks) < 6 or singles < 5 or singles / len(toks) < 0.4:
+        return line
+    return _SEP_RESPACE_RE.sub(r"\1 ", "".join(line.split(" "))).strip()
 
 
 def _read_sidecar(pdf_path: Path) -> str:
