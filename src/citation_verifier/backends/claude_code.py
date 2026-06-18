@@ -89,12 +89,18 @@ def load_skill_body(skill_file: Path = _SKILL_FILE) -> str:
 
 
 @dataclass
-class _Ground:
-    """A stub plus the evidence we retrieved for it (the unit of work per pair)."""
+class _CiteGroup:
+    """One UNIQUE citation + every claim-site that cites it (the unit of work).
 
-    stub: CitationRecord
-    evidence: str          # abstract (+ "[Introduction]" …) retrieved for relevance
-    has_evidence: bool     # whether ANY abstract/intro text was retrieved
+    Correctness/evidence is grounded once for the citation; relevance is judged
+    once per claim against the SHARED evidence — so the cited work's abstract is
+    sent to the model once per citation, not once per (claim, citation) pair.
+    """
+
+    cite_key: str
+    stubs: list[CitationRecord]   # all claim-sites citing this key
+    evidence: str                 # abstract (+ "[Introduction]" …) retrieved once
+    has_evidence: bool
 
 
 @register
@@ -165,22 +171,23 @@ class ClaudeCodeBackend(BaseBackend):
         """Pre-ground (Python) → shard → judge chunks concurrently → aggregate."""
         resolver = self._build_resolver()
 
-        # 1) Pre-ground concurrently — deterministic, no LLM. This is the accuracy
-        #    floor: exists/metadata from retrieved sources, abstract(+intro) for
-        #    relevance. Each pair's grounding is independent → fan out.
-        grounds = await self._preground_all(resolver, stubs)
+        # 1) Pre-ground concurrently — deterministic, no LLM. Grounds each UNIQUE
+        #    citation once (exists/metadata from retrieved sources + abstract/intro
+        #    for relevance) and carries all of its claim-sites.
+        groups = await self._preground_all(resolver, stubs)
 
-        # 2) Shard into bounded chunks.
+        # 2) Shard by CITATION (not by pair): chunk_size citations per chunk, so a
+        #    citation's evidence is sent once and all its claims ride along.
         chunks = [
-            grounds[i : i + self.chunk_size]
-            for i in range(0, len(grounds), self.chunk_size)
+            groups[i : i + self.chunk_size]
+            for i in range(0, len(groups), self.chunk_size)
         ]
 
         # 3) Judge chunks concurrently (each is one query(); identical system
         #    prompt → shared prompt-cache prefix). Bounded concurrency.
         sem = asyncio.Semaphore(max(1, self.concurrency))
 
-        async def _run_chunk(chunk: list[_Ground]) -> tuple[list[CitationRecord], RunUsage]:
+        async def _run_chunk(chunk: list[_CiteGroup]) -> tuple[list[CitationRecord], RunUsage]:
             async with sem:
                 return await self._judge_chunk(sdk, source, chunk)
 
@@ -188,15 +195,17 @@ class ClaudeCodeBackend(BaseBackend):
             *(_run_chunk(c) for c in chunks), return_exceptions=True
         )
 
-        # 4) Aggregate records + usage; a failed chunk degrades its pairs only.
+        # 4) Aggregate records + usage; a failed chunk degrades its claims only.
         records: list[CitationRecord] = []
         usage = RunUsage(backend=self.name, model=self.model)
         for chunk, out in zip(chunks, outs, strict=False):
             if isinstance(out, Exception):
                 result.errors.append(f"claude_code: chunk judge failed: {out!r}")
-                records.extend(
-                    self._finalize_degraded(g, source, "chunk judge failed") for g in chunk
-                )
+                for grp in chunk:
+                    records.extend(
+                        self._finalize_degraded(s, source, "chunk judge failed")
+                        for s in grp.stubs
+                    )
                 continue
             recs, u = out
             usage.add(u)
@@ -220,44 +229,71 @@ class ClaudeCodeBackend(BaseBackend):
 
     async def _preground_all(
         self, resolver: Any, stubs: list[CitationRecord]
-    ) -> list[_Ground]:
-        """Resolve + retrieve evidence for every stub, concurrently (in threads)."""
+    ) -> list[_CiteGroup]:
+        """Ground each UNIQUE citation once, then share across its claim-sites.
+
+        Correctness (exists/metadata) and the relevance evidence (abstract+intro)
+        are properties of the cited PAPER, not of the (claim, citation) pair — so a
+        citation cited N times needs ONE resolver lookup, not N. Deduping by
+        cite_key cuts the API fan-out from ``len(stubs)`` to the unique-citation
+        count (e.g. 166 -> ~53 on 2505.13447), which is what stops the grounding
+        sources from rate-limiting at scale. Relevance stays per-pair (downstream).
+        """
+        by_key: dict[str, list[CitationRecord]] = {}
+        for s in stubs:
+            by_key.setdefault(s.cite_key, []).append(s)
+
         sem = asyncio.Semaphore(max(1, self.ground_concurrency))
 
-        async def _one(stub: CitationRecord) -> _Ground:
+        async def _ground(cite_key: str, group: list[CitationRecord]) -> _CiteGroup:
             async with sem:
-                return await asyncio.to_thread(self._preground_one, resolver, stub)
+                return await asyncio.to_thread(self._preground_group, resolver, cite_key, group)
 
-        return await asyncio.gather(*(_one(s) for s in stubs))
+        return list(await asyncio.gather(*(_ground(k, g) for k, g in by_key.items())))
 
-    def _preground_one(self, resolver: Any, stub: CitationRecord) -> _Ground:
-        """STEP 1 grounding (deterministic) + relevance-evidence retrieval.
+    def _preground_group(
+        self, resolver: Any, cite_key: str, group: list[CitationRecord]
+    ) -> _CiteGroup:
+        """Ground ONE citation (its representative), share it across its claim-sites.
 
-        Runs in a worker thread (network-bound). Mutates ``stub`` in place: sets
-        the grounded ``exists`` / ``resolved`` / ``metadata_issues`` / evidence and
-        a coarse priority default. Returns the stub paired with its relevance
-        evidence text. Degrade-not-crash: any failure leaves the stub unverified.
+        Runs in a worker thread (network-bound). The representative is grounded via
+        :func:`fill_correctness` (exists/resolved/metadata_issues/evidence) and its
+        abstract+intro is fetched once; every other stub with the same cite_key
+        copies that grounding — only the per-claim priority is recomputed.
         """
-        # Grounded correctness: exists/resolved/metadata_issues from retrieved
-        # sources (never model memory). Falls back to an unverified stub on error.
         try:
             from ..stages import fill_correctness  # public stage API
-
-            fill_correctness(stub, resolver=resolver)
-        except Exception as exc:  # noqa: BLE001 — degrade-not-crash
-            stub.error = (stub.error + "; " if stub.error else "") + f"preground: {exc!r}"
-            stub.exists = Exists.UNVERIFIED.value
-
-        # Coarse priority default (the model may override).
-        try:
             from ..stages.relevance import _infer_priority
+        except Exception:  # noqa: BLE001 — siblings absent: degrade to unverified
+            fill_correctness = None  # type: ignore[assignment]
+            _infer_priority = None  # type: ignore[assignment]
 
-            stub.priority = _infer_priority(stub.claim.text).value
-        except Exception:  # noqa: BLE001
-            pass
+        rep = group[0]
+        if fill_correctness is not None:
+            try:
+                fill_correctness(rep, resolver=resolver)
+            except Exception as exc:  # noqa: BLE001 — degrade-not-crash
+                rep.error = (rep.error + "; " if rep.error else "") + f"preground: {exc!r}"
+                rep.exists = Exists.UNVERIFIED.value
+        evidence = self._evidence_text(rep)
 
-        evidence = self._evidence_text(stub)
-        return _Ground(stub=stub, evidence=evidence, has_evidence=bool(evidence.strip()))
+        for stub in group:
+            if stub is not rep:
+                # Share the cited-paper grounding; do NOT re-resolve (the point).
+                stub.resolved = rep.resolved
+                stub.exists = rep.exists
+                stub.metadata_issues = list(rep.metadata_issues)
+                stub.evidence = list(rep.evidence)
+                if rep.error and not stub.error:
+                    stub.error = rep.error
+            if _infer_priority is not None:
+                try:
+                    stub.priority = _infer_priority(stub.claim.text).value
+                except Exception:  # noqa: BLE001
+                    pass
+        return _CiteGroup(
+            cite_key=cite_key, stubs=group, evidence=evidence, has_evidence=bool(evidence.strip())
+        )
 
     def _evidence_text(self, stub: CitationRecord) -> str:
         """Assemble relevance evidence: abstract (L0) + introduction (L1, arXiv)."""
@@ -277,9 +313,9 @@ class ClaudeCodeBackend(BaseBackend):
 
     # ──────────────────────────────────────────────────────────────
     async def _judge_chunk(
-        self, sdk: Any, source: PaperSource, chunk: list[_Ground]
+        self, sdk: Any, source: PaperSource, chunk: list[_CiteGroup]
     ) -> tuple[list[CitationRecord], RunUsage]:
-        """Judge one chunk in a single structured query() (no tools, no loop)."""
+        """Judge one chunk of citations in a single structured query() (no tools)."""
         options = sdk.ClaudeAgentOptions(
             system_prompt=self._system_prompt(),
             allowed_tools=[],            # not an agent loop — a grounded judgement
@@ -308,98 +344,108 @@ class ClaudeCodeBackend(BaseBackend):
         """System prompt = grounding rule + injected SKILL.md + I/O contract."""
         return (
             "You are a meticulous citation-verification agent for academic papers. "
-            "For each pair you are GIVEN the retrieved evidence — a resolved canonical "
-            "record and the cited work's abstract (sometimes plus its introduction). "
-            "Judge ONLY from that provided text; NEVER assert anything from memory, "
-            "and do NOT call any tools. Follow this method exactly:\n\n"
+            "You are given a list of CITATIONS. Each citation comes with the retrieved "
+            "evidence ONCE — a resolved canonical record and the cited work's abstract "
+            "(sometimes plus its introduction) — and a list of CLAIMS in the citing "
+            "paper that reference it. Judge each claim ONLY from that citation's "
+            "evidence; NEVER assert anything from memory, and do NOT call any tools. "
+            "Follow this method exactly:\n\n"
             + load_skill_body()
             + "\n\n## Output for this backend\n"
-            "You judge RELEVANCE and PRIORITY and may ADD metadata issues; existence "
-            "is already determined for you from retrieval — do not invent it. For each "
-            "input pair decide:\n"
-            "- supports_claim: supports | partial | does_not | unverified. Use ONLY "
-            "the item's evidence text. If the specific claimed fact/result/method is "
-            "not present in it, use 'unverified' (or 'partial' if clearly related but "
-            "not confirming). Do NOT guess 'supports'. If the evidence is empty, you "
-            "MUST use 'unverified'.\n"
+            "Existence is already determined for you from retrieval — do not invent it. "
+            "Per citation you may ADD metadata issues; per CLAIM you judge relevance + "
+            "priority:\n"
+            "- supports_claim: supports | partial | does_not | unverified. Use ONLY the "
+            "citation's evidence text. If the specific claimed fact/result/method is not "
+            "present in it, use 'unverified' (or 'partial' if clearly related but not "
+            "confirming). Do NOT guess 'supports'. If the evidence is empty, you MUST "
+            "use 'unverified'.\n"
             "- priority: obligatory (the claim depends on this source — a method "
             "used/extended, a baseline, a dataset, a specific result/quote) or helpful "
             "(background / see-also).\n"
-            "- metadata_issues: ONLY genuine NEW mismatches you see by comparing the "
-            "reference string to the resolved record (e.g. a missing diacritic, a wrong "
-            "venue/year, a truncated title). Omit if none.\n"
-            "- notes: one short sentence justifying the relevance verdict, grounded in "
-            "the evidence.\n\n"
-            "Emit ONE JSON array, exactly one object per input pair, echoing its "
-            "claim_id and cite_key:\n"
-            '[{"claim_id":"...","cite_key":"...","supports_claim":"...",'
-            '"priority":"...","confidence":0.0-1.0,"metadata_issues":["..."],'
-            '"notes":"..."}]\n'
+            "- metadata_issues (per citation): ONLY genuine mismatches between the "
+            "reference string and the resolved record (missing diacritic, wrong "
+            "venue/year, truncated title). Omit if none.\n"
+            "- notes (per claim): one short sentence justifying the verdict from the "
+            "evidence.\n\n"
+            "Emit ONE JSON array, exactly one object per input CITATION, echoing its "
+            "cite_key and one verdict per claim_id:\n"
+            '[{"cite_key":"...","metadata_issues":["..."],"claims":['
+            '{"claim_id":"...","supports_claim":"...","priority":"...",'
+            '"confidence":0.0-1.0,"notes":"..."}]}]\n'
             "Output JSON only — no prose, no Markdown table."
         )
 
-    def _chunk_user_prompt(self, source: PaperSource, chunk: list[_Ground]) -> str:
-        """User prompt: the grounded (claim, citation) pairs for THIS chunk."""
+    def _chunk_user_prompt(self, source: PaperSource, chunk: list[_CiteGroup]) -> str:
+        """User prompt: the grounded citations (evidence once + their claims)."""
         items = []
-        for g in chunk:
-            rec = g.stub
+        for grp in chunk:
+            rep = grp.stubs[0]
             items.append(
                 {
-                    "claim_id": rec.claim_id,
-                    "cite_key": rec.cite_key,
-                    "claim": rec.claim.text,
-                    "reference": _reference_text(rec),
-                    "resolved": _resolved_brief(rec.resolved),
-                    "evidence": g.evidence,
+                    "cite_key": grp.cite_key,
+                    "reference": _reference_text(rep),
+                    "resolved": _resolved_brief(rep.resolved),
+                    "evidence": grp.evidence,
+                    "claims": [
+                        {"claim_id": s.claim_id, "claim": s.claim.text} for s in grp.stubs
+                    ],
                 }
             )
         return (
             f"paper_id: {source.paper_id}\n"
-            "Judge each pair below using ONLY its own evidence text. Return the JSON "
-            "array specified in the system prompt, one object per pair, echoing "
-            "claim_id and cite_key:\n" + json.dumps(items, ensure_ascii=False, indent=2)
+            "Judge each citation's claims using ONLY that citation's evidence text. "
+            "Return the JSON array specified in the system prompt — one object per "
+            "citation, one verdict per claim_id:\n"
+            + json.dumps(items, ensure_ascii=False, indent=2)
         )
 
     # ──────────────────────────────────────────────────────────────
     def _apply_verdicts(
-        self, chunk: list[_Ground], text: str, source: PaperSource
+        self, chunk: list[_CiteGroup], text: str, source: PaperSource
     ) -> list[CitationRecord]:
         """Overlay the model's verdicts onto the grounded stubs for this chunk.
 
-        Existence stays the grounded value (never model-set). A ``supports`` verdict
-        with no retrieved evidence is downgraded to ``unverified``. Pairs the model
-        omitted degrade to ``unverified`` rather than vanishing (1:1 with the chunk).
+        The model returns one object per citation
+        (``{cite_key, metadata_issues, claims:[{claim_id, ...}]}``). Existence stays
+        the grounded value (never model-set); a ``supports`` with no retrieved
+        evidence is downgraded to ``unverified``; a claim the model omitted degrades
+        to ``unverified`` (1:1 with the chunk's claim-sites).
         """
-        rows = _parse_rows(text)
-        by_pair: dict[tuple[str, str], dict] = {}
         by_key: dict[str, dict] = {}
-        for row in rows:
-            if not isinstance(row, dict):
-                continue
-            ck = str(row.get("cite_key") or "").strip()
-            if not ck:
-                continue
-            by_key.setdefault(ck, row)
-            cid = str(row.get("claim_id") or "").strip()
-            if cid:
-                by_pair[(cid, ck)] = row
+        for row in _parse_rows(text):
+            if isinstance(row, dict):
+                ck = str(row.get("cite_key") or "").strip()
+                if ck:
+                    by_key.setdefault(ck, row)
 
         out: list[CitationRecord] = []
-        for g in chunk:
-            rec = g.stub
-            row = by_pair.get((rec.claim_id, rec.cite_key)) or by_key.get(rec.cite_key)
-            if row is None:
-                out.append(self._finalize_degraded(g, source, "no model verdict for pair"))
-                continue
-            self._merge_verdict(rec, row, g.has_evidence)
-            if g.has_evidence:
-                rec.evidence = _add_abstract_evidence(rec.evidence, rec.resolved, g.evidence)
-            rec.paper_id = rec.paper_id or source.paper_id
-            rec.model_tier = ModelTier.JUDGE.value
-            rec.severity = derive_severity(
-                Exists(rec.exists), SupportsClaim(rec.supports_claim), Priority(rec.priority)
-            ).value
-            out.append(rec)
+        for grp in chunk:
+            cit = by_key.get(grp.cite_key) or {}
+            extra_meta = _coerce_str_list(cit.get("metadata_issues"))
+            verdicts = {
+                str(cv.get("claim_id") or "").strip(): cv
+                for cv in (cit.get("claims") or [])
+                if isinstance(cv, dict) and str(cv.get("claim_id") or "").strip()
+            }
+            for stub in grp.stubs:
+                cv = verdicts.get(stub.claim_id)
+                if cv is None:
+                    out.append(self._finalize_degraded(stub, source, "no model verdict for claim"))
+                    continue
+                self._merge_verdict(stub, cv, grp.has_evidence)
+                if extra_meta:
+                    stub.metadata_issues = _dedupe_keep_order(
+                        list(stub.metadata_issues) + extra_meta
+                    )
+                if grp.has_evidence:
+                    stub.evidence = _add_abstract_evidence(stub.evidence, stub.resolved, grp.evidence)
+                stub.paper_id = stub.paper_id or source.paper_id
+                stub.model_tier = ModelTier.JUDGE.value
+                stub.severity = derive_severity(
+                    Exists(stub.exists), SupportsClaim(stub.supports_claim), Priority(stub.priority)
+                ).value
+                out.append(stub)
         return out
 
     def _merge_verdict(self, rec: CitationRecord, row: dict, has_evidence: bool) -> None:
@@ -433,18 +479,17 @@ class ClaudeCodeBackend(BaseBackend):
             )
 
     def _finalize_degraded(
-        self, g: _Ground, source: PaperSource, reason: str
+        self, stub: CitationRecord, source: PaperSource, reason: str
     ) -> CitationRecord:
-        """Return the grounded stub as an unverified, error-stamped record."""
-        rec = g.stub
-        rec.paper_id = rec.paper_id or source.paper_id
-        rec.supports_claim = SupportsClaim.UNVERIFIED.value
-        rec.model_tier = ModelTier.JUDGE.value
-        rec.error = (rec.error + "; " if rec.error else "") + reason
-        rec.severity = derive_severity(
-            Exists(rec.exists), SupportsClaim.UNVERIFIED, Priority(rec.priority)
+        """Return a grounded stub as an unverified, error-stamped record."""
+        stub.paper_id = stub.paper_id or source.paper_id
+        stub.supports_claim = SupportsClaim.UNVERIFIED.value
+        stub.model_tier = ModelTier.JUDGE.value
+        stub.error = (stub.error + "; " if stub.error else "") + reason
+        stub.severity = derive_severity(
+            Exists(stub.exists), SupportsClaim.UNVERIFIED, Priority(stub.priority)
         ).value
-        return rec
+        return stub
 
 
 # ───────────────────────────────────────────────────────────────

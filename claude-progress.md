@@ -6,6 +6,58 @@
 
 ---
 
+## 2026-06-18 — session: claude_code cost redesign + grounding recall + citation-centric (yunqiao)
+
+**Goal:** make the `claude_code` backend cheap AND accurate. It ran a single
+accumulating Agent-SDK loop (~710k cache-read / ~$5 / ~14 min on 25 citations,
+relevance judged from memory). Three landed pieces: redesign the loop, fix
+grounding recall, and stop re-doing per-citation work for every claim.
+
+**Done (branch `yunqiao`):**
+- **Redesign → ground-then-judge in concurrent chunks** (`backends/claude_code.py`)
+  — PR #4 (MERGED). Deterministic pre-grounding (`fill_correctness` → exists/
+  metadata; abstract+intro as evidence) + sharded concurrent judging (one
+  `query()`/chunk, no tools, low `max_turns`, shared SKILL.md cache prefix). Model
+  judges relevance/priority only; exists never model-set; `supports` w/o evidence →
+  `unverified`. Settings: `claude_code_chunk_size`/`_concurrency`/
+  `_ground_concurrency`/`_use_intro`/`_max_turns`.
+- **LaTeX tie fix** (`extract/latex.py`) — PR #4: `~` (non-breaking space) → space,
+  was gluing author names ("Mo~Yu"→"MoYu").
+- **Grounding recall** (`grounding/{paper_lookup,resolver}.py`) — PR #5 (MERGED):
+  direct arXiv-id/DOI lookup, title-field arXiv search (`ti:` beats noisy `all:`),
+  HTTP retry/backoff (`_get`); + commented-out `\cite` filter in `extract/latex.py`.
+- **Citation-centric work unit** (`backends/claude_code.py`) — PR #7 (open):
+  group by `cite_key` (`_CiteGroup`) — ground each UNIQUE citation once (resolve
+  166→53), send its evidence ONCE alongside all its claims; relevance stays
+  per-claim (one verdict per claim-site).
+
+**Verified by (live, Opus 4.6 subscription):**
+- 1706.03762, 25 pairs: 822s/$5.24/52 turns → 80s/$0.455/4 turns. Full 108: $1.94.
+- 2505.13447, 25 pairs: `exists=unverified` 10→4 after grounding recall (resolved
+  21/25); song2019score/ict/cfg/ect/peebles all resolve via the title search.
+- 2505.13447, FULL 166 (53 unique), citation-centric: **$3.29→$1.81 (−45%)**, 565s→
+  315s, chunks 21→7, cache-create 199k→65k, cache-read 288k→113k, output ~same
+  (per-claim), 0 errors; resolve rate 54% (the 30% earlier was API throttling).
+- 55 tests pass (offline; excl. PR#6 bot tests needing `discord`). ruff clean.
+  Frozen contract untouched.
+
+**Not done / blocked:**
+- Relevance evidence coverage: a paper resolved via an abstract-less source
+  (Crossref/DBLP) has no L0 text → `supports` abstains. L1 intro helps; L2
+  (semantic full-text) out of scope.
+- Long-tail recall (software/datasets/workshops with no arXiv id in the ref) needs
+  Semantic Scholar / OpenAlex keys (config, not code).
+- `make test`/`make smoke` red from PR#6 `tests/test_bot_*.py` importing `discord`
+  at module top (`.[bot]` extra not installed here) — one-line
+  `pytest.importorskip("discord")` fix, separate PR.
+
+**Next session — start here:**
+1. Merge PR #7.
+2. (optional) `importorskip("discord")` so the gate is green without the bot extra.
+3. (optional) L1 intro coverage / S2 keys to lift the relevance `supports` rate.
+
+---
+
 ## 2026-06-17 — session: batch the relevance judge + fix inline-bib extractor (yunqiao)
 
 **Goal:** kill the per-citation `query()` overhead in the agentic judge (each
