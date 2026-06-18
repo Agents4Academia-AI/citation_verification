@@ -259,7 +259,6 @@ class MultiSourceResolver:
         ref_doi = _extract_doi(reference)
         ref_arxiv = _extract_arxiv_id(reference)
         ref_year = _extract_year(reference)
-        ref_authors = _extract_author_surnames(reference)
 
         # 1) DOI exact match.
         if ref_doi:
@@ -287,7 +286,7 @@ class MultiSourceResolver:
         for score, c in ranked:
             if score < FUZZY_TITLE_GATED_THRESHOLD:
                 break  # ranked descending: no later candidate can clear the bar
-            gate = self._gate(c, ref_authors, ref_year)
+            gate = self._gate(c, reference, ref_year)
             if gate is False:
                 continue  # author/year contradicts THIS candidate; try the next
             # gate is True  -> corroborated, accept at the lower threshold.
@@ -300,28 +299,44 @@ class MultiSourceResolver:
 
     # ── gate + assembly ───────────────────────────────────────
     @staticmethod
-    def _gate(c: Candidate, ref_authors: set[str], ref_year: int | None) -> bool | None:
-        """Tri-state author/year gate for a fuzzy-title match.
+    def _gate(c: Candidate, reference: str, ref_year: int | None) -> bool | None:
+        """Tri-state author/year corroboration for a fuzzy-title match.
+
+        The author check looks for the CANDIDATE's surnames (cleanly parsed from
+        API metadata) in the raw reference text — rather than parsing the
+        reference's own author list, which mangles ``Last, First`` order and middle
+        initials (``Diederik P. Kingma`` -> ``p``) and used to veto perfect title
+        matches. The year guard is unchanged. Together they still block the
+        token-subset false positives that ``_fuzzy_title_score`` can over-score.
 
         Returns:
-            True  — author overlap (>=0.5 of claimed surnames) AND year within ±1
-                    are both corroborated (at least one was checkable and none
-                    contradicted).
-            False — a checkable signal CONTRADICTS (author overlap < 0.5, or
-                    year off by > 1). Hard reject.
-            None  — neither author nor year was checkable (no signal either side).
+            True  — the reference names the cited work's authors (>=2, or >=half),
+                    or the year agrees (±1); and nothing contradicts.
+            False — a checkable signal CONTRADICTS: the candidate has >=2 authors
+                    and NONE appear in the reference (a different work), or the year
+                    is off by > 1. Hard reject.
+            None  — neither author nor year was checkable.
         """
-        checked = False
-        if ref_authors and c.authors:
-            checked = True
-            overlap = len(ref_authors & _author_surnames(c.authors)) / len(ref_authors)
-            if overlap < 0.5:
-                return False
+        cand_surnames = {s for s in _author_surnames(c.authors) if s}
+        ref_tokens = set(_norm_title(reference).split())
+
+        author_state: bool | None = None
+        if cand_surnames and ref_tokens:
+            present = sum(1 for s in cand_surnames if s in ref_tokens)
+            if present >= 2 or (present and present / len(cand_surnames) >= 0.5):
+                author_state = True
+            elif present == 0 and len(cand_surnames) >= 2:
+                author_state = False  # the cited work's authors are absent -> different work
+
+        year_state: bool | None = None
         if ref_year is not None and c.year is not None:
-            checked = True
-            if abs(c.year - ref_year) > 1:
-                return False
-        return True if checked else None
+            year_state = abs(c.year - ref_year) <= 1
+
+        if author_state is False or year_state is False:
+            return False
+        if author_state is True or year_state is True:
+            return True
+        return None
 
     def _to_resolved(self, c: Candidate, method: MatchMethod, score: float) -> Resolved:
         url_valid: bool | None = None
@@ -355,26 +370,6 @@ def _extract_year(reference: str) -> int | None:
     if not matches:
         return None
     return max(int(m) for m in matches)  # references often end with the pub year
-
-
-# Tokens that look like surnames after splitting but are not (drop from the gate).
-_AUTHOR_STOPWORDS = {"et", "al", "others", "and"}
-
-
-def _extract_author_surnames(reference: str) -> set[str]:
-    """Crude surname set from the leading author block of a reference.
-
-    Used only as a gate signal; precision matters less than recall here.
-    """
-    head = re.split(r"[.\d]", reference or "", maxsplit=1)[0]
-    head = re.sub(r"\bet\s+al\b\.?", " ", head, flags=re.IGNORECASE)  # drop "et al."
-    parts = re.split(r",|\band\b|&|;", head)
-    out: set[str] = set()
-    for p in parts:
-        tok = p.strip()
-        if tok and re.search(r"[A-Za-z]{2,}", tok):
-            out.add(_last_name(tok))
-    return {s for s in out if s and s not in _AUTHOR_STOPWORDS}
 
 
 def _dict_to_candidate(d: dict) -> Candidate:

@@ -37,7 +37,9 @@ from __future__ import annotations
 
 import json
 import os
+import random
 import re
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -60,6 +62,68 @@ TIMEOUT = 20
 # turns a spurious "unverified" into a real match.
 _RETRY_CODES = frozenset({429, 500, 502, 503, 504})
 
+
+def _env_float(name: str, default: float) -> float:
+    """Read a float from the environment, falling back to ``default`` on junk."""
+    try:
+        return float(os.environ.get(name, "") or default)
+    except (TypeError, ValueError):
+        return default
+
+
+# Minimum seconds between requests to a host, enforced across ALL threads. arXiv's
+# export API asks for ~1 request / 3 s on a single connection; bursting it (which
+# the concurrent correctness pass does) returns 429 and silently drops real
+# matches. Spacing arXiv here lets the other sources stay fully parallel. Tune the
+# arXiv interval with ARXIV_MIN_INTERVAL_SECONDS (0 disables). Unlisted hosts are
+# never throttled.
+_HOST_MIN_INTERVAL: dict[str, float] = {
+    "export.arxiv.org": _env_float("ARXIV_MIN_INTERVAL_SECONDS", 3.0),
+}
+_RETRY_AFTER_CAP = 30.0  # ignore absurd Retry-After values
+
+# Shared throttle state: the next time each host may be hit. Slots are reserved
+# under the lock (advancing _next_allowed by the interval) and slept on OUTSIDE
+# it, so concurrent callers queue distinct slots instead of serializing on sleep.
+_throttle_lock = threading.Lock()
+_next_allowed: dict[str, float] = {}
+
+
+def _throttle(host: str) -> None:
+    """Block until this thread's reserved slot for ``host`` (no-op if untracked).
+
+    Paces requests to rate-limited hosts (arXiv) across every worker thread so a
+    burst of concurrent lookups cannot trip 429s.
+    """
+    interval = _HOST_MIN_INTERVAL.get(host, 0.0)
+    if interval <= 0:
+        return
+    with _throttle_lock:
+        now = time.monotonic()
+        slot = max(now, _next_allowed.get(host, 0.0))
+        _next_allowed[host] = slot + interval
+    wait = slot - now
+    if wait > 0:
+        time.sleep(wait)
+
+
+def _retry_after_seconds(exc: urllib.error.HTTPError) -> float | None:
+    """Parse a numeric ``Retry-After`` header off a 429/503, capped; else ``None``.
+
+    Honors the server's own backoff hint when present. The HTTP-date form is
+    ignored (we fall back to exponential backoff) to keep this dependency-free.
+    """
+    try:
+        val = exc.headers.get("Retry-After") if exc.headers else None
+    except Exception:  # noqa: BLE001 — header access is best-effort
+        val = None
+    if not val:
+        return None
+    try:
+        return min(max(float(val), 0.0), _RETRY_AFTER_CAP)
+    except (TypeError, ValueError):
+        return None
+
 # Source identifiers used in the returned candidate dicts and in
 # ``schema.Resolved.source`` — keep these in sync with the schema docstring.
 SOURCE_CROSSREF = "crossref"
@@ -73,21 +137,31 @@ SOURCE_OPENALEX = "openalex"
 # Low-level helpers (stdlib only)
 # ───────────────────────────────────────────────────────────────
 def _get(
-    url: str, *, accept: str | None = None, timeout: int = TIMEOUT, retries: int = 2
+    url: str, *, accept: str | None = None, timeout: int = TIMEOUT, retries: int = 4
 ) -> bytes:
-    """HTTP GET via stdlib urllib, with backoff on transient errors.
+    """HTTP GET via stdlib urllib, throttled per host and retried on transient errors.
 
-    Retries a few times on rate-limit / 5xx / timeout — the failure modes a burst
-    of concurrent lookups provokes — then raises so callers still fail soft. A
-    permanent error (e.g. 404) is raised immediately without retrying.
+    Two layers keep a burst of concurrent lookups from turning real matches into
+    spurious "unverified" results:
+
+      - **Throttle:** :func:`_throttle` spaces requests to rate-limited hosts
+        (arXiv) across all threads *before* each attempt, so concurrency never
+        exceeds the host's limit in the first place.
+      - **Retry:** on 429 / 5xx / timeout we back off and retry, honoring a
+        numeric ``Retry-After`` when the server sends one, else exponential
+        backoff with jitter (capped). A permanent error (e.g. 404) raises at once.
+
+    After exhausting retries it raises, so callers still fail soft.
     """
+    host = urllib.parse.urlsplit(url).hostname or ""
     headers = {"User-Agent": USER_AGENT}
     if accept:
         headers["Accept"] = accept
     req = urllib.request.Request(url, headers=headers)
-    delay = 0.5
+    delay = 1.0
     last_exc: Exception = RuntimeError("no attempt made")
     for attempt in range(retries + 1):
+        _throttle(host)  # space rate-limited hosts across threads (also paces retries)
         try:
             with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
                 return resp.read()
@@ -95,12 +169,15 @@ def _get(
             last_exc = exc
             if exc.code not in _RETRY_CODES or attempt == retries:
                 raise
+            wait = _retry_after_seconds(exc)
+            wait = wait if wait is not None else delay + random.uniform(0.0, 0.5)
         except (urllib.error.URLError, TimeoutError) as exc:
             last_exc = exc
             if attempt == retries:
                 raise
-        time.sleep(delay)
-        delay *= 2
+            wait = delay + random.uniform(0.0, 0.5)
+        time.sleep(wait)
+        delay = min(delay * 2, 16.0)
     raise last_exc  # pragma: no cover — loop returns or raises above
 
 

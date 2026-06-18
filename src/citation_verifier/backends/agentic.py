@@ -89,21 +89,22 @@ class AgenticBackend(BaseBackend):
         fill_correctness, fill_relevance, resolver = self._load_pipeline()
 
         with self._timer() as sw:
-            # Pass 1 — correctness (bulk tier), per record.
-            for stub in stubs:
-                rec = self._correctness_one(stub, fill_correctness, resolver, usage, result)
-                result.records.append(rec)
-                if self.cost_ceiling and usage.cost_usd >= self.cost_ceiling:
-                    result.errors.append(
-                        f"cost ceiling ${self.cost_ceiling:.2f} reached after correctness on "
-                        f"{len(result.records)}/{len(stubs)} records; remaining left unverified"
-                    )
-                    result.records.extend(stubs[len(result.records):])
-                    break
+            # Pass 1 — correctness. Dedup identical references so each resolves
+            # ONCE, and resolve the uniques concurrently (grounding is HTTP-bound).
+            self._correctness_pass(stubs, fill_correctness, resolver, usage, result)
 
-            # Pass 2 — relevance over records that resolved (exists != no).
-            eligible = [r for r in result.records if _exists(r) is not Exists.NO]
-            self._relevance_pass(eligible, fill_relevance, resolver, usage, result)
+            # Cost ceiling: skip the expensive judge pass if correctness alone
+            # already crossed it (rare — bulk usage is a cheap estimate).
+            over_ceiling = bool(self.cost_ceiling and usage.cost_usd >= self.cost_ceiling)
+            if over_ceiling:
+                result.errors.append(
+                    f"cost ceiling ${self.cost_ceiling:.2f} reached after correctness; "
+                    "relevance pass skipped (records left unverified)"
+                )
+            else:
+                # Pass 2 — relevance over records that resolved (exists != no).
+                eligible = [r for r in result.records if _exists(r) is not Exists.NO]
+                self._relevance_pass(eligible, fill_relevance, resolver, usage, result)
 
         # Fold a self-accounting LLM judge's REAL token/cost usage into the run.
         self._fold_judge_usage(usage)
@@ -116,33 +117,84 @@ class AgenticBackend(BaseBackend):
         return result
 
     # ──────────────────────────────────────────────────────────────
-    def _correctness_one(
+    def _correctness_pass(
         self,
-        rec: CitationRecord,
+        stubs: list[CitationRecord],
         fill_correctness: Any,
         resolver: Any,
         usage: RunUsage,
         result: VerificationResult,
-    ) -> CitationRecord:
-        """STEP 1 for one record (degrade-not-crash); records bulk-tier usage."""
+    ) -> None:
+        """STEP 1 for all stubs: dedup by reference, resolve uniques concurrently.
+
+        A reference cited in N places resolves ONCE — the heavy part is the
+        grounding HTTP — and the verified fields are copied onto its other records.
+        Unique references are resolved in parallel (I/O-bound). Records are emitted
+        in the original stub order, and bulk-tier usage is recorded per record on
+        THIS thread (``record_tier_usage`` is not thread-safe).
+        """
+        if not stubs:
+            return
+
+        # Group records that share a reference; the first is the representative.
+        groups: dict[str, list[CitationRecord]] = {}
+        for stub in stubs:
+            groups.setdefault(_dedup_key(stub), []).append(stub)
+        reps = [members[0] for members in groups.values()]
+
+        # Resolve each unique reference concurrently (degrade-not-crash per rep).
+        workers = int(
+            _setting(self.settings, "resolver_concurrency", _RESOLVER_CONCURRENCY)
+            or _RESOLVER_CONCURRENCY
+        )
+        _parallel_each(
+            reps, lambda r: self._resolve_one(r, fill_correctness, resolver, result), workers
+        )
+
+        # Copy each representative's verdict onto its siblings (deep copy so each
+        # record owns its evidence/resolved — later stages append per record).
+        for members in groups.values():
+            for sib in members[1:]:
+                _apply_correctness(members[0], sib)
+
+        # Record bulk usage + finalize tier, in original stub order, on this thread.
+        for stub in stubs:
+            self._record_bulk(stub, usage)
+            result.records.append(stub)
+
+    def _resolve_one(
+        self, rec: CitationRecord, fill_correctness: Any, resolver: Any, result: VerificationResult
+    ) -> None:
+        """Run STEP 1 grounding for one record (degrade-not-crash).
+
+        Thread-safe to call from a worker: it mutates only ``rec`` and appends to
+        ``result.errors`` (GIL-atomic); usage is recorded later on the main thread.
+        ``fill_correctness`` mutates ``rec`` in place.
+        """
         try:
-            rec = fill_correctness(rec, resolver=resolver)
+            fill_correctness(rec, resolver=resolver)
         except Exception as exc:  # noqa: BLE001 — degrade-not-crash boundary
             rec.error = f"correctness stage failed: {exc}"
             result.errors.append(f"{rec.cite_key}: {rec.error}")
-        finally:
-            record_tier_usage(
-                usage,
-                ModelTier.BULK,
-                input_tokens=estimate_tokens(rec.cited_as.raw or rec.cite_key),
-                output_tokens=_OUTPUT_TOKEN_FLOOR,
-                tool_calls=1,
-                model=self.bulk_model,
-                pricing=self.pricing,
-            )
-            if rec.model_tier in (ModelTier.NONE.value, ModelTier.NONE):
-                rec.model_tier = ModelTier.BULK.value
-        return rec
+
+    def _record_bulk(self, rec: CitationRecord, usage: RunUsage) -> None:
+        """Record the bulk-tier (correctness) usage slice for one record.
+
+        Correctness makes no LLM call, so this is an estimate placeholder kept for
+        cross-backend accounting parity (the ``claude_code`` backend reports real
+        tokens). Also stamps the bulk tier when nothing else has.
+        """
+        record_tier_usage(
+            usage,
+            ModelTier.BULK,
+            input_tokens=estimate_tokens(rec.cited_as.raw or rec.cite_key),
+            output_tokens=_OUTPUT_TOKEN_FLOOR,
+            tool_calls=1,
+            model=self.bulk_model,
+            pricing=self.pricing,
+        )
+        if rec.model_tier in (ModelTier.NONE.value, ModelTier.NONE):
+            rec.model_tier = ModelTier.BULK.value
 
     # ──────────────────────────────────────────────────────────────
     def _relevance_pass(
@@ -274,6 +326,62 @@ def _supports(rec: CitationRecord) -> SupportsClaim:
 
 def _priority(rec: CitationRecord) -> Priority:
     return Priority(rec.priority)
+
+
+# ───────────────────────────────────────────────────────────────
+# Dedup + concurrency helpers (STEP 1 fan-out)
+# ───────────────────────────────────────────────────────────────
+_RESOLVER_CONCURRENCY = 8  # unique references resolved in parallel (HTTP-bound)
+
+
+def _dedup_key(rec: CitationRecord) -> str:
+    """Reference identity for dedup.
+
+    Records that share this key are the SAME cited work (identical ``cited_as``),
+    so STEP 1 grounding runs once and the result is copied to the rest. The
+    cite_key already names one reference across its claim-sites; fall back to the
+    raw reference string, then the (unique) claim_id so dedup is never lossy.
+    """
+    return rec.cite_key or (rec.cited_as.raw or "").strip().lower() or rec.claim_id
+
+
+def _apply_correctness(rep: CitationRecord, sib: CitationRecord) -> None:
+    """Copy STEP 1 results from a representative onto a sibling sharing its reference.
+
+    Deep-copies the mutable ``evidence`` / ``resolved`` so each record owns its own
+    (the relevance stage appends evidence per record); ``metadata_issues`` is a list
+    of plain strings, so a shallow copy is enough. ``model_tier`` is left for
+    :meth:`AgenticBackend._record_bulk` to stamp uniformly.
+    """
+    sib.exists = rep.exists
+    sib.resolved = rep.resolved.model_copy(deep=True) if rep.resolved is not None else None
+    sib.metadata_issues = list(rep.metadata_issues)
+    sib.evidence = [e.model_copy(deep=True) for e in rep.evidence]
+    if rep.error:
+        sib.error = rep.error
+
+
+def _parallel_each(items: list, fn, max_workers: int) -> None:
+    """Run a side-effecting ``fn`` over ``items`` concurrently (I/O-bound).
+
+    Per-item exceptions are swallowed (``fn`` degrades-not-crashes internally).
+    Degrades to a serial loop for a single item / single worker.
+    """
+    if not items:
+        return
+    workers = max(1, min(int(max_workers), len(items)))
+    if workers == 1:
+        for it in items:
+            fn(it)
+        return
+    from concurrent.futures import ThreadPoolExecutor
+
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        for f in [ex.submit(fn, it) for it in items]:
+            try:
+                f.result()
+            except Exception:  # noqa: BLE001 — degrade-not-crash per item
+                pass
 
 
 __all__ = ["AgenticBackend"]

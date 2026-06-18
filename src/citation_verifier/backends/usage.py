@@ -144,6 +144,31 @@ def usage_from_result_message(msg: Any, model: str, backend: str) -> RunUsage:
     return usage
 
 
+def usage_from_message(msg: Any, model: str, backend: str) -> RunUsage:
+    """Map a direct Anthropic *Messages API* response to a :class:`RunUsage`.
+
+    Distinct from :func:`usage_from_result_message` (which reads an Agent-SDK
+    ``ResultMessage``): the Messages API exposes token counts on ``response.usage``
+    as attributes — ``input_tokens`` / ``output_tokens`` and the prompt-cache
+    fields ``cache_{read,creation}_input_tokens`` — and reports no per-call USD,
+    so we price via :func:`estimate_cost`. ``msg`` may be the response object or
+    its ``.usage``; read via ``getattr`` so this stays import-safe without the
+    ``anthropic`` SDK. ``num_turns`` is 1 (one round-trip, no agent loop).
+    """
+    u = getattr(msg, "usage", None) or msg
+    usage = RunUsage(
+        backend=backend,
+        model=model,
+        input_tokens=int(getattr(u, "input_tokens", 0) or 0),
+        output_tokens=int(getattr(u, "output_tokens", 0) or 0),
+        cache_read_tokens=int(getattr(u, "cache_read_input_tokens", 0) or 0),
+        cache_creation_tokens=int(getattr(u, "cache_creation_input_tokens", 0) or 0),
+        num_turns=1,
+    )
+    usage.cost_usd = estimate_cost(usage, model)
+    return usage
+
+
 def record_tier_usage(
     total: RunUsage,
     tier: ModelTier | str,
@@ -191,5 +216,6 @@ __all__ = [
     "estimate_cost",
     "estimate_tokens",
     "usage_from_result_message",
+    "usage_from_message",
     "record_tier_usage",
 ]
