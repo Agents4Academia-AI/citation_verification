@@ -243,7 +243,7 @@ def run_verification(
     Args:
         source: arXiv id, arXiv URL, or a local PDF path.
         backend: Which backend to run — ``"agentic"`` (staged pipeline) or
-            ``"claude_code"`` (skill-driven Agent-SDK loop).
+            ``"claude_code"`` (skill-driven, grounded, concurrent judge).
         settings: Resolved settings; loaded from env/.env when omitted.
         resume: Reuse a prior ``papers/<id>/report.json`` if present.
         out_dir: Override for the per-paper artifact dir (defaults to the

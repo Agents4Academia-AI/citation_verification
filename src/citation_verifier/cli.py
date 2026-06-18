@@ -36,7 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
         default="agentic",
         choices=["agentic", "claude_code"],
         help="Verification backend: 'agentic' staged pipeline (default) or "
-        "'claude_code' skill-driven Agent-SDK loop.",
+        "'claude_code' skill-driven, grounded, concurrent judge.",
     )
     parser.add_argument(
         "--out",

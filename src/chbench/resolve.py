@@ -5,7 +5,7 @@ ANTI-CIRCULARITY (decisions-phy.md, frozen): the gold oracle must NOT reuse the
 agent's grounding code or its judge model, or correctness P/R would measure
 self-agreement instead of accuracy. Therefore this module:
 
-  * MUST NOT import the agent's grounding package (enforced by a test).
+  * MUST NOT import the agent's grounding package.
   * MUST NOT call the agent's LLM judge.
   * Uses an INDEPENDENT source order — DBLP first (the agent floor is
     Crossref+arXiv) — and records full provenance so the gold's origin is

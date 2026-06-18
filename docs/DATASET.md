@@ -52,7 +52,7 @@ Each stage is a typed, resumable function writing a checkpoint into the data dir
 network; every network body is fail-soft).
 
 ```
-seeds    sources.gptzero_seed_records / openreview_sources   -> seeds.json
+seeds    sources.all_seed_records(fetch)                     -> seeds.json
 harvest  harvest.harvest(seeds)                              -> harvest.json + papers/<id>/
 parse    parse.parse_paper(path)                             -> parsed.json   (.bbl/.bib + \cite sites)
 resolve  resolve.GoldResolver.resolve(ref)                   -> resolved.json (DBLP-first, independent)
@@ -67,8 +67,7 @@ validate validate.validate_dataset(path)                     -> [] if schema-val
 The gold oracle must **not** measure self-agreement with the agent:
 
 - `chbench.resolve` **does not import** `citation_verifier.grounding` and uses an
-  independent source order (DBLP first; the agent floor is Crossref+arXiv). A test
-  asserts the non-import.
+  independent source order (DBLP first; the agent floor is Crossref+arXiv).
 - The gold pipeline performs **no agent-judge LLM call**. Relevance gold comes
   from a human or a *different* model, recorded in `labels.provenance`.
 
@@ -79,7 +78,7 @@ The gold oracle must **not** measure self-agreement with the agent:
   smoke run means *schema-valid + non-trivial correctness signal*. Intended to
   seed `evals/smoke/gold.jsonl`.
 - **Full** (`full.jsonl`): the complete benchmark. Lives **off-repo** under
-  `/scratch/datasets/CitationHallucinationBench/` (default; `$CHBENCH_DATA_DIR`
+  `/scratch/datasets/citation_verification_benchmark/` (default; `$CHBENCH_DATA_DIR`
   overrides). `/scratch` is treated as ephemeral (≈30-day retention) — the
   pipeline is fully resumable from checkpoints and re-runnable to rebuild it, so
   only the small committed smoke split and the code are the durable artifacts.

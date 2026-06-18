@@ -6,7 +6,7 @@ The product runs the SAME output schema through two backends and compares them
 
   - ``"agentic"``     — explicit, deterministic staged pipeline
                         (:class:`~citation_verifier.backends.agentic.AgenticBackend`).
-  - ``"claude_code"`` — skill-driven Claude Agent-SDK loop
+  - ``"claude_code"`` — skill-driven, grounded, concurrent (no-tools) judge
                         (:class:`~citation_verifier.backends.claude_code.ClaudeCodeBackend`).
 
 Public API

@@ -1,7 +1,7 @@
 """
 usage.py — token / cost accounting for the two backends.
 
-The product compares a "claude_code" backend (skill-driven Agent-SDK loop)
+The product compares a "claude_code" backend (skill-driven, grounded, concurrent judge)
 against an "agentic" backend (explicit staged pipeline) on the SAME output
 schema, *including token usage and USD cost* (the Notion "FURTHER DIRECTION").
 This module is the one place that:

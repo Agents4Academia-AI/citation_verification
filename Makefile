@@ -47,7 +47,7 @@ eval: ## Score an agent report dir against gold:  make eval DIR=papers/<id> GOLD
 bench: ## Build CitationHallucinationBench, then eval on the full split
 	$(PY) -m chbench.cli build
 	$(PY) -m chbench.cli validate
-	$(PY) -m evals.run_eval $${CHBENCH_DATA_DIR:-/scratch/datasets/chbench} $${CHBENCH_DATA_DIR:-/scratch/datasets/chbench}/gold.jsonl
+	$(PY) -m evals.run_eval $${CHBENCH_DATA_DIR:-/scratch/datasets/citation_verification_benchmark} $${CHBENCH_DATA_DIR:-/scratch/datasets/citation_verification_benchmark}/gold.jsonl
 
 schema: ## Regenerate the committed JSON Schema and fail if it drifted from schema.py
 	$(PY) -m citation_verifier.schema

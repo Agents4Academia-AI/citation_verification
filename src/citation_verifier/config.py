@@ -72,7 +72,7 @@ class Settings(BaseModel):
     # ── Paths ──
     papers_dir: Path = Field(default=Path("papers"), description="Per-paper artifact dir (source, refs, report.json, run.json).")
     chbench_data_dir: Path = Field(
-        default=Path("/scratch/datasets/chbench"),
+        default=Path("/scratch/datasets/citation_verification_benchmark"),
         description="Full CitationHallucinationBench (off-repo). Smoke gold ships under evals/smoke/.",
     )
 
@@ -156,7 +156,7 @@ def load_settings(env_file: str | Path | None = ".env") -> Settings:
         return os.environ.get(name, file_env.get(name))
 
     papers = _opt(get("PAPERS_DIR")) or "papers"
-    chbench = _opt(get("CHBENCH_DATA_DIR")) or "/scratch/datasets/chbench"
+    chbench = _opt(get("CHBENCH_DATA_DIR")) or "/scratch/datasets/citation_verification_benchmark"
 
     return Settings(
         anthropic_api_key=_opt(get("ANTHROPIC_API_KEY")),

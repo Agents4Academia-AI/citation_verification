@@ -2,7 +2,7 @@
 agentic.py — the "agentic" backend: an explicit, staged pipeline.
 
 This is the deterministic counterpart to the skill-driven ``claude_code``
-backend. Instead of handing the whole job to an Agent-SDK loop, it walks each
+backend. Instead of handing the whole job to the model, it walks each
 record stub through fixed stages in a fixed order:
 
     extract stubs  ->  fill_correctness(record, resolver=...)

@@ -34,7 +34,7 @@ can compare quality *and token/cost*:
 
 | Backend | What it is | File |
 |---|---|---|
-| `claude_code` | Skill-driven Claude Agent-SDK loop (the SKILL.md body drives an agentic `query()` loop). | `backends/claude_code.py` |
+| `claude_code` | Skill-driven, grounded, concurrent judge: existence is grounded deterministically (no LLM), then the SKILL.md method judges (claim, citation) pairs in concurrent, no-tool `query()` chunks. | `backends/claude_code.py` |
 | `agentic` | Explicit, staged pipeline: extract → correctness → relevance. Deterministic control flow. | `backends/agentic.py` |
 
 Per-run token/cost accounting (`RunUsage`, `backends/usage.py`) lets us put the
@@ -92,7 +92,7 @@ only when their `.env` keys are present.
 | `src/citation_verifier/extract/` | LaTeX (primary) + PDF (fallback) extractors → record stubs |
 | `src/citation_verifier/grounding/` | multi-source resolver + `lookup_paper` + URL validation |
 | `src/citation_verifier/stages/` | `fill_correctness` / `fill_relevance` / `fill_comparison` |
-| `src/citation_verifier/backends/` | `claude_code` (Agent-SDK) and `agentic` (staged) + usage accounting |
+| `src/citation_verifier/backends/` | `claude_code` (grounded SKILL.md judge) and `agentic` (staged) + usage accounting |
 | `src/citation_verifier/bot/` | Discord front-end (`cverify-bot`): `/check`, `/help`, `/ping` → [`docs/DISCORD_BOT.md`](docs/DISCORD_BOT.md) |
 | `src/chbench/` | CitationHallucinationBench: harvest → parse → resolve → label → splits |
 | `evals/` | scoring boundary (`run_eval.py`, `metrics.py`); `smoke/gold.jsonl` for CI |

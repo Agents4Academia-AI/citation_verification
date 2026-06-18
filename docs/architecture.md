@@ -27,7 +27,7 @@ through it, how the two backends plug into the same seam, and where to extend.
         │                        │                                      │
    ingest.py                 extract/                              backends/
    arxiv|url|pdf →        latex.py (primary)                  ┌── agentic.py  (staged pipeline)
-   PaperSource           pdf.py   (fallback)                  └── claude_code.py (Agent-SDK loop)
+   PaperSource           pdf.py   (fallback)                  └── claude_code.py (grounded judge)
         │                   → record stubs                          │  both → VerificationResult
         │                                                           │
         └───────────────► grounding/ ◄──── stages/ ────────────────┘
@@ -92,9 +92,12 @@ Both backends satisfy the same `VerificationBackend` Protocol —
   narrowly (fuzzy-match adjudication, relevance judgement). Two-tier model routing
   at pass boundaries: a cheap `bulk` tier for correctness, a strong `judge` tier
   for relevance (`MODEL_BULK` / `MODEL_JUDGE`).
-- **`claude_code`** (`backends/claude_code.py`): a skill-driven Claude Agent-SDK
-  `query()` loop — the SKILL.md body is injected as the system prompt and the
-  model drives its own tool use (`lookup_paper`, web). Lazy SDK import.
+- **`claude_code`** (`backends/claude_code.py`): a skill-driven, grounded,
+  concurrent judge. Each reference is first resolved deterministically via the
+  grounding layer (no LLM) to fix `exists`/`resolved`/`metadata_issues`; the
+  SKILL.md method then judges the (claim, citation) pairs in bounded, concurrent
+  chunks — one structured `query()` per chunk, no tools, sharing the SKILL.md
+  system prompt as a prompt-cache prefix. Lazy SDK import.
 
 `backends/usage.py` records `RunUsage` (tokens, cost, turns, tool calls) per run
 and per `ModelTier`, so the two backends can be compared on **quality and

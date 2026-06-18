@@ -67,7 +67,7 @@ the fuzzy tier against *retrieved* fields. The cited URL is validated.
 
 Same input, same output schema, two backends behind the `VerificationBackend`
 seam: **`agentic`** (explicit staged pipeline) and **`claude_code`**
-(skill-driven Agent-SDK loop, lazy import). `backends/usage.py` records
+(skill-driven, grounded, concurrent judge; lazy SDK import). `backends/usage.py` records
 `RunUsage` per run and per `ModelTier`, so the two are compared on quality **and
 token/cost**.
 

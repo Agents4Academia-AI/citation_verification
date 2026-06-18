@@ -67,7 +67,7 @@ agent's output and the gold in lock-step with the frozen contract.
 It is small on purpose: green smoke means *schema-valid + non-trivial
 correctness-F1*, a fast contract-regression gate for CI. The full
 CitationHallucinationBench lives off-repo under `$CHBENCH_DATA_DIR`
-(`/scratch/datasets/chbench`) and is built by `src/chbench/`.
+(`/scratch/datasets/citation_verification_benchmark`) and is built by `src/chbench/`.
 
 ## Anti-circularity (read before adding gold)
 
@@ -76,7 +76,7 @@ The gold oracle must be **independent of the thing it scores**. Concretely:
 1. **No agent internals.** `evals/` imports only `citation_verifier.schema` (enums
    / record type, lazily) and `jsonschema`. It must **not** import the
    orchestrator, backends, stages, `ingest`, `render`, or the grounding /
-   `paper_lookup` layer. A test (`tests/test_eval.py`) asserts this. If scoring
+   `paper_lookup` layer. If scoring
    reused the agent's own resolver, correctness P/R would measure self-agreement,
    not accuracy.
 2. **No agent judge model.** Gold labels come from human adjudication or a
