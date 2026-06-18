@@ -79,7 +79,7 @@ The gold oracle must **not** measure self-agreement with the agent:
   smoke run means *schema-valid + non-trivial correctness signal*. Intended to
   seed `evals/smoke/gold.jsonl`.
 - **Full** (`full.jsonl`): the complete benchmark. Lives **off-repo** under
-  `/scratch/datasets/CitationHallucinationBench/` (default; `$CHBENCH_DATA_DIR`
+  `/scratch/datasets/citation_verification_benchmark/` (default; `$CHBENCH_DATA_DIR`
   overrides). `/scratch` is treated as ephemeral (≈30-day retention) — the
   pipeline is fully resumable from checkpoints and re-runnable to rebuild it, so
   only the small committed smoke split and the code are the durable artifacts.

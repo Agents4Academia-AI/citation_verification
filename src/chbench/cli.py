@@ -16,7 +16,7 @@ own) so the whole thing can be run incrementally or as ``chbench all``:
     chbench all              # seeds -> ... -> build (offline by default)
 
 Default data dir comes from ``$CHBENCH_DATA_DIR`` or
-``/scratch/datasets/CitationHallucinationBench`` (overridable with ``--data-dir``).
+``/scratch/datasets/citation_verification_benchmark`` (overridable with ``--data-dir``).
 Network is OFF by default (``--fetch`` opts in); everything runs offline so
 ``chbench --help`` and a dry ``chbench all`` work with no network and no SDK.
 """
@@ -35,7 +35,7 @@ from citation_verifier.schema import Exists
 from . import __version__, build_splits, harvest, inject, label, parse, sources, validate
 from .resolve import GoldResolver
 
-DEFAULT_DATA_DIR = "/scratch/datasets/CitationHallucinationBench"
+DEFAULT_DATA_DIR = "/scratch/datasets/citation_verification_benchmark"
 
 
 # ── data-dir + checkpoint helpers ─────────────────────────────────────────────

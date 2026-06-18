@@ -15,9 +15,11 @@ first and do not duplicate them here:
 
 ## Team workflow & deployment
 
-- **Team:** Agents4Academia. The dataset is **shared** at `/scratch/datasets/`
-  (not in the repo). Everyone works on their **own branch** and merges into
-  `main` via PR — never push directly to `main` (see `AGENTS.md`).
+- **Team:** Agents4Academia. The benchmark dataset is **shared** at
+  `/scratch/datasets/citation_verification_benchmark/` (not in the repo; built by
+  `src/chbench/`, `$CHBENCH_DATA_DIR` overrides). Everyone works on their **own
+  branch** and merges into `main` via PR — never push directly to `main` (see
+  `AGENTS.md`).
 - **`main` is the deployment branch.** It must stay deployable at all times: the
   Discord front-end bot (`/check`) is run from `main`. Keep it green
   (`make smoke`) and free of personal/machine-specific config.
