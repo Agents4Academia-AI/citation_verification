@@ -153,7 +153,10 @@ def _parse_ref_entry(body: str) -> CitedAs:
 # In-text marker scanning
 # ───────────────────────────────────────────────────────────────
 # Numeric in-text markers: [12] or [3, 5, 9] or [3-5] -> expanded to ref keys.
-_INTEXT_NUM_RE = re.compile(r"\[(\d{1,3}(?:\s*[-–,]\s*\d{1,3})*)\]")
+# pypdf often emits a space just inside the brackets ("[ 2]", "[ 82–84]"), so we
+# tolerate whitespace after "[" and before "]" — otherwise every spaced marker is
+# silently dropped (it was missing ~half the citations on real two-column PDFs).
+_INTEXT_NUM_RE = re.compile(r"\[\s*(\d{1,3}(?:\s*[-–,]\s*\d{1,3})*)\s*\]")
 _SENT_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Z])")
 
 
@@ -180,7 +183,7 @@ def _sentence_around(text: str, pos: int, window: int = 500) -> tuple[str, tuple
     starts = [0] + [m.end() for m in _SENT_SPLIT.finditer(chunk)]
     ends = [m.start() for m in _SENT_SPLIT.finditer(chunk)] + [len(chunk)]
     s_start, s_end = 0, len(chunk)
-    for st, en in zip(starts, ends):
+    for st, en in zip(starts, ends, strict=False):
         if st <= rel <= en:
             s_start, s_end = st, en
             break
