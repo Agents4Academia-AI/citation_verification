@@ -23,8 +23,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# The Claude Code (Agent-SDK) backend — lazy/optional import.
-llm = ["claude-agent-sdk>=0.1.0"]
+# The LLM backends — all lazy/optional imports. `claude-agent-sdk` drives the
+# Claude Code (subscription) path; `anthropic` drives the direct Messages API
+# path used when an ANTHROPIC_API_KEY is set (cheaper per-token: no agent
+# session overhead, plus prompt caching).
+llm = ["claude-agent-sdk>=0.1.0", "anthropic>=0.40"]
 # Keyed/extra grounding sources (DBLP/S2/OpenAlex/Crossref-polite over HTTP).
 # The stdlib floor (Crossref + arXiv via urllib) needs nothing here.
 sources = ["requests>=2.31"]
@@ -39,6 +42,7 @@ dev = [
 ]
 all = [
   "claude-agent-sdk>=0.1.0",
+  "anthropic>=0.40",
   "requests>=2.31",
   "discord.py>=2.3",
   "pypdf>=5",

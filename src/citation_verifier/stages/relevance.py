@@ -217,7 +217,17 @@ def fill_relevance_batch(
     for rec in records:
         rec.priority = _infer_priority(rec.claim.text)
         abstract = _retrieve_abstract(rec, resolver)
-        items.append({"claim": rec.claim.text, "abstract": abstract, "resolved": rec.resolved})
+        # cite_key + claim_id let a batched judge group claim-sites by citation and
+        # send each citation's evidence once (see backends/relevance_judge.py).
+        items.append(
+            {
+                "cite_key": rec.cite_key,
+                "claim_id": rec.claim_id,
+                "claim": rec.claim.text,
+                "abstract": abstract,
+                "resolved": rec.resolved,
+            }
+        )
 
     try:
         verdicts = judge_batch(items)
@@ -227,7 +237,7 @@ def fill_relevance_batch(
             rec.supports_claim = SupportsClaim.UNVERIFIED
         return records
 
-    for rec, item, verdict in zip(records, items, verdicts):
+    for rec, item, verdict in zip(records, items, verdicts, strict=False):
         if verdict is None:
             rec.supports_claim = SupportsClaim.UNVERIFIED
             continue
