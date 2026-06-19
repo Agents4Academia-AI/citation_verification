@@ -34,6 +34,10 @@ sources = ["requests>=2.31"]
 # The Discord front-end (cverify-bot). pypdf gives the PDF extractor a real
 # text path; discord.py drives the gateway + /check slash command.
 bot = ["discord.py>=2.3", "pypdf>=5"]
+# PDF text extraction. pypdf is the always-available floor; PyMuPDF (fitz) is the
+# column-aware upgrade — fixes two-column reading order + per-glyph spacing that
+# wreck the reference parser. Optional: the extractor falls back to pypdf without it.
+pdf = ["pypdf>=5", "pymupdf>=1.24"]
 dev = [
   "pytest>=8",
   "pytest-cov>=5",
@@ -46,6 +50,7 @@ all = [
   "requests>=2.31",
   "discord.py>=2.3",
   "pypdf>=5",
+  "pymupdf>=1.24",
   "pytest>=8",
   "pytest-cov>=5",
   "ruff>=0.5",

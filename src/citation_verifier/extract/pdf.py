@@ -43,19 +43,54 @@ def extract_pdf_text(pdf_path: str | Path) -> str:
     path = Path(pdf_path)
     if not path.is_file():
         return _read_sidecar(path)
+    # Best available extractor wins, then we normalize. PyMuPDF reads columns and
+    # reading-order far better than pypdf and avoids the per-glyph spacing
+    # artifact; pypdf is the always-installed floor. (MinerU — what PaperArena
+    # uses — is a heavier opt-in tier that can slot in above PyMuPDF.)
+    for extract in (_text_via_pymupdf, _text_via_pypdf):
+        text = extract(path)
+        if text.strip():
+            return _normalize_pdf_text(text)
+    return _read_sidecar(path)
 
+
+def _text_via_pymupdf(path: Path) -> str:
+    """Extract text with PyMuPDF, **column-aware**. ``""`` if unavailable.
+
+    Naive ``sort=True`` interleaves two-column layouts (reference 1 from the left
+    column lands on the same line as reference 23 from the right), which destroys
+    the numbered reference list. Instead we sort each page's text blocks into
+    columns — everything left of the page midpoint top-to-bottom, then the right
+    column — which recovers correct reading order for the common 2-column paper.
+    """
+    try:
+        import fitz  # PyMuPDF — optional; far better than pypdf when present
+    except Exception:
+        return ""
+    try:
+        pages: list[str] = []
+        with fitz.open(str(path)) as doc:
+            for page in doc:
+                blocks = [b for b in page.get_text("blocks") if b[4].strip()]
+                mid = page.rect.width / 2
+                blocks.sort(key=lambda b: (0 if (b[0] + b[2]) / 2 < mid else 1, round(b[1])))
+                pages.append("\n".join(b[4] for b in blocks))
+        return "\n".join(pages).strip()
+    except Exception:
+        return ""
+
+
+def _text_via_pypdf(path: Path) -> str:
+    """Extract text with pypdf (the always-available floor). ``""`` on failure."""
     try:
         from pypdf import PdfReader  # lazy: optional dependency
     except Exception:
-        return _read_sidecar(path)
-
+        return ""
     try:
         reader = PdfReader(str(path))
-        pages = [page.extract_text() or "" for page in reader.pages]
-        text = "\n".join(pages).strip()
-        return _normalize_pdf_text(text) if text else _read_sidecar(path)
+        return "\n".join((page.extract_text() or "") for page in reader.pages).strip()
     except Exception:
-        return _read_sidecar(path)
+        return ""
 
 
 # Line-break hyphenation: "knowl- edge" / "Lan-\nguage" -> "knowledge" / "Language".
