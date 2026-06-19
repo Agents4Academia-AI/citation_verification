@@ -198,20 +198,43 @@ def parse_reference_block(ref_block: str) -> dict[str, CitedAs]:
     return out
 
 
-def _guess_title(body: str) -> str | None:
-    """Best-effort title from a Vancouver-style reference ("Authors. Title. Venue").
+# Connectors that join names in an author list — a name followed by one of these
+# is still inside the authors, not the start of the title.
+_NAME_CONNECTORS = {"and", "&", "et"}
 
-    The first dotted clause is the author list, so the title is the next
-    substantial clause (>=12 chars, not a bare year). Imperfect for styles that
-    period-separate every initial, but recovers the title for the common case so
-    the rendered Citation cell shows ``authors, short title, year``.
+
+def _split_author_title(body: str) -> tuple[list[str], str | None]:
+    """Split a reference's leading ``Authors. Title`` into ``(authors, title)``.
+
+    Style-agnostic — works for ``Radford A, Wu J. Title``, ``M. Jadeja and N.
+    Varia, Title``, and ``Carpenter R. Title``. The title is the first capitalized
+    word that is immediately followed by a *lowercase content word* (not a name
+    connector like "and"): author names are followed by initials, commas, or
+    connectors, whereas a title runs into ordinary lowercase words. Everything
+    before that point is the author list; the title ends at the next sentence
+    boundary or ``In:``/venue marker. Returns ``([], None)`` when no boundary is
+    found (e.g. a reference whose words got merged with no spaces).
     """
     head = re.split(r"(?i)\b(?:arxiv|doi|https?://)", body)[0]
-    for clause in re.split(r"\.\s+", head)[1:]:
-        c = clause.strip(" .,")
-        if len(c) >= 12 and not _YEAR_RE.fullmatch(c):
-            return c
-    return None
+    toks = head.split()
+    cut = None
+    for i in range(1, len(toks) - 1):
+        w = toks[i].strip(".,;:")
+        nxt = toks[i + 1].strip(".,;:()")
+        if (
+            w and w[:1].isupper() and len(w) >= 2
+            and nxt and nxt[:1].islower() and len(nxt) >= 2
+            and nxt.lower() not in _NAME_CONNECTORS
+        ):
+            cut = i
+            break
+    if cut is None:
+        return [], None
+    author_str = " ".join(toks[:cut]).strip(" .,")
+    title_raw = " ".join(toks[cut:])
+    title = re.split(r"\.\s+(?=[A-Z0-9])|\s+In:\s", title_raw, maxsplit=1)[0].strip(" .,")
+    authors = _split_authors(author_str.replace(",", " and ")) if author_str else []
+    return authors, (title or None)
 
 
 def _parse_ref_entry(body: str) -> CitedAs:
@@ -220,15 +243,11 @@ def _parse_ref_entry(body: str) -> CitedAs:
     doi = _DOI_RE.search(body)
     url = _URL_RE.search(body)
     year = _YEAR_RE.search(body)
-    # Authors heuristic: text up to the first year or first period-group.
-    authors: list[str] = []
-    head = body.split(".")[0] if "." in body else ""
-    if head and len(head) < 200 and ("," in head or " and " in head):
-        authors = _split_authors(head.replace(",", " and "))
+    authors, title = _split_author_title(body)
     return CitedAs(
         raw=body,
         authors=authors,
-        title=_guess_title(body),
+        title=title,
         year=_coerce_year(year.group(0)) if year else None,
         venue=None,
         doi=doi.group(0) if doi else None,
