@@ -23,7 +23,7 @@ Import-safe and network-free at import time: the only hard dependency is
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from ..interfaces import Candidate
 from ..schema import MatchMethod, Resolved
@@ -128,6 +128,21 @@ def _likely_title(reference: str) -> str:
     return best
 
 
+def _first_author(reference: str) -> str:
+    """Best-effort first-author SURNAME from the start of a reference.
+
+    Disambiguates a reused title (e.g. "… is all you need") from its namesakes
+    when added to a title-field query. Handles both "Vaswani A, …" (surname-first)
+    and "Ashish Vaswani, …" (given-first) by taking the longest alphabetic token
+    in the first author chunk. Returns ``""`` when nothing usable is found.
+    """
+    head = re.split(r"[.;]", (reference or "").strip(), maxsplit=1)[0]
+    if "," in head and head.index(",") < 40:
+        head = head.split(",", 1)[0]
+    toks = [t for t in re.findall(r"[^\W\d_]{3,}", head[:60]) if t.lower() != "and"]
+    return max(toks, key=len) if toks else ""
+
+
 def _fuzzy_title_score(reference: str, candidate_title: str) -> float:
     """Similarity (0..100) between a candidate *title* and a *reference* string.
 
@@ -184,47 +199,54 @@ class MultiSourceResolver:
 
     # ── source fan-out ────────────────────────────────────────
     def candidates(self, reference: str, /, max_results: int = 4) -> list[Candidate]:
-        """Fetch candidate canonical records from every enabled source.
+        """Union of every tier's candidates (the Protocol's gather method).
 
-        Network + fail-soft: a dead/absent source contributes nothing. The
-        returned list is the union across sources (deduplication and matching
-        happen in :meth:`resolve`).
+        :meth:`resolve` drives the tiers directly with short-circuit-on-match; this
+        returns their union for external callers (e.g. ``lookup_paper``). Fail-soft.
         """
+        return (
+            self._id_candidates(reference)
+            + self._title_candidates(reference, max_results)
+            + self._broad_candidates(reference, max_results)
+        )
+
+    def _id_candidates(self, reference: str) -> list[Candidate]:
+        """Tier 1: direct lookup by the reference's own DOI / arXiv id (no search)."""
         rows: list[Candidate] = []
-        # Direct id lookups first: when the reference carries an arXiv id or DOI,
-        # fetch that exact record so a noisy title-only search can't miss it (the
-        # arXiv `all:` query in particular often fails to surface a known paper).
         ref_arxiv = _extract_arxiv_id(reference)
         if ref_arxiv:
-            try:
-                rows += [_dict_to_candidate(d) for d in paper_lookup.fetch_arxiv_by_id(ref_arxiv)]
-            except Exception:  # noqa: BLE001 — fail soft
-                pass
+            rows += _fetch(paper_lookup.fetch_arxiv_by_id, ref_arxiv)
         ref_doi = _extract_doi(reference)
         if ref_doi:
-            try:
-                rows += [_dict_to_candidate(d) for d in paper_lookup.fetch_crossref_by_doi(ref_doi)]
-            except Exception:  # noqa: BLE001 — fail soft
-                pass
-        # Title-field arXiv search: surfaces a venue-cited preprint (no arXiv id
-        # in the reference) that a noisy `all:` search over the full reference
-        # misses — e.g. "...Generative modeling by estimating gradients...".
-        ref_title = _likely_title(reference)
-        if ref_title:
-            try:
-                rows += [
-                    _dict_to_candidate(d)
-                    for d in paper_lookup.search_arxiv_by_title(ref_title)
-                ]
-            except Exception:  # noqa: BLE001 — fail soft
-                pass
+            rows += _fetch(paper_lookup.fetch_crossref_by_doi, ref_doi)
+        return rows
+
+    def _title_candidates(self, reference: str, max_results: int = 4) -> list[Candidate]:
+        """Tier 2: precise title-field queries — S2 match, arXiv ti:+au:, Crossref.
+
+        Querying the extracted TITLE (+ first author), not the noisy full reference,
+        surfaces the canonical paper where a reused title ("Attention is all you
+        need") otherwise returns same-title namesakes.
+        """
+        title = _likely_title(reference)
+        if not title:
+            return []
+        author = _first_author(reference) or None
+        return (
+            _fetch(paper_lookup.search_semantic_scholar_match, title)
+            + _fetch(paper_lookup.search_arxiv_by_title, title, max_results, author)
+            + _fetch(paper_lookup.search_crossref_by_fields, title, author, max_results)
+        )
+
+    def _broad_candidates(self, reference: str, max_results: int = 4) -> list[Candidate]:
+        """Tier 3: broad full-reference search across every enabled source."""
+        rows: list[Candidate] = []
         for src in self.sources:
             try:
                 raw = self._search_source(src, reference, max_results)
             except Exception:  # noqa: BLE001 — defense in depth; sources fail soft
                 raw = []
-            for d in raw:
-                rows.append(_dict_to_candidate(d))
+            rows += [_dict_to_candidate(d) for d in raw]
         return rows
 
     def _search_source(self, src: str, reference: str, max_results: int) -> list[dict]:
@@ -247,15 +269,44 @@ class MultiSourceResolver:
     def resolve(self, cite_key: str, reference: str, /) -> Resolved | None:
         """Resolve ``reference`` to its best canonical match, or ``None``.
 
-        ``cite_key`` is accepted for provenance/logging symmetry with the
-        Protocol; matching is driven by ``reference`` content. Returns a
-        :class:`Resolved` with ``match_method`` / ``match_score`` / ``url_valid``
-        set, or ``None`` when no source returned anything matchable.
+        Identifier-first cascade that short-circuits on the first tier whose
+        candidates actually MATCH (not merely return rows), so the precise S2
+        title-match resolves most references in a single call and the broad,
+        namesake-prone search only runs when the precise tiers come up empty:
+
+          1. DOI / arXiv id  -> direct lookup, matched by exact id.
+          2. title (+ author) -> S2 ``/paper/search/match``, then arXiv ``ti:+au:``,
+             then Crossref ``query.title`` — each matched immediately; first hit wins.
+          3. broad full-reference search -> fuzzy-title gated by author/year.
+
+        ``cite_key`` is accepted for Protocol symmetry; matching is driven by
+        ``reference`` content.
         """
-        cands = self.candidates(reference)
+        # 1) identifier.
+        match = self._match(reference, self._id_candidates(reference))
+        if match is not None:
+            return match
+
+        # 2) title-field, most-precise-first; stop the moment one matches.
+        title = _likely_title(reference)
+        if title:
+            author = _first_author(reference) or None
+            for fn, args in (
+                (paper_lookup.search_semantic_scholar_match, (title,)),
+                (paper_lookup.search_arxiv_by_title, (title, 4, author)),
+                (paper_lookup.search_crossref_by_fields, (title, author, 4)),
+            ):
+                match = self._match(reference, _fetch(fn, *args))
+                if match is not None:
+                    return match
+
+        # 3) broad fallback.
+        return self._match(reference, self._broad_candidates(reference))
+
+    def _match(self, reference: str, cands: list[Candidate]) -> Resolved | None:
+        """Run the DOI -> arXiv-id -> fuzzy-title-gated cascade over ``cands``."""
         if not cands:
             return None
-
         ref_doi = _extract_doi(reference)
         ref_arxiv = _extract_arxiv_id(reference)
         ref_year = _extract_year(reference)
@@ -386,3 +437,14 @@ def _dict_to_candidate(d: dict) -> Candidate:
         abstract=str(d.get("abstract", "") or ""),
         extra={k: v for k, v in d.items() if k == "type"},
     )
+
+
+def _fetch(fn: Any, *args: Any) -> list[Candidate]:
+    """Call a :mod:`paper_lookup` search/fetch fn, wrap its dicts as Candidates.
+
+    Returns ``[]`` on any error so every source stays fail-soft.
+    """
+    try:
+        return [_dict_to_candidate(d) for d in fn(*args)]
+    except Exception:  # noqa: BLE001 — every source fails soft
+        return []

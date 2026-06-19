@@ -43,19 +43,54 @@ def extract_pdf_text(pdf_path: str | Path) -> str:
     path = Path(pdf_path)
     if not path.is_file():
         return _read_sidecar(path)
+    # Best available extractor wins, then we normalize. PyMuPDF reads columns and
+    # reading-order far better than pypdf and avoids the per-glyph spacing
+    # artifact; pypdf is the always-installed floor. (MinerU — what PaperArena
+    # uses — is a heavier opt-in tier that can slot in above PyMuPDF.)
+    for extract in (_text_via_pymupdf, _text_via_pypdf):
+        text = extract(path)
+        if text.strip():
+            return _normalize_pdf_text(text)
+    return _read_sidecar(path)
 
+
+def _text_via_pymupdf(path: Path) -> str:
+    """Extract text with PyMuPDF, **column-aware**. ``""`` if unavailable.
+
+    Naive ``sort=True`` interleaves two-column layouts (reference 1 from the left
+    column lands on the same line as reference 23 from the right), which destroys
+    the numbered reference list. Instead we sort each page's text blocks into
+    columns — everything left of the page midpoint top-to-bottom, then the right
+    column — which recovers correct reading order for the common 2-column paper.
+    """
+    try:
+        import fitz  # PyMuPDF — optional; far better than pypdf when present
+    except Exception:
+        return ""
+    try:
+        pages: list[str] = []
+        with fitz.open(str(path)) as doc:
+            for page in doc:
+                blocks = [b for b in page.get_text("blocks") if b[4].strip()]
+                mid = page.rect.width / 2
+                blocks.sort(key=lambda b: (0 if (b[0] + b[2]) / 2 < mid else 1, round(b[1])))
+                pages.append("\n".join(b[4] for b in blocks))
+        return "\n".join(pages).strip()
+    except Exception:
+        return ""
+
+
+def _text_via_pypdf(path: Path) -> str:
+    """Extract text with pypdf (the always-available floor). ``""`` on failure."""
     try:
         from pypdf import PdfReader  # lazy: optional dependency
     except Exception:
-        return _read_sidecar(path)
-
+        return ""
     try:
         reader = PdfReader(str(path))
-        pages = [page.extract_text() or "" for page in reader.pages]
-        text = "\n".join(pages).strip()
-        return _normalize_pdf_text(text) if text else _read_sidecar(path)
+        return "\n".join((page.extract_text() or "") for page in reader.pages).strip()
     except Exception:
-        return _read_sidecar(path)
+        return ""
 
 
 # Line-break hyphenation: "knowl- edge" / "Lan-\nguage" -> "knowledge" / "Language".
@@ -163,21 +198,56 @@ def parse_reference_block(ref_block: str) -> dict[str, CitedAs]:
     return out
 
 
+# Connectors that join names in an author list — a name followed by one of these
+# is still inside the authors, not the start of the title.
+_NAME_CONNECTORS = {"and", "&", "et"}
+
+
+def _split_author_title(body: str) -> tuple[list[str], str | None]:
+    """Split a reference's leading ``Authors. Title`` into ``(authors, title)``.
+
+    Style-agnostic — works for ``Radford A, Wu J. Title``, ``M. Jadeja and N.
+    Varia, Title``, and ``Carpenter R. Title``. The title is the first capitalized
+    word that is immediately followed by a *lowercase content word* (not a name
+    connector like "and"): author names are followed by initials, commas, or
+    connectors, whereas a title runs into ordinary lowercase words. Everything
+    before that point is the author list; the title ends at the next sentence
+    boundary or ``In:``/venue marker. Returns ``([], None)`` when no boundary is
+    found (e.g. a reference whose words got merged with no spaces).
+    """
+    head = re.split(r"(?i)\b(?:arxiv|doi|https?://)", body)[0]
+    toks = head.split()
+    cut = None
+    for i in range(1, len(toks) - 1):
+        w = toks[i].strip(".,;:")
+        nxt = toks[i + 1].strip(".,;:()")
+        if (
+            w and w[:1].isupper() and len(w) >= 2
+            and nxt and nxt[:1].islower() and len(nxt) >= 2
+            and nxt.lower() not in _NAME_CONNECTORS
+        ):
+            cut = i
+            break
+    if cut is None:
+        return [], None
+    author_str = " ".join(toks[:cut]).strip(" .,")
+    title_raw = " ".join(toks[cut:])
+    title = re.split(r"\.\s+(?=[A-Z0-9])|\s+In:\s", title_raw, maxsplit=1)[0].strip(" .,")
+    authors = _split_authors(author_str.replace(",", " and ")) if author_str else []
+    return authors, (title or None)
+
+
 def _parse_ref_entry(body: str) -> CitedAs:
     """Best-effort structured fields from a single PDF reference line."""
     arxiv = _ARXIV_RE.search(body)
     doi = _DOI_RE.search(body)
     url = _URL_RE.search(body)
     year = _YEAR_RE.search(body)
-    # Authors heuristic: text up to the first year or first period-group.
-    authors: list[str] = []
-    head = body.split(".")[0] if "." in body else ""
-    if head and len(head) < 200 and ("," in head or " and " in head):
-        authors = _split_authors(head.replace(",", " and "))
+    authors, title = _split_author_title(body)
     return CitedAs(
         raw=body,
         authors=authors,
-        title=None,
+        title=title,
         year=_coerce_year(year.group(0)) if year else None,
         venue=None,
         doi=doi.group(0) if doi else None,

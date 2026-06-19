@@ -15,7 +15,26 @@ from citation_verifier.extract.pdf import (
     _INTEXT_NUM_RE,
     _expand_num_marker,
     _normalize_pdf_text,
+    _split_author_title,
 )
+
+
+def test_split_author_title_is_style_agnostic():
+    # Vancouver "Surname A, Surname B. Title."
+    a, t = _split_author_title(
+        "Radford A, Wu J, Sutskever I. Language models are unsupervised. OpenAI Blog. 2019"
+    )
+    assert a == ["Radford A", "Wu J", "Sutskever I"]
+    assert t == "Language models are unsupervised"
+    # initials-first "M. Jadeja and N. Varia, Title"
+    a, t = _split_author_title("M. Jadeja and N. Varia, Perspectives for evaluating AI. 2017")
+    assert a == ["M. Jadeja", "N. Varia"]
+    assert t == "Perspectives for evaluating AI"
+    # "Surname R. Title. In: Venue"
+    a, t = _split_author_title("Carpenter R. Evaluation of Cleverbot. In: Proceedings")
+    assert a == ["Carpenter R"] and t == "Evaluation of Cleverbot"
+    # space-less merged block -> no boundary, honest ([], None)
+    assert _split_author_title("CarpenterR.Jabberwacky-acasestudy.In:Proceedings") == ([], None)
 
 
 def test_normalize_pdf_text_dehyphenates_and_despaces():
