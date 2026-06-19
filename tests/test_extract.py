@@ -11,6 +11,41 @@ from citation_verifier.extract.latex import (
     _strip_line_comments,
     parse_inline_bib,
 )
+from citation_verifier.extract.pdf import (
+    _INTEXT_NUM_RE,
+    _expand_num_marker,
+    _normalize_pdf_text,
+)
+
+
+def test_normalize_pdf_text_dehyphenates_and_despaces():
+    # 1) line-break hyphenation joined; real compounds preserved
+    norm = _normalize_pdf_text("knowl- edge of state-of-the-art GPT-3 Lan-\nguage models")
+    assert "knowledge" in norm and "Language" in norm
+    assert "state-of-the-art" in norm and "GPT-3" in norm
+    # 2) a char-spaced line collapses (entry number + title become readable);
+    #    a normal line is left untouched.
+    spaced = "1 1 .Y a n gZ ,G a nZ ,W a n gJ . An empirical study of GPT-3"
+    out = _normalize_pdf_text(spaced + "\nThis normal sentence stays intact.")
+    assert "11." in out and "YangZ" in out
+    assert "This normal sentence stays intact." in out
+
+
+def test_pdf_intext_markers_tolerate_pypdf_spacing():
+    # pypdf renders markers with a space just inside the brackets ("[ 2]",
+    # "[ 82–85]"); the scan must still catch them and expand ranges. Missing this
+    # dropped ~half the citations on a real two-column PDF.
+    def keys(s):
+        out = []
+        for m in _INTEXT_NUM_RE.finditer(s):
+            out += _expand_num_marker(m.group(1))
+        return out
+
+    assert keys("models [ 2].") == ["ref-2"]
+    assert keys("GPT models [ 82–85].") == ["ref-82", "ref-83", "ref-84", "ref-85"]
+    assert keys("approaches [13, 14] and [ 40, 41]") == [
+        "ref-13", "ref-14", "ref-40", "ref-41",
+    ]
 
 _SAMPLE = r"""
 \begin{thebibliography}{99}

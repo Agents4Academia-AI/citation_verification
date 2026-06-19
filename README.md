@@ -94,7 +94,7 @@ only when their `.env` keys are present.
 | `src/citation_verifier/stages/` | `fill_correctness` / `fill_relevance` / `fill_comparison` |
 | `src/citation_verifier/backends/` | `claude_code` (grounded SKILL.md judge) and `agentic` (staged) + usage accounting |
 | `src/citation_verifier/bot/` | Discord front-end (`cverify-bot`): `/check`, `/help`, `/ping` → [`docs/DISCORD_BOT.md`](docs/DISCORD_BOT.md) |
-| `src/chbench/` | CitationHallucinationBench: harvest → parse → resolve → label → splits |
+| `src/chbench/` | CitationHallucinationBench: harvest → parse → resolve → label → splits (built dataset → `/scratch/datasets/citation_verification_benchmark/`) |
 | `evals/` | scoring boundary (`run_eval.py`, `metrics.py`); `smoke/gold.jsonl` for CI |
 | `spec/v0.1/record.schema.json` | **[contract]** committed JSON Schema for one record |
 | `config/` | `sources.yaml` (per-source params + dimensions), `venues.yaml` (normalization + harvest scope) |
@@ -110,4 +110,8 @@ only when their `.env` keys are present.
   **[`docs/DECISIONS.md`](docs/DECISIONS.md)**.
 - Four modules → four branches, communicating **only** via the frozen schema on
   disk. Shared/contract files are frozen; changing them needs team sign-off.
+- **Benchmark dataset:** the gold set the agents are scored against
+  (CitationHallucinationBench) lives off-repo at the shared
+  `/scratch/datasets/citation_verification_benchmark/` (`$CHBENCH_DATA_DIR`
+  overrides). Built by `src/chbench/` — see [`docs/DATASET.md`](docs/DATASET.md).
 - Python 3.11+. Secrets only in a gitignored `.env`. PR to `main`.
