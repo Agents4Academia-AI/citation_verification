@@ -1,0 +1,31 @@
+{
+  "paper_id": "s12559-023-10236-2",
+  "backend": "agentic",
+  "usage": {
+    "backend": "agentic",
+    "model": "bulk=claude-haiku-4-5-20251001;judge=claude-opus-4-6",
+    "input_tokens": 8968,
+    "output_tokens": 10005,
+    "total_tokens": 18973,
+    "cache_read_tokens": 0,
+    "cache_creation_tokens": 49068,
+    "cost_usd": 0.705809,
+    "num_turns": 2,
+    "tool_calls": 176,
+    "wall_seconds": 905.9314451259561,
+    "by_tier": {
+      "bulk": {
+        "input_tokens": 8962,
+        "output_tokens": 2816,
+        "cost_usd": 0.023042000000000003
+      },
+      "judge": {
+        "input_tokens": 6,
+        "output_tokens": 7189,
+        "cost_usd": 0.682767
+      }
+    }
+  },
+  "num_records": 176,
+  "num_errors": 0
+}

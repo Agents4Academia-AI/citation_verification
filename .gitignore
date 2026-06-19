@@ -61,6 +61,12 @@ papers/*
 !papers/.gitkeep
 papers/*.pdf
 papers/*/
+# Exception: one full agentic run kept as a tracked demo example (report.md +
+# report.json + run.json). The rest of papers/ stays ignored. Re-include the
+# dir before its files — papers/*/ excludes the parent, and git cannot re-add a
+# file whose parent dir is still excluded.
+!papers/s12559-023-10236-2-agentic/
+!papers/s12559-023-10236-2-agentic/*
 
 # Generated reports written to the repo root (e.g. report-<id>.md/json).
 report-*.md
