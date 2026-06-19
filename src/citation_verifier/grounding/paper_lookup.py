@@ -79,6 +79,9 @@ def _env_float(name: str, default: float) -> float:
 # never throttled.
 _HOST_MIN_INTERVAL: dict[str, float] = {
     "export.arxiv.org": _env_float("ARXIV_MIN_INTERVAL_SECONDS", 3.0),
+    # Semantic Scholar's keyless pool is ~1 req/s shared; pace it so a batch of
+    # title-match lookups doesn't 429. A key (S2_API_KEY) raises the real limit.
+    "api.semanticscholar.org": _env_float("S2_MIN_INTERVAL_SECONDS", 1.1),
 }
 _RETRY_AFTER_CAP = 30.0  # ignore absurd Retry-After values
 
@@ -137,7 +140,12 @@ SOURCE_OPENALEX = "openalex"
 # Low-level helpers (stdlib only)
 # ───────────────────────────────────────────────────────────────
 def _get(
-    url: str, *, accept: str | None = None, timeout: int = TIMEOUT, retries: int = 4
+    url: str,
+    *,
+    accept: str | None = None,
+    timeout: int = TIMEOUT,
+    retries: int = 4,
+    headers: dict[str, str] | None = None,
 ) -> bytes:
     """HTTP GET via stdlib urllib, throttled per host and retried on transient errors.
 
@@ -154,10 +162,12 @@ def _get(
     After exhausting retries it raises, so callers still fail soft.
     """
     host = urllib.parse.urlsplit(url).hostname or ""
-    headers = {"User-Agent": USER_AGENT}
+    hdrs = {"User-Agent": USER_AGENT}
     if accept:
-        headers["Accept"] = accept
-    req = urllib.request.Request(url, headers=headers)
+        hdrs["Accept"] = accept
+    if headers:
+        hdrs.update(headers)
+    req = urllib.request.Request(url, headers=hdrs)
     delay = 1.0
     last_exc: Exception = RuntimeError("no attempt made")
     for attempt in range(retries + 1):
@@ -214,6 +224,30 @@ def search_crossref(query: str, rows: int = 4) -> list[dict]:
     try:
         data = json.loads(_get(f"https://api.crossref.org/works?{params}"))
     except Exception:  # network / rate-limit / parse — fail soft  # noqa: BLE001
+        return []
+    return [_parse_crossref_item(it) for it in data.get("message", {}).get("items", [])]
+
+
+def search_crossref_by_fields(
+    title: str, author: str | None = None, rows: int = 4
+) -> list[dict]:
+    """Search Crossref by the TITLE field (+ optional first-author), not the raw
+    bibliographic string. ``query.title`` + ``query.author`` is far more precise
+    for a published paper than dumping the whole noisy reference into
+    ``query.bibliographic``. Returns ``[]`` for a too-short title or on failure.
+    """
+    title = (title or "").strip()
+    if len(title) < 6:
+        return []
+    p: dict[str, Any] = {"query.title": title, "rows": rows}
+    if author and author.strip():
+        p["query.author"] = author.strip()
+    params = urllib.parse.urlencode(p)
+    if CONTACT_EMAIL:
+        params += "&mailto=" + urllib.parse.quote(CONTACT_EMAIL)
+    try:
+        data = json.loads(_get(f"https://api.crossref.org/works?{params}"))
+    except Exception:  # noqa: BLE001 — fail soft
         return []
     return [_parse_crossref_item(it) for it in data.get("message", {}).get("items", [])]
 
@@ -326,18 +360,23 @@ def fetch_arxiv_by_id(arxiv_id: str) -> list[dict]:
     return [_parse_arxiv_entry(e) for e in root.findall(f"{_ATOM}entry")]
 
 
-def search_arxiv_by_title(title: str, max_results: int = 3) -> list[dict]:
-    """Search arXiv by the TITLE field (``ti:``).
+def search_arxiv_by_title(
+    title: str, max_results: int = 3, author: str | None = None
+) -> list[dict]:
+    """Search arXiv by the TITLE field (``ti:``), optionally ANDed with ``au:``.
 
     A title-field phrase query surfaces a known preprint far more reliably than
     an ``all:`` search over a noisy full reference (author names + venue drown
-    out the title). Best for venue-cited preprints that carry no arXiv id in the
-    reference. Returns ``[]`` for an empty/too-short title or on any failure.
+    out the title). Adding the first-author surname (``au:``) disambiguates a
+    reused title from its namesakes. Best for venue-cited preprints that carry no
+    arXiv id. Returns ``[]`` for an empty/too-short title or on any failure.
     """
     title = (title or "").strip()
     if len(title) < 6:
         return []
     q = "ti:" + urllib.parse.quote(f'"{title}"')
+    if author and author.strip():
+        q += "+AND+au:" + urllib.parse.quote(author.strip())
     url = f"http://export.arxiv.org/api/query?search_query={q}&start=0&max_results={max_results}"
     try:
         root = ET.fromstring(_get(url))
@@ -435,24 +474,52 @@ def search_semantic_scholar(
     except Exception:  # noqa: BLE001
         return []
 
-    out: list[dict] = []
-    for it in data.get("data", []) or []:
-        ext = it.get("externalIds") or {}
-        out.append(
-            {
-                "source": SOURCE_S2,
-                "title": _clean(it.get("title"), limit=400),
-                "authors": [a.get("name", "") for a in (it.get("authors") or [])],
-                "year": _coerce_year(it.get("year")),
-                "venue": it.get("venue", "") or "",
-                "type": "",
-                "doi": (ext.get("DOI") or "").lower(),
-                "arxiv_id": ext.get("ArXiv", "") or "",
-                "url": it.get("url", "") or "",
-                "abstract": _clean(it.get("abstract")),
-            }
-        )
-    return out
+    return [_parse_s2_item(it) for it in (data.get("data") or [])]
+
+
+_S2_FIELDS = "title,authors,year,venue,abstract,externalIds,url"
+
+
+def _parse_s2_item(it: dict) -> dict:
+    """Map one Semantic Scholar paper object to a candidate dict."""
+    ext = it.get("externalIds") or {}
+    return {
+        "source": SOURCE_S2,
+        "title": _clean(it.get("title"), limit=400),
+        "authors": [a.get("name", "") for a in (it.get("authors") or [])],
+        "year": _coerce_year(it.get("year")),
+        "venue": it.get("venue", "") or "",
+        "type": "",
+        "doi": (ext.get("DOI") or "").lower(),
+        "arxiv_id": ext.get("ArXiv", "") or "",
+        "url": it.get("url", "") or "",
+        "abstract": _clean(it.get("abstract")),
+    }
+
+
+def search_semantic_scholar_match(title: str, api_key: str | None = None) -> list[dict]:
+    """Resolve a TITLE to its single best Semantic Scholar match.
+
+    Uses the ``/paper/search/match`` endpoint, which returns the one paper whose
+    title best matches — far more precise than a relevance search (it surfaces the
+    canonical paper where a plain search returns same-title namesakes) and it
+    carries the arXiv id + abstract. **Keyless-capable**: routed through the
+    throttled/retried :func:`_get` (S2's keyless pool is paced + 429-retried); an
+    ``S2_API_KEY`` (argument or env) just raises the rate limit. Returns ``[]`` for
+    a too-short title, a "no match" (404), or any error (fail-soft).
+    """
+    title = (title or "").strip()
+    if len(title) < 6:
+        return []
+    key = api_key or os.environ.get("S2_API_KEY", "")
+    params = urllib.parse.urlencode({"query": title, "fields": _S2_FIELDS})
+    url = f"https://api.semanticscholar.org/graph/v1/paper/search/match?{params}"
+    try:
+        data = json.loads(_get(url, headers={"x-api-key": key} if key else None))
+    except Exception:  # noqa: BLE001 — fail soft (404 "no match" / 429 / parse)
+        return []
+    rows = data.get("data") if isinstance(data, dict) else None
+    return [_parse_s2_item(it) for it in (rows or [])]
 
 
 # ───────────────────────────────────────────────────────────────
