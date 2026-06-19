@@ -22,6 +22,7 @@ No network and no heavy imports at module import time.
 from __future__ import annotations
 
 import re
+import unicodedata
 from pathlib import Path
 
 from ..interfaces import PaperSource
@@ -102,15 +103,18 @@ _SEP_RESPACE_RE = re.compile(r"([.,;])(?=[A-Za-z0-9])")
 
 
 def _normalize_pdf_text(text: str) -> str:
-    """Repair two common pypdf artifacts that wreck downstream grounding.
+    """Repair three common PDF text artifacts that wreck downstream grounding.
 
-    1. **De-hyphenation** — pypdf keeps the hyphen of a word split across a line
+    1. **Ligatures / compatibility glyphs** — NFKC folds ``ﬁ``/``ﬂ`` etc. back to
+       ``fi``/``fl`` so a cited title ("Efﬁcient") matches its canonical form.
+    2. **De-hyphenation** — pypdf keeps the hyphen of a word split across a line
        break ("Lan- guage"), so cited titles never match their canonical form.
-    2. **Character-spacing** — some lines come out with a space between every
+    3. **Character-spacing** — some lines come out with a space between every
        glyph ("1 1 .Y a n gZ ,G a nZ"), which hides the reference number from the
        entry parser and garbles the authors. Collapsed per line (only on lines
        that are clearly char-spaced), so normal prose is untouched.
     """
+    text = unicodedata.normalize("NFKC", text)
     text = _DEHYPHEN_RE.sub("", text)
     return "\n".join(_despace_line(line) for line in text.split("\n"))
 
@@ -229,10 +233,33 @@ def _split_author_title(body: str) -> tuple[list[str], str | None]:
             cut = i
             break
     if cut is None:
-        return [], None
+        # The capital->lowercase rule misses titles opening with proper nouns or
+        # acronyms ("Conversational AI: …", "A survey on GPT-3"); fall back to the
+        # Vancouver "Authors. Title." period boundary.
+        return _vancouver_split(head)
     author_str = " ".join(toks[:cut]).strip(" .,")
     title_raw = " ".join(toks[cut:])
     title = re.split(r"\.\s+(?=[A-Z0-9])|\s+In:\s", title_raw, maxsplit=1)[0].strip(" .,")
+    authors = _split_authors(author_str.replace(",", " and ")) if author_str else []
+    return authors, (title or None)
+
+
+def _vancouver_split(head: str) -> tuple[list[str], str | None]:
+    """Vancouver fallback: split ``Surname I, Surname I. Title`` on the author period.
+
+    In numbered/Vancouver styles the author list ends at the first initials group
+    followed by ``. `` and a capitalized title — a reliable boundary even when the
+    title opens with proper nouns/acronyms. Guards against a leading single initial
+    (given-name-first styles, which the primary heuristic already handles) by
+    requiring the author block to span multiple words. ``([], None)`` if no match.
+    """
+    m = re.match(r"\s*(.+?\b[A-Z]{1,4})\.\s+(?=[A-Z0-9])(.+)", head, re.DOTALL)
+    if not m:
+        return [], None
+    author_str = m.group(1).strip(" .,")
+    if " " not in author_str or len(author_str) < 4:
+        return [], None  # too short to be an author list (e.g. a leading "X.")
+    title = re.split(r"\.\s+(?=[A-Z0-9])|\s+In:\s", m.group(2), maxsplit=1)[0].strip(" .,")
     authors = _split_authors(author_str.replace(",", " and ")) if author_str else []
     return authors, (title or None)
 
@@ -242,7 +269,9 @@ def _parse_ref_entry(body: str) -> CitedAs:
     arxiv = _ARXIV_RE.search(body)
     doi = _DOI_RE.search(body)
     url = _URL_RE.search(body)
-    year = _YEAR_RE.search(body)
+    # Strip the arXiv-id / DOI spans before reading the year, so their digits
+    # (e.g. the 1911 in "arXiv:1911.03688") aren't mistaken for a publication year.
+    year = _YEAR_RE.search(_DOI_RE.sub(" ", _ARXIV_RE.sub(" ", body)))
     authors, title = _split_author_title(body)
     return CitedAs(
         raw=body,

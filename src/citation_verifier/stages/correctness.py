@@ -147,21 +147,34 @@ def _dedupe_evidence(items: list[Evidence]) -> list[Evidence]:
 def _reference_string(record: CitationRecord) -> str:
     """Best available reference text for grounding.
 
-    Starts from the raw bibliography string (or assembled fields), then appends
-    the structured identifiers the extractor already parsed (``arxiv_id`` / ``doi``).
-    The rendered ``.bib`` raw string omits those identifiers, so without this the
-    resolver's DOI/arXiv exact-match cascade can never fire and every id-bearing
-    citation falls back to slow, lower-recall fuzzy-title matching. Including them
-    is still *grounded*: the resolver only accepts an id that a fetched candidate
-    also carries — it never trusts the draft's claim on its own.
+    Prefer the cleanly-parsed structured fields (authors + *quoted* title + venue +
+    year) over the raw bibliography string. PDF extraction can leave running
+    header/footer contamination in ``raw`` (e.g. "Cognitive Computation (2024)
+    16:248") that corrupts the resolver's year/title extraction — so a correct,
+    exact-title candidate gets vetoed by the year gate. The structured fields are
+    clean and carry a single year; quoting the title also lets the resolver's
+    title-field search lock onto the right title (it prefers a quoted segment).
+    Falls back to ``raw`` when no title was parsed.
+
+    Either way the structured identifiers the extractor parsed (``arxiv_id`` /
+    ``doi``) are appended so the resolver's exact-match cascade can fire — still
+    *grounded*: the resolver only accepts an id a fetched candidate also carries.
     """
     c = record.cited_as
-    raw = (c.raw or "").strip()
-    parts = [raw] if raw else [_join(c.authors), c.title or "", str(c.year or ""), c.venue or ""]
-    raw_lower = raw.lower()
-    if c.arxiv_id and "arxiv" not in raw_lower:
+    if c.title:
+        base = " ".join(
+            p for p in (_join(c.authors), f'"{c.title}"', c.venue or "", str(c.year or "")) if p
+        ).strip()
+    else:
+        raw = (c.raw or "").strip()
+        base = raw or " ".join(
+            p for p in (_join(c.authors), str(c.year or ""), c.venue or "") if p
+        ).strip()
+    parts = [base]
+    base_lower = base.lower()
+    if c.arxiv_id and "arxiv" not in base_lower:
         parts.append(f"arXiv:{c.arxiv_id}")
-    if c.doi and c.doi.lower() not in raw_lower:
+    if c.doi and c.doi.lower() not in base_lower:
         parts.append(f"doi:{c.doi}")
     return " ".join(p for p in parts if p).strip()
 

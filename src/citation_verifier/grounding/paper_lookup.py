@@ -82,6 +82,11 @@ _HOST_MIN_INTERVAL: dict[str, float] = {
     # Semantic Scholar's keyless pool is ~1 req/s shared; pace it so a batch of
     # title-match lookups doesn't 429. A key (S2_API_KEY) raises the real limit.
     "api.semanticscholar.org": _env_float("S2_MIN_INTERVAL_SECONDS", 1.1),
+    # DBLP throttles aggressively (429 + temporary IP blocks) under bursts; pace it
+    # so the concurrent correctness pass fetches every CS ref instead of dropping
+    # the tail. OpenAlex's polite pool is lenient (~10 req/s) — a gentle pace only.
+    "dblp.org": _env_float("DBLP_MIN_INTERVAL_SECONDS", 1.5),
+    "api.openalex.org": _env_float("OPENALEX_MIN_INTERVAL_SECONDS", 0.2),
 }
 _RETRY_AFTER_CAP = 30.0  # ignore absurd Retry-After values
 
@@ -110,21 +115,25 @@ def _throttle(host: str) -> None:
         time.sleep(wait)
 
 
-def _retry_after_seconds(exc: urllib.error.HTTPError) -> float | None:
-    """Parse a numeric ``Retry-After`` header off a 429/503, capped; else ``None``.
+def _parse_retry_after(value: str | None) -> float | None:
+    """Numeric ``Retry-After`` (seconds), capped; ``None`` if absent or HTTP-date.
 
-    Honors the server's own backoff hint when present. The HTTP-date form is
-    ignored (we fall back to exponential backoff) to keep this dependency-free.
+    The HTTP-date form is ignored (callers fall back to exponential backoff) to
+    keep this dependency-free. Shared by the urllib and ``requests`` paths.
     """
-    try:
-        val = exc.headers.get("Retry-After") if exc.headers else None
-    except Exception:  # noqa: BLE001 — header access is best-effort
-        val = None
-    if not val:
+    if not value:
         return None
     try:
-        return min(max(float(val), 0.0), _RETRY_AFTER_CAP)
+        return min(max(float(value), 0.0), _RETRY_AFTER_CAP)
     except (TypeError, ValueError):
+        return None
+
+
+def _retry_after_seconds(exc: urllib.error.HTTPError) -> float | None:
+    """``Retry-After`` off a urllib 429/503 response, honoring the server's hint."""
+    try:
+        return _parse_retry_after(exc.headers.get("Retry-After") if exc.headers else None)
+    except Exception:  # noqa: BLE001 — header access is best-effort
         return None
 
 # Source identifiers used in the returned candidate dicts and in
@@ -446,6 +455,48 @@ def _requests_or_none():  # -> module | None
         return None
 
 
+def _requests_get_json(
+    requests: Any,
+    url: str,
+    *,
+    params: dict | None = None,
+    headers: dict | None = None,
+    timeout: int = TIMEOUT,
+    retries: int = 4,
+) -> Any:
+    """``requests.get(url).json()`` with the SAME per-host throttle + ``Retry-After``
+    backoff as :func:`_get`.
+
+    The keyed S2/OpenAlex sources speak HTTP via ``requests`` rather than urllib, so
+    without this they bypass the pacing/retry the stdlib floor gets — and a burst of
+    concurrent lookups 429-drops real matches. Routing them here paces each host
+    (``_HOST_MIN_INTERVAL``) across all worker threads and retries transient 429/5xx
+    honoring the server's ``Retry-After``. Raises on final failure (callers fail soft).
+    """
+    host = urllib.parse.urlsplit(url).hostname or ""
+    delay = 1.0
+    last_exc: Exception = RuntimeError("no attempt made")
+    for attempt in range(retries + 1):
+        _throttle(host)  # pace rate-limited hosts across threads (also paces retries)
+        try:
+            resp = requests.get(url, params=params, headers=headers, timeout=timeout)
+        except Exception as exc:  # noqa: BLE001 — network/connection error
+            last_exc = exc
+            if attempt == retries:
+                raise
+            time.sleep(delay + random.uniform(0.0, 0.5))
+            delay = min(delay * 2, 16.0)
+            continue
+        if resp.status_code in _RETRY_CODES and attempt < retries:
+            wait = _parse_retry_after(resp.headers.get("Retry-After"))
+            time.sleep(wait if wait is not None else delay + random.uniform(0.0, 0.5))
+            delay = min(delay * 2, 16.0)
+            continue
+        resp.raise_for_status()
+        return resp.json()
+    raise last_exc  # pragma: no cover — loop returns or raises above
+
+
 def search_semantic_scholar(
     query: str, max_results: int = 4, api_key: str | None = None
 ) -> list[dict]:
@@ -463,14 +514,12 @@ def search_semantic_scholar(
     url = "https://api.semanticscholar.org/graph/v1/paper/search"
     fields = "title,authors,year,venue,abstract,externalIds,url"
     try:
-        resp = requests.get(
+        data = _requests_get_json(
+            requests,
             url,
             params={"query": query, "limit": max_results, "fields": fields},
             headers={"x-api-key": key, "User-Agent": USER_AGENT},
-            timeout=TIMEOUT,
         )
-        resp.raise_for_status()
-        data = resp.json()
     except Exception:  # noqa: BLE001
         return []
 
@@ -546,14 +595,12 @@ def search_openalex(
     else:
         params["api_key"] = key
     try:
-        resp = requests.get(
+        data = _requests_get_json(
+            requests,
             "https://api.openalex.org/works",
             params=params,
             headers={"User-Agent": USER_AGENT},
-            timeout=TIMEOUT,
         )
-        resp.raise_for_status()
-        data = resp.json()
     except Exception:  # noqa: BLE001
         return []
 
