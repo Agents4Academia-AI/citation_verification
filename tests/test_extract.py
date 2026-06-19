@@ -57,6 +57,20 @@ def test_split_author_title_keeps_et_al_caps_titles_and_diacritics_out_of_author
     assert "Yetistiren B" in _normalize_pdf_text("Yeti \u0327stiren B, Tuzun E. Title")
 
 
+def test_parse_reference_block_drops_trailing_publisher_boilerplate():
+    # The last reference must not absorb the journal's trailing "Publisher's Note \u2026
+    # Springer Nature remains neutral \u2026" boilerplate (observed swallowing ref-89).
+    from citation_verifier.extract.pdf import parse_reference_block
+
+    block = (
+        "89. Deng Y, Lam W. Nonfactoid question answering. IEEE Trans Neural Netw. 2023. "
+        "Publisher's Note Springer Nature remains neutral with regard to jurisdictional claims."
+    )
+    refs = parse_reference_block(block)
+    assert refs["ref-89"].title == "Nonfactoid question answering"
+    assert "Publisher" not in (refs["ref-89"].raw or "")
+
+
 def test_normalize_pdf_text_dehyphenates_and_despaces():
     # 1) line-break hyphenation joined; real compounds preserved
     norm = _normalize_pdf_text("knowl- edge of state-of-the-art GPT-3 Lan-\nguage models")

@@ -182,6 +182,12 @@ _REF_HEADING_RE = re.compile(
 )
 # A numbered reference entry start: "[12] " or "12. " at line start.
 _NUM_ENTRY_RE = re.compile(r"(?m)^\s*(?:\[(\d{1,3})\]|(\d{1,3})\.)\s+")
+# Trailing journal boilerplate that follows the last reference and would otherwise
+# be absorbed into it ("Publisher's Note …", "Springer Nature remains neutral …").
+_REF_TAIL_RE = re.compile(
+    r"\b(?:Publisher['’]?s\s+Note|Springer\s+Nature\s+remains|author\s+self-archiving)",
+    re.IGNORECASE,
+)
 _ARXIV_RE = re.compile(r"arXiv:\s*([0-9]{4}\.[0-9]{4,5}(?:v\d+)?|[a-z\-]+/\d{7})", re.IGNORECASE)
 _DOI_RE = re.compile(r"\b10\.\d{4,9}/[-._;()/:A-Za-z0-9]+", re.IGNORECASE)
 _URL_RE = re.compile(r"https?://[^\s]+")
@@ -210,6 +216,11 @@ def parse_reference_block(ref_block: str) -> dict[str, CitedAs]:
     """
     if not ref_block.strip():
         return {}
+    # Drop trailing publisher/copyright boilerplate so it isn't glued onto the
+    # last reference's body (e.g. ref-89 absorbing the "Publisher's Note …" trailer).
+    tail = _REF_TAIL_RE.search(ref_block)
+    if tail:
+        ref_block = ref_block[: tail.start()]
 
     starts = list(_NUM_ENTRY_RE.finditer(ref_block))
     out: dict[str, CitedAs] = {}
