@@ -56,13 +56,15 @@ def extract_pdf_text(pdf_path: str | Path) -> str:
 
 
 def _text_via_pymupdf(path: Path) -> str:
-    """Extract text with PyMuPDF, **column-aware**. ``""`` if unavailable.
+    """Extract text with PyMuPDF in **reading order**. ``""`` if unavailable.
 
     Naive ``sort=True`` interleaves two-column layouts (reference 1 from the left
     column lands on the same line as reference 23 from the right), which destroys
-    the numbered reference list. Instead we sort each page's text blocks into
-    columns — everything left of the page midpoint top-to-bottom, then the right
-    column — which recovers correct reading order for the common 2-column paper.
+    the numbered reference list. :func:`_reading_order` instead separates full-width
+    spans (title, abstract, single-column section headers, wide tables) from the two
+    body columns and emits ``top spans → left column → right column → bottom spans``
+    — correct order for the common scholarly layout, so claim sentences and the
+    reference list are not scrambled.
     """
     try:
         import fitz  # PyMuPDF — optional; far better than pypdf when present
@@ -73,12 +75,32 @@ def _text_via_pymupdf(path: Path) -> str:
         with fitz.open(str(path)) as doc:
             for page in doc:
                 blocks = [b for b in page.get_text("blocks") if b[4].strip()]
-                mid = page.rect.width / 2
-                blocks.sort(key=lambda b: (0 if (b[0] + b[2]) / 2 < mid else 1, round(b[1])))
-                pages.append("\n".join(b[4] for b in blocks))
+                pages.append("\n".join(_reading_order(blocks, page.rect.width)))
         return "\n".join(pages).strip()
     except Exception:
         return ""
+
+
+def _reading_order(blocks: list, page_width: float) -> list[str]:
+    """Order PyMuPDF text blocks for a 1-or-2-column scholarly page.
+
+    Blocks at least 72% of the page wide are treated as full-width spans (title,
+    abstract, single-column section headers, wide tables) and kept around the two
+    columns: those in the top fifth of the page come first, the rest last. The
+    remaining blocks are split into left/right columns by their horizontal centre
+    and read top-to-bottom. Returns the block texts in reading order.
+    """
+    if not blocks:
+        return []
+    mid = page_width / 2
+    full = [b for b in blocks if (b[2] - b[0]) >= 0.72 * page_width]
+    cols = [b for b in blocks if (b[2] - b[0]) < 0.72 * page_width]
+    left = sorted([b for b in cols if (b[0] + b[2]) / 2 < mid], key=lambda b: (round(b[1]), b[0]))
+    right = sorted([b for b in cols if (b[0] + b[2]) / 2 >= mid], key=lambda b: (round(b[1]), b[0]))
+    max_y = max(b[3] for b in blocks)
+    top_full = sorted([b for b in full if b[3] < 0.22 * max_y], key=lambda b: (round(b[1]), b[0]))
+    bottom_full = sorted([b for b in full if b[3] >= 0.22 * max_y], key=lambda b: (round(b[1]), b[0]))
+    return [b[4] for b in (top_full + left + right + bottom_full)]
 
 
 def _text_via_pypdf(path: Path) -> str:
@@ -98,23 +120,30 @@ def _text_via_pypdf(path: Path) -> str:
 # Only join when a lowercase letter follows (real compounds like "state-of-the-art"
 # or "GPT-3" have no following lowercase-after-whitespace and are preserved).
 _DEHYPHEN_RE = re.compile(r"(?<=[A-Za-z])-\s+(?=[a-z])")
+# A combining diacritic stranded after whitespace ("Yeti ̧stiren" for the surname
+# "Yetiştiren") — a despacing/encoding artifact that splits a name and blocks the
+# author parser. Drop the stray space+mark so the two halves of the name rejoin.
+_ORPHAN_COMBINING_RE = re.compile(r"\s+[\u0300-\u036f]+")
 # Restore a space after a separator inside a de-spaced run ("11.YangZ" -> "11. YangZ").
 _SEP_RESPACE_RE = re.compile(r"([.,;])(?=[A-Za-z0-9])")
 
 
 def _normalize_pdf_text(text: str) -> str:
-    """Repair three common PDF text artifacts that wreck downstream grounding.
+    """Repair four common PDF text artifacts that wreck downstream grounding.
 
     1. **Ligatures / compatibility glyphs** — NFKC folds ``ﬁ``/``ﬂ`` etc. back to
        ``fi``/``fl`` so a cited title ("Efﬁcient") matches its canonical form.
-    2. **De-hyphenation** — pypdf keeps the hyphen of a word split across a line
+    2. **Orphaned combining marks** — a diacritic stranded after a space
+       ("Yeti ̧stiren") is dropped so the split surname rejoins ("Yetistiren").
+    3. **De-hyphenation** — pypdf keeps the hyphen of a word split across a line
        break ("Lan- guage"), so cited titles never match their canonical form.
-    3. **Character-spacing** — some lines come out with a space between every
+    4. **Character-spacing** — some lines come out with a space between every
        glyph ("1 1 .Y a n gZ ,G a nZ"), which hides the reference number from the
        entry parser and garbles the authors. Collapsed per line (only on lines
        that are clearly char-spaced), so normal prose is untouched.
     """
     text = unicodedata.normalize("NFKC", text)
+    text = _ORPHAN_COMBINING_RE.sub("", text)
     text = _DEHYPHEN_RE.sub("", text)
     return "\n".join(_despace_line(line) for line in text.split("\n"))
 
@@ -153,6 +182,12 @@ _REF_HEADING_RE = re.compile(
 )
 # A numbered reference entry start: "[12] " or "12. " at line start.
 _NUM_ENTRY_RE = re.compile(r"(?m)^\s*(?:\[(\d{1,3})\]|(\d{1,3})\.)\s+")
+# Trailing journal boilerplate that follows the last reference and would otherwise
+# be absorbed into it ("Publisher's Note …", "Springer Nature remains neutral …").
+_REF_TAIL_RE = re.compile(
+    r"\b(?:Publisher['’]?s\s+Note|Springer\s+Nature\s+remains|author\s+self-archiving)",
+    re.IGNORECASE,
+)
 _ARXIV_RE = re.compile(r"arXiv:\s*([0-9]{4}\.[0-9]{4,5}(?:v\d+)?|[a-z\-]+/\d{7})", re.IGNORECASE)
 _DOI_RE = re.compile(r"\b10\.\d{4,9}/[-._;()/:A-Za-z0-9]+", re.IGNORECASE)
 _URL_RE = re.compile(r"https?://[^\s]+")
@@ -181,6 +216,11 @@ def parse_reference_block(ref_block: str) -> dict[str, CitedAs]:
     """
     if not ref_block.strip():
         return {}
+    # Drop trailing publisher/copyright boilerplate so it isn't glued onto the
+    # last reference's body (e.g. ref-89 absorbing the "Publisher's Note …" trailer).
+    tail = _REF_TAIL_RE.search(ref_block)
+    if tail:
+        ref_block = ref_block[: tail.start()]
 
     starts = list(_NUM_ENTRY_RE.finditer(ref_block))
     out: dict[str, CitedAs] = {}
@@ -206,20 +246,56 @@ def parse_reference_block(ref_block: str) -> dict[str, CitedAs]:
 # is still inside the authors, not the start of the title.
 _NAME_CONNECTORS = {"and", "&", "et"}
 
+# One surname-initial author, e.g. "Ferrucci DA", "Chu-Carroll J", "Hakkani-Tur D"
+# (a single, optionally hyphenated, surname followed by 1–4 capital initials).
+_VANCOUVER_AUTHOR = r"[A-Z][A-Za-z'’-]+\s+(?:[A-Z]\.?-?){1,4}"
+# A full surname-initial author run: authors joined by commas/"and", optionally
+# closed by "et al", then the period that opens the title. "et al" is captured here
+# (and stripped below) so it never leaks into a name, and the title-opening period
+# is left for the boundary — so a title may legitimately start with a capital
+# ("Building Watson:") or acronym ("GPT-3.5-turbo:") without leaking into authors.
+_AUTHOR_RUN_RE = re.compile(
+    rf"^\s*(?P<authors>{_VANCOUVER_AUTHOR}"
+    rf"(?:\s*(?:,|\band\b)\s*{_VANCOUVER_AUTHOR})*(?:\s*,?\s+et\s+al)?)"
+    r"\.\s+(?=[A-Z0-9])(?P<rest>.+)",
+    re.DOTALL,
+)
+_ETAL_TAIL_RE = re.compile(r"\s*,?\s+et\s+al\.?$", re.IGNORECASE)
+
+
+def _title_from(title_raw: str) -> str | None:
+    """Trim a reference title at the next sentence boundary or ``In:`` venue marker."""
+    title = re.split(r"\.\s+(?=[A-Z0-9])|\s+In:\s", title_raw, maxsplit=1)[0].strip(" .,")
+    return title or None
+
 
 def _split_author_title(body: str) -> tuple[list[str], str | None]:
     """Split a reference's leading ``Authors. Title`` into ``(authors, title)``.
 
-    Style-agnostic — works for ``Radford A, Wu J. Title``, ``M. Jadeja and N.
-    Varia, Title``, and ``Carpenter R. Title``. The title is the first capitalized
-    word that is immediately followed by a *lowercase content word* (not a name
-    connector like "and"): author names are followed by initials, commas, or
-    connectors, whereas a title runs into ordinary lowercase words. Everything
-    before that point is the author list; the title ends at the next sentence
-    boundary or ``In:``/venue marker. Returns ``([], None)`` when no boundary is
-    found (e.g. a reference whose words got merged with no spaces).
+    Three tiers, most-reliable first:
+
+    1. **Surname-initial author run** — the dominant numbered/Vancouver style
+       (``Surname I, Surname I … [et al]. Title``). Cutting at the period that
+       closes the run keeps "et al" out of the names and lets a title open with a
+       capital or acronym (``Building Watson:``, ``GPT-3.5-turbo:``) without the
+       title leaking into the author list.
+    2. **Capital→lowercase boundary** for given-name-first / lowercase-opening
+       titles (``M. Jadeja and N. Varia, Perspectives …``): the title is the first
+       capitalized word immediately followed by a lowercase content word (not a
+       name connector like "and").
+    3. **Vancouver period fallback** ([[_vancouver_split]]) for the remainder.
+
+    Returns ``([], None)`` when no boundary is found (e.g. a reference whose words
+    got merged with no spaces).
     """
     head = re.split(r"(?i)\b(?:arxiv|doi|https?://)", body)[0]
+
+    m = _AUTHOR_RUN_RE.match(head)
+    if m:
+        author_str = _ETAL_TAIL_RE.sub("", m.group("authors")).strip(" .,")
+        if " " in author_str:  # a genuine list, not a stray leading initial
+            return _split_authors(author_str.replace(",", " and ")), _title_from(m.group("rest"))
+
     toks = head.split()
     cut = None
     for i in range(1, len(toks) - 1):
@@ -233,15 +309,10 @@ def _split_author_title(body: str) -> tuple[list[str], str | None]:
             cut = i
             break
     if cut is None:
-        # The capital->lowercase rule misses titles opening with proper nouns or
-        # acronyms ("Conversational AI: …", "A survey on GPT-3"); fall back to the
-        # Vancouver "Authors. Title." period boundary.
         return _vancouver_split(head)
     author_str = " ".join(toks[:cut]).strip(" .,")
-    title_raw = " ".join(toks[cut:])
-    title = re.split(r"\.\s+(?=[A-Z0-9])|\s+In:\s", title_raw, maxsplit=1)[0].strip(" .,")
     authors = _split_authors(author_str.replace(",", " and ")) if author_str else []
-    return authors, (title or None)
+    return authors, _title_from(" ".join(toks[cut:]))
 
 
 def _vancouver_split(head: str) -> tuple[list[str], str | None]:

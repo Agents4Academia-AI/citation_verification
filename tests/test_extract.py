@@ -37,6 +37,40 @@ def test_split_author_title_is_style_agnostic():
     assert _split_author_title("CarpenterR.Jabberwacky-acasestudy.In:Proceedings") == ([], None)
 
 
+def test_split_author_title_keeps_et_al_caps_titles_and_diacritics_out_of_authors():
+    # "et al" must never leak into a name, and the title may open with a capital
+    # phrase ("Building Watson:") without leaking into the author list.
+    a, t = _split_author_title(
+        "Ferrucci DA, Lally A, Prager JM et al. Building Watson: An overview of "
+        "the DeepQA project. In: AI Magazine. 2010"
+    )
+    assert a == ["Ferrucci DA", "Lally A", "Prager JM"]
+    assert t == "Building Watson: An overview of the DeepQA project"
+    # trailing "et al" on the last author
+    a, _ = _split_author_title("Ram A, Khandelwal P et al. Alexa prize: a challenge. In: ICASSP. 2018")
+    assert a == ["Ram A", "Khandelwal P"]
+    # a title opening with an acronym right after the author period — authors stay clean
+    a, _ = _split_author_title("Adetokunbo I, Henderson P, Hudson J. GPT-3.5-turbo: Larger models. 2021")
+    assert a == ["Adetokunbo I", "Henderson P", "Hudson J"]
+    # an orphaned combining mark from despacing is healed by the normalizer so the
+    # split surname rejoins (real PDF artifact "Yetiştiren" -> "Yeti" + space + U+0327)
+    assert "Yetistiren B" in _normalize_pdf_text("Yeti \u0327stiren B, Tuzun E. Title")
+
+
+def test_parse_reference_block_drops_trailing_publisher_boilerplate():
+    # The last reference must not absorb the journal's trailing "Publisher's Note \u2026
+    # Springer Nature remains neutral \u2026" boilerplate (observed swallowing ref-89).
+    from citation_verifier.extract.pdf import parse_reference_block
+
+    block = (
+        "89. Deng Y, Lam W. Nonfactoid question answering. IEEE Trans Neural Netw. 2023. "
+        "Publisher's Note Springer Nature remains neutral with regard to jurisdictional claims."
+    )
+    refs = parse_reference_block(block)
+    assert refs["ref-89"].title == "Nonfactoid question answering"
+    assert "Publisher" not in (refs["ref-89"].raw or "")
+
+
 def test_normalize_pdf_text_dehyphenates_and_despaces():
     # 1) line-break hyphenation joined; real compounds preserved
     norm = _normalize_pdf_text("knowl- edge of state-of-the-art GPT-3 Lan-\nguage models")
