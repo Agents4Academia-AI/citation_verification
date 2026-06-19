@@ -198,6 +198,22 @@ def parse_reference_block(ref_block: str) -> dict[str, CitedAs]:
     return out
 
 
+def _guess_title(body: str) -> str | None:
+    """Best-effort title from a Vancouver-style reference ("Authors. Title. Venue").
+
+    The first dotted clause is the author list, so the title is the next
+    substantial clause (>=12 chars, not a bare year). Imperfect for styles that
+    period-separate every initial, but recovers the title for the common case so
+    the rendered Citation cell shows ``authors, short title, year``.
+    """
+    head = re.split(r"(?i)\b(?:arxiv|doi|https?://)", body)[0]
+    for clause in re.split(r"\.\s+", head)[1:]:
+        c = clause.strip(" .,")
+        if len(c) >= 12 and not _YEAR_RE.fullmatch(c):
+            return c
+    return None
+
+
 def _parse_ref_entry(body: str) -> CitedAs:
     """Best-effort structured fields from a single PDF reference line."""
     arxiv = _ARXIV_RE.search(body)
@@ -212,7 +228,7 @@ def _parse_ref_entry(body: str) -> CitedAs:
     return CitedAs(
         raw=body,
         authors=authors,
-        title=None,
+        title=_guess_title(body),
         year=_coerce_year(year.group(0)) if year else None,
         venue=None,
         doi=doi.group(0) if doi else None,
