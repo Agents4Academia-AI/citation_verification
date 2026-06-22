@@ -512,7 +512,7 @@ def search_semantic_scholar(
         return []
 
     url = "https://api.semanticscholar.org/graph/v1/paper/search"
-    fields = "title,authors,year,venue,abstract,externalIds,url"
+    fields = "title,authors,year,venue,abstract,externalIds,url,tldr"
     try:
         data = _requests_get_json(
             requests,
@@ -526,12 +526,14 @@ def search_semantic_scholar(
     return [_parse_s2_item(it) for it in (data.get("data") or [])]
 
 
-_S2_FIELDS = "title,authors,year,venue,abstract,externalIds,url"
+_S2_FIELDS = "title,authors,year,venue,abstract,externalIds,url,tldr"
 
 
 def _parse_s2_item(it: dict) -> dict:
     """Map one Semantic Scholar paper object to a candidate dict."""
     ext = it.get("externalIds") or {}
+    tldr = it.get("tldr") or {}
+    tldr_text = tldr.get("text") if isinstance(tldr, dict) else tldr
     return {
         "source": SOURCE_S2,
         "title": _clean(it.get("title"), limit=400),
@@ -543,6 +545,11 @@ def _parse_s2_item(it: dict) -> dict:
         "arxiv_id": ext.get("ArXiv", "") or "",
         "url": it.get("url", "") or "",
         "abstract": _clean(it.get("abstract")),
+        # S2's one-line AI summary. The API exposes it even when the licensed full
+        # abstract is withheld (e.g. the GPT-2/GPT-1 tech reports), so it is the
+        # only API-accessible evidence for those — carried through Candidate.extra
+        # and used ONLY as a last-resort abstract fallback (see _abstract_top_up).
+        "tldr": _clean(tldr_text),
     }
 
 
