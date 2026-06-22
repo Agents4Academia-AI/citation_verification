@@ -44,15 +44,45 @@ def extract_pdf_text(pdf_path: str | Path) -> str:
     path = Path(pdf_path)
     if not path.is_file():
         return _read_sidecar(path)
-    # Best available extractor wins, then we normalize. PyMuPDF reads columns and
-    # reading-order far better than pypdf and avoids the per-glyph spacing
-    # artifact; pypdf is the always-installed floor. (MinerU — what PaperArena
-    # uses — is a heavier opt-in tier that can slot in above PyMuPDF.)
-    for extract in (_text_via_pymupdf, _text_via_pypdf):
-        text = extract(path)
-        if text.strip():
-            return _normalize_pdf_text(text)
+    # Try every available extractor and keep the text that parses the reference
+    # list best. PyMuPDF often has better two-column reading order, while pypdf
+    # sometimes preserves intra-reference spaces better; either can be the right
+    # answer for a given PDF.
+    candidates = [
+        _normalize_pdf_text(text)
+        for text in (_text_via_pymupdf(path), _text_via_pypdf(path))
+        if text.strip()
+    ]
+    if candidates:
+        return max(candidates, key=_reference_parse_score)
     return _read_sidecar(path)
+
+
+def _reference_parse_score(text: str) -> tuple[int, int, int, int, int]:
+    """Score extracted text by how well its reference list parses.
+
+    This is deliberately source-agnostic: it rewards complete structured fields
+    and penalizes glued-token artifacts, so the extractor choice generalizes
+    beyond a single paper.
+    """
+    _, ref_block = split_body_and_references(text)
+    refs = parse_reference_block(ref_block)
+    complete = sum(bool(c.authors and c.title and c.year) for c in refs.values())
+    has_id = sum(bool(c.doi or c.arxiv_id or c.url) for c in refs.values())
+    title_chars = sum(len(c.title or "") for c in refs.values())
+    glued_penalty = sum(_glued_reference_penalty(c.raw or "") for c in refs.values())
+    return (complete, len(refs), has_id, -glued_penalty, title_chars)
+
+
+def _glued_reference_penalty(raw: str) -> int:
+    """Count no-space author/title artifacts common in PDF extraction."""
+    return len(
+        re.findall(
+            r"(?:[A-Za-zÀ-ÖØ-öø-ÿ]{3,}[A-Z]{1,4}[,.](?=[A-ZÀ-ÖØ-Þ])|"
+            r"[A-Za-zÀ-ÖØ-öø-ÿ][A-Z]\.[A-ZÀ-ÖØ-Þ])",
+            raw or "",
+        )
+    )
 
 
 def _text_via_pymupdf(path: Path) -> str:
@@ -126,6 +156,9 @@ _DEHYPHEN_RE = re.compile(r"(?<=[A-Za-z])-\s+(?=[a-z])")
 _ORPHAN_COMBINING_RE = re.compile(r"\s+[\u0300-\u036f]+")
 # Restore a space after a separator inside a de-spaced run ("11.YangZ" -> "11. YangZ").
 _SEP_RESPACE_RE = re.compile(r"([.,;])(?=[A-Za-z0-9])")
+_GLUED_AUTHOR_INITIAL_RE = re.compile(
+    r"\b([A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÖØ-öø-ÿ]{1,})([A-Z]{1,3})(?=\b|[,.;])"
+)
 
 
 def _normalize_pdf_text(text: str) -> str:
@@ -160,7 +193,20 @@ def _despace_line(line: str) -> str:
     # (",G", ".Y") keep the ratio below 0.5, so gate on an absolute floor too.
     if len(toks) < 6 or singles < 5 or singles / len(toks) < 0.4:
         return line
-    return _SEP_RESPACE_RE.sub(r"\1 ", "".join(line.split(" "))).strip()
+    joined = _SEP_RESPACE_RE.sub(r"\1 ", "".join(line.split(" "))).strip()
+    return _split_glued_author_initials(joined)
+
+
+def _split_glued_author_initials(line: str) -> str:
+    """Repair char-spaced author tokens like ``YangZ`` -> ``Yang Z``."""
+    m = re.match(r"^(\s*(?:\d+\.\s*|\[\d+\]\s*)?)([^.]{1,260})(\.\s*)(.*)$", line)
+    if not m:
+        return line
+    prefix, authors, sep, rest = m.groups()
+    if "," not in authors and len(authors.split()) > 3:
+        return line
+    authors = _GLUED_AUTHOR_INITIAL_RE.sub(r"\1 \2", authors)
+    return f"{prefix}{authors}{sep}{rest}"
 
 
 def _read_sidecar(pdf_path: Path) -> str:
@@ -230,16 +276,22 @@ def parse_reference_block(ref_block: str) -> dict[str, CitedAs]:
             num = m.group(1) or m.group(2)
             body_start = m.end()
             body_end = starts[i + 1].start() if i + 1 < len(starts) else len(ref_block)
-            body = re.sub(r"\s+", " ", ref_block[body_start:body_end]).strip()
+            body = _clean_ref_body(ref_block[body_start:body_end])
             if body:
                 out[f"ref-{num}"] = _parse_ref_entry(body)
     else:
         # Unnumbered: split on blank lines, sequential keys.
         chunks = [c.strip() for c in re.split(r"\n\s*\n", ref_block) if c.strip()]
         for i, chunk in enumerate(chunks, start=1):
-            body = re.sub(r"\s+", " ", chunk)
+            body = _clean_ref_body(chunk)
             out[f"ref-{i}"] = _parse_ref_entry(body)
     return out
+
+
+def _clean_ref_body(text: str) -> str:
+    """Normalize whitespace inside one reference entry without changing content."""
+    text = re.sub(r"\s+", " ", text or "").strip()
+    return re.sub(r"\s+([,.;:])", r"\1", text)
 
 
 # Connectors that join names in an author list — a name followed by one of these
@@ -310,9 +362,19 @@ def _split_author_title(body: str) -> tuple[list[str], str | None]:
             break
     if cut is None:
         return _vancouver_split(head)
+    cut = _rewind_colon_title_prefix(toks, cut)
     author_str = " ".join(toks[:cut]).strip(" .,")
     authors = _split_authors(author_str.replace(",", " and ")) if author_str else []
     return authors, _title_from(" ".join(toks[cut:]))
+
+
+def _rewind_colon_title_prefix(toks: list[str], cut: int) -> int:
+    """Move a fallback title boundary back over ``Acronym:`` title prefixes."""
+    if cut >= 2 and toks[cut - 1].strip(".,;").endswith(":"):
+        prev = toks[cut - 2].strip(".,;:")
+        if prev and prev[:1].isupper() and not re.fullmatch(r"[A-Z]\.?", prev):
+            return cut - 2
+    return cut
 
 
 def _vancouver_split(head: str) -> tuple[list[str], str | None]:
