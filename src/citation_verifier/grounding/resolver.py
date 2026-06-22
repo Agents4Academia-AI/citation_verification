@@ -196,6 +196,17 @@ _DBLP_HINTS = {
 }
 
 
+# Vancouver-style author token: a (possibly hyphenated/multi-word) surname
+# followed by 1-4 given-name initials with no separating periods — "Colby KM",
+# "Gebru T", "Wardrip-Fruin N", "Lee J-S". Used to spot 2-author lists that the
+# comma / spaced-single-initial heuristics below miss.
+_VANCOUVER_AUTHOR_RE = re.compile(
+    r"[A-Z][A-Za-z'’.\-]+"               # surname (hyphen/apostrophe ok)
+    r"(?:\s+[A-Z][A-Za-z'’.\-]+){0,2}"   # optional extra surname words (Van Der Berg)
+    r"\s+[A-Z](?:[-.]?[A-Z]){0,3}\.?"    # 1-4 initials: KM, FD, T, J-S, J.S.
+)
+
+
 def _looks_like_author_clause(clause: str) -> bool:
     """Return True for the leading author-list segment of a reference."""
     c = clause.strip()
@@ -205,7 +216,20 @@ def _looks_like_author_clause(clause: str) -> bool:
         return True
     # Surname-initial lists often have several one-letter initials before title.
     initials = re.findall(r"\b[A-Z]\b", c)
-    return len(initials) >= 3 and len(c.split()) <= 14
+    if len(initials) >= 3 and len(c.split()) <= 14:
+        return True
+    # Vancouver lists with exactly 2 authors have only ONE comma and multi-letter
+    # initial blocks ("Colby KM, Hilf FD"), so the checks above miss them and the
+    # author string gets mistaken for the title. Flag the clause when EVERY
+    # comma-separated segment is a short surname+initials group. Require >=2
+    # segments so a lone Title-Case title ending in an acronym ("… VQA") is never
+    # misread as an author list.
+    segs = [s.strip() for s in c.split(",") if s.strip()]
+    if len(segs) >= 2 and all(
+        len(s.split()) <= 4 and _VANCOUVER_AUTHOR_RE.fullmatch(s) for s in segs
+    ):
+        return True
+    return False
 
 
 def _looks_like_venue_clause(clause: str) -> bool:
@@ -674,14 +698,35 @@ class MultiSourceResolver:
         )
 
     def _abstract_top_up(self, c: Candidate) -> str:
-        """Exact-id abstract enrichment for matches from sources with sparse abstracts."""
-        if not c.doi:
-            return ""
-        oa_key = getattr(self.settings, "openalex_api_key", None)
-        for extra in self._fetch(paper_lookup.fetch_openalex_by_doi, c.doi, oa_key):
-            if extra.abstract and extra.doi.lower() == c.doi.lower():
-                return extra.abstract
-        return ""
+        """Fill a missing abstract for an already-resolved candidate.
+
+        Only ever reached when ``c.abstract`` is empty (see :meth:`_to_resolved`),
+        so it never re-fetches an abstract we already have. The cascade prefers the
+        paper's real text over an AI summary, and locates the paper by **exact
+        identifier only** — never a title search, which would surface a near-namesake
+        (e.g. GPT-2's "… Unsupervised Multitask Learners" vs the 2024
+        "Instruction Pre-Training: … Supervised Multitask Learners") and feed the
+        wrong paper's evidence to the judge:
+
+          1. arXiv id  -> the real arXiv abstract, by exact id.
+          2. DOI       -> OpenAlex's reconstructed abstract, by exact DOI.
+          3. S2 tldr   -> S2's one-line AI summary (carried in ``extra``), the only
+                          API-accessible evidence for off-arXiv reports whose
+                          licensed abstract S2 withholds (GPT-2 / GPT-1).
+        """
+        # 1) arXiv abstract by exact id (S2's ArXiv externalId or a cited arXiv id).
+        if c.arxiv_id:
+            for cand in self._fetch(paper_lookup.fetch_arxiv_by_id, c.arxiv_id):
+                if cand.abstract:
+                    return cand.abstract
+        # 2) OpenAlex abstract by exact DOI.
+        if c.doi:
+            oa_key = getattr(self.settings, "openalex_api_key", None)
+            for cand in self._fetch(paper_lookup.fetch_openalex_by_doi, c.doi, oa_key):
+                if cand.abstract and cand.doi.lower() == c.doi.lower():
+                    return cand.abstract
+        # 3) S2 tldr fallback — already fetched during resolution, so no extra call.
+        return (c.extra or {}).get("tldr") or ""
 
 
 # ───────────────────────────────────────────────────────────────
@@ -710,7 +755,7 @@ def _dict_to_candidate(d: dict) -> Candidate:
         arxiv_id=str(d.get("arxiv_id", "") or ""),
         url=str(d.get("url", "") or ""),
         abstract=str(d.get("abstract", "") or ""),
-        extra={k: v for k, v in d.items() if k == "type"},
+        extra={k: v for k, v in d.items() if k == "type" or (k == "tldr" and v)},
     )
 
 

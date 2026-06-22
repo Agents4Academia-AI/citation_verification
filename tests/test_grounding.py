@@ -6,9 +6,16 @@ direct id/title fetchers (so the keyless floor stays green without network).
 
 from __future__ import annotations
 
-from citation_verifier.interfaces import Candidate
 from citation_verifier.grounding import paper_lookup
-from citation_verifier.grounding.resolver import MultiSourceResolver, _likely_title, _likely_titles
+from citation_verifier.grounding.resolver import (
+    MultiSourceResolver,
+    _dict_to_candidate,
+    _likely_title,
+    _likely_titles,
+    _looks_like_author_clause,
+)
+from citation_verifier.interfaces import Candidate
+from citation_verifier.schema import MatchMethod
 
 
 def test_likely_title_prefers_quoted_segment():
@@ -41,6 +48,48 @@ def test_likely_title_skips_in_venue_clause():
         "In: Advances in Neural Information Processing Systems. 2020. p. 1877–901."
     )
     assert _likely_title(ref) == "Language models are few-shot learners"
+
+
+def test_likely_title_skips_two_author_vancouver_list():
+    # 2-author Vancouver lists have ONE comma + multi-letter initial blocks
+    # ("Colby KM, Hilf FD"); these used to be returned verbatim as the title,
+    # so the title search queried author names and found nothing.
+    assert (
+        _likely_title(
+            "Colby KM, Hilf FD. Parry, the paranoid computer program. "
+            "In: Proceedings of the National Computer Conference. 1972."
+        )
+        == "Parry, the paranoid computer program"
+    )
+    assert (
+        _likely_title(
+            "Bender EM, Gebru T. The dangers of stylized language: Emergent "
+            "biases and sociotechnical remedies. In: Proceedings of FAccT. 2021."
+        )
+        == "The dangers of stylized language: Emergent biases and sociotechnical remedies"
+    )
+    # Hyphenated surname must still be recognized as an author token.
+    assert (
+        _likely_title(
+            "Wardrip-Fruin N, Mateas M. The role of non-player characters in "
+            "game-based learning for k-12 education. In: Proceedings. 2020."
+        )
+        == "The role of non-player characters in game-based learning for k-12 education"
+    )
+
+
+def test_looks_like_author_clause_guards_titlecase_acronym():
+    # 2-author Vancouver lists are flagged...
+    assert _looks_like_author_clause("Colby KM, Hilf FD")
+    assert _looks_like_author_clause("Bender EM, Gebru T")
+    assert _looks_like_author_clause("Wardrip-Fruin N, Mateas M")
+    # ...but real titles (lowercase function words, or a lone Title-Case phrase
+    # ending in an acronym) must NOT be mistaken for an author list.
+    assert not _looks_like_author_clause("Fast, accurate object detection")
+    assert not _looks_like_author_clause("Attention is all you need")
+    assert not _looks_like_author_clause(
+        "An empirical study of GPT-3 for few-shot knowledge-based VQA"
+    )
 
 
 def test_likely_title_empty_when_nothing_titlelike():
@@ -191,3 +240,58 @@ def test_uncorroborated_near_title_does_not_match():
     )
 
     assert MultiSourceResolver(validate_urls=False)._match(ref, [candidate]) is None
+
+
+# ── evidence enrichment: missing-abstract top-up cascade ─────────────
+def test_s2_parse_and_candidate_carry_tldr():
+    # S2 returns the tldr object even when the licensed abstract is null; it must
+    # survive parsing and the dict->Candidate adaptation (via Candidate.extra).
+    item = {
+        "title": "Language Models are Unsupervised Multitask Learners",
+        "abstract": None,  # S2 withholds the licensed full abstract for GPT-2
+        "tldr": {"model": "tldr@v2", "text": "LMs learn tasks without explicit supervision."},
+        "externalIds": {"CorpusId": 1},  # no ArXiv id -> off-arXiv tech report
+    }
+    d = paper_lookup._parse_s2_item(item)
+    assert d["abstract"] == "" and d["arxiv_id"] == ""
+    assert d["tldr"] == "LMs learn tasks without explicit supervision."
+    c = _dict_to_candidate(d)
+    assert c.abstract == "" and c.extra.get("tldr") == "LMs learn tasks without explicit supervision."
+
+
+def test_abstract_top_up_falls_back_to_tldr(monkeypatch):
+    # GPT-2 case: no abstract, no arXiv id, no DOI -> tldr is the only evidence,
+    # and it must NOT trigger any network lookup.
+    def boom(*a, **k):
+        raise AssertionError("no id present -> must not hit the network")
+
+    monkeypatch.setattr(paper_lookup, "fetch_arxiv_by_id", boom)
+    monkeypatch.setattr(paper_lookup, "fetch_openalex_by_doi", boom)
+    c = Candidate(source="s2", title="GPT-2", extra={"tldr": "one-line summary"})
+    assert MultiSourceResolver(validate_urls=False)._abstract_top_up(c) == "one-line summary"
+
+
+def test_abstract_top_up_prefers_real_arxiv_abstract_over_tldr(monkeypatch):
+    # Real text beats the AI summary; located by exact id, never a title search.
+    monkeypatch.setattr(
+        paper_lookup,
+        "fetch_arxiv_by_id",
+        lambda aid: [{"source": "arxiv", "title": "X", "abstract": "REAL ARXIV ABSTRACT"}],
+    )
+    c = Candidate(source="s2", title="X", arxiv_id="2207.12598", extra={"tldr": "summary"})
+    assert MultiSourceResolver(validate_urls=False)._abstract_top_up(c) == "REAL ARXIV ABSTRACT"
+
+
+def test_present_abstract_short_circuits_all_top_up(monkeypatch):
+    # "abstract 已经有就不查": a present abstract must skip every enrichment call.
+    def boom(*a, **k):
+        raise AssertionError("must not fetch when the abstract is already present")
+
+    monkeypatch.setattr(paper_lookup, "fetch_arxiv_by_id", boom)
+    monkeypatch.setattr(paper_lookup, "fetch_openalex_by_doi", boom)
+    c = Candidate(
+        source="s2", title="t", arxiv_id="2207.12598", doi="10.1/x",
+        abstract="REAL ABSTRACT", extra={"tldr": "summary"},
+    )
+    res = MultiSourceResolver(validate_urls=False)._to_resolved(c, MatchMethod.FUZZY_TITLE, 0.9)
+    assert res.abstract == "REAL ABSTRACT"
