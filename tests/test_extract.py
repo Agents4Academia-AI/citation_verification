@@ -15,6 +15,7 @@ from citation_verifier.extract.pdf import (
     _INTEXT_NUM_RE,
     _expand_num_marker,
     _normalize_pdf_text,
+    _reference_parse_score,
     _split_author_title,
 )
 
@@ -33,6 +34,13 @@ def test_split_author_title_is_style_agnostic():
     # "Surname R. Title. In: Venue"
     a, t = _split_author_title("Carpenter R. Evaluation of Cleverbot. In: Proceedings")
     assert a == ["Carpenter R"] and t == "Evaluation of Cleverbot"
+    # A title prefix ending in an acronym + colon must not leak into authors.
+    a, t = _split_author_title(
+        "Kulkarni P, Mahabaleshwarkar A, Gadgil K, Conversational AI: "
+        "An overview of methodologies. In: ICCUBEA. 2019."
+    )
+    assert a == ["Kulkarni P", "Mahabaleshwarkar A", "Gadgil K"]
+    assert t == "Conversational AI: An overview of methodologies"
     # space-less merged block -> no boundary, honest ([], None)
     assert _split_author_title("CarpenterR.Jabberwacky-acasestudy.In:Proceedings") == ([], None)
 
@@ -71,6 +79,22 @@ def test_parse_reference_block_drops_trailing_publisher_boilerplate():
     assert "Publisher" not in (refs["ref-89"].raw or "")
 
 
+def test_parse_reference_block_normalizes_spaces_before_punctuation():
+    from citation_verifier.extract.pdf import parse_reference_block
+
+    block = (
+        "67. Cao Y , Lin Z, Xu X, Tang Y , Zhang Z, Zhang Y . Clinic: "
+        "A secure peer-to-peer healthcare blockchain framework with privacy "
+        "preservation. IEEE Trans Ind Inf. 2020;16(6):4384–95."
+    )
+    ref = parse_reference_block(block)["ref-67"]
+    assert ref.authors == ["Cao Y", "Lin Z", "Xu X", "Tang Y", "Zhang Z", "Zhang Y"]
+    assert ref.title == (
+        "Clinic: A secure peer-to-peer healthcare blockchain framework with privacy preservation"
+    )
+    assert ref.year == 2020
+
+
 def test_normalize_pdf_text_dehyphenates_and_despaces():
     # 1) line-break hyphenation joined; real compounds preserved
     norm = _normalize_pdf_text("knowl- edge of state-of-the-art GPT-3 Lan-\nguage models")
@@ -80,8 +104,27 @@ def test_normalize_pdf_text_dehyphenates_and_despaces():
     #    a normal line is left untouched.
     spaced = "1 1 .Y a n gZ ,G a nZ ,W a n gJ . An empirical study of GPT-3"
     out = _normalize_pdf_text(spaced + "\nThis normal sentence stays intact.")
-    assert "11." in out and "YangZ" in out
+    assert "11." in out and "Yang Z, Gan Z, Wang J" in out
     assert "This normal sentence stays intact." in out
+
+
+def test_reference_parse_score_prefers_complete_fields_over_glued_text():
+    good = (
+        "\nReferences\n"
+        "15. Bird JJ, Ekárt A, Faria DR. Chatbot interaction with artificial "
+        "intelligence: human data augmentation. J Ambient Intell Humaniz Comput. "
+        "2023;14(4):3129–44.\n"
+        "23. Carpenter R. Jabberwacky-a case study of intractable ambiguity. "
+        "In: Proceedings. ACM; 1999. p. 124–30.\n"
+    )
+    glued = (
+        "\nReferences\n"
+        "15. BirdJJ,EkártA,FariaDR.Chatbotinteractionwithartificialintelligence: "
+        "human data augmentation. J Ambient Intell Humaniz Comput. 2023;14(4):3129–44.\n"
+        "23. CarpenterR.Jabberwacky-acasestudyofintractableambiguity.In: "
+        "Proceedings. ACM; 1999. p. 124–30.\n"
+    )
+    assert _reference_parse_score(good) > _reference_parse_score(glued)
 
 
 def test_pdf_intext_markers_tolerate_pypdf_spacing():
