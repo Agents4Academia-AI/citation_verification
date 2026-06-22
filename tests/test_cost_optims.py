@@ -20,7 +20,7 @@ from types import SimpleNamespace
 from citation_verifier.backends import relevance_judge as rj
 from citation_verifier.backends.agentic import AgenticBackend
 from citation_verifier.backends.usage import usage_from_message
-from citation_verifier.grounding.resolver import MultiSourceResolver
+from citation_verifier.grounding.resolver import MultiSourceResolver, _title_tokens_contradict
 from citation_verifier.interfaces import Candidate, RunUsage, VerificationResult
 from citation_verifier.schema import (
     CitationRecord,
@@ -143,7 +143,8 @@ def test_gate_corroborates_messy_reference_authors():
     """The author gate must corroborate the CANDIDATE's surnames against the raw
     reference (robust to 'Last, First' order + initials), not parse the reference's
     author list — which used to mangle e.g. 'Diederik P. Kingma' to {'p'} and veto a
-    perfect title match. Year still hard-rejects subset false positives."""
+    perfect title match. Hard rejection of subset false positives belongs to the
+    title-token gate, not noisy author/year metadata."""
     g = MultiSourceResolver._gate
 
     # exact-title candidate; reference uses 'First M. Last' with a middle initial
@@ -166,13 +167,16 @@ def test_gate_corroborates_messy_reference_authors():
     ref_di = "Luo, Weijian, Hu, Tianyang, Li, Zhenguo. Diff-Instruct: A Universal Approach. 2024"
     assert g(di, ref_di, 2024) is True
 
-    # year off by > 1 => hard reject (guards token-subset false positives)
+    # Token-subset false positives are blocked before author/year corroboration.
     spurious = Candidate(source="crossref", title="Mathieu, Emile", authors=["Emile Mathieu"], year=2001)
-    assert g(spurious, "Fjelde, Mathieu, Dutordoir. Introduction to Flow Matching. 2024", 2024) is False
+    ref_spurious = "Fjelde, Mathieu, Dutordoir. Introduction to Flow Matching. 2024"
+    assert _title_tokens_contradict(ref_spurious, spurious.title)
+    assert MultiSourceResolver(validate_urls=False)._match(ref_spurious, [spurious]) is None
 
-    # a different work — none of its (>=2) authors named in the reference => reject
+    # A different work with no meaningful title similarity is still rejected.
     other = Candidate(source="crossref", title="X", authors=["Alice Smith", "Bob Jones"], year=2024)
-    assert g(other, "Carol White, Dan Black. High-Resolution Image Synthesis. 2024", 2024) is False
+    ref_other = "Carol White, Dan Black. High-Resolution Image Synthesis. 2024"
+    assert MultiSourceResolver(validate_urls=False)._match(ref_other, [other]) is None
 
 
 def test_usage_from_message_maps_and_prices():

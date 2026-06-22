@@ -571,6 +571,38 @@ def search_semantic_scholar_match(title: str, api_key: str | None = None) -> lis
     return [_parse_s2_item(it) for it in (rows or [])]
 
 
+def fetch_semantic_scholar_by_doi(doi: str, api_key: str | None = None) -> list[dict]:
+    """Fetch Semantic Scholar metadata by exact DOI, including abstract if known."""
+    return _fetch_semantic_scholar_by_id("DOI", doi, api_key)
+
+
+def fetch_semantic_scholar_by_arxiv(arxiv_id: str, api_key: str | None = None) -> list[dict]:
+    """Fetch Semantic Scholar metadata by exact arXiv id, including abstract if known."""
+    stem = (arxiv_id or "").split("v")[0].strip()
+    return _fetch_semantic_scholar_by_id("ARXIV", stem, api_key)
+
+
+def _fetch_semantic_scholar_by_id(
+    prefix: str, value: str, api_key: str | None = None
+) -> list[dict]:
+    """Exact-id S2 lookup for abstract-bearing identifier matches."""
+    value = (value or "").strip()
+    if not value:
+        return []
+    key = api_key or os.environ.get("S2_API_KEY", "")
+    paper_id = f"{prefix}:{value}"
+    url = (
+        "https://api.semanticscholar.org/graph/v1/paper/"
+        f"{urllib.parse.quote(paper_id, safe=':/')}?"
+        f"{urllib.parse.urlencode({'fields': _S2_FIELDS})}"
+    )
+    try:
+        data = json.loads(_get(url, headers={"x-api-key": key} if key else None))
+    except Exception:  # noqa: BLE001 — fail soft (404 / 429 / parse)
+        return []
+    return [_parse_s2_item(data)] if isinstance(data, dict) and data.get("title") else []
+
+
 # ───────────────────────────────────────────────────────────────
 # OpenAlex (OPTIONAL — needs `requests`; key optional but used as mailto/key)
 # ───────────────────────────────────────────────────────────────
@@ -604,34 +636,55 @@ def search_openalex(
     except Exception:  # noqa: BLE001
         return []
 
-    out: list[dict] = []
-    for it in data.get("results", []) or []:
-        authorships = it.get("authorships") or []
-        authors = [
-            ((a.get("author") or {}).get("display_name") or "") for a in authorships
-        ]
-        ids = it.get("ids") or {}
-        doi = (it.get("doi") or "").replace("https://doi.org/", "").lower()
-        arxiv_id = ""
-        for v in ids.values():
-            if isinstance(v, str) and "arxiv" in v.lower():
-                arxiv_id = v.rstrip("/").rsplit("/", 1)[-1]
-                break
-        out.append(
-            {
-                "source": SOURCE_OPENALEX,
-                "title": _clean(it.get("display_name"), limit=400),
-                "authors": authors,
-                "year": _coerce_year(it.get("publication_year")),
-                "venue": (((it.get("primary_location") or {}).get("source") or {}).get("display_name") or ""),
-                "type": it.get("type", "") or "",
-                "doi": doi,
-                "arxiv_id": arxiv_id,
-                "url": it.get("doi") or (it.get("primary_location") or {}).get("landing_page_url") or "",
-                "abstract": _reconstruct_openalex_abstract(it.get("abstract_inverted_index")),
-            }
-        )
-    return out
+    return [_parse_openalex_item(it) for it in data.get("results", []) or []]
+
+
+def fetch_openalex_by_doi(doi: str, api_key: str | None = None) -> list[dict]:
+    """Fetch the exact OpenAlex work for a DOI; useful as an abstract top-up."""
+    doi = (doi or "").strip().lower()
+    if not doi:
+        return []
+    params: dict[str, Any] = {}
+    key = api_key or os.environ.get("OPENALEX_API_KEY", "") or CONTACT_EMAIL
+    if key:
+        if "@" in str(key):
+            params["mailto"] = key
+        else:
+            params["api_key"] = key
+    suffix = urllib.parse.quote(f"https://doi.org/{doi}", safe="")
+    url = f"https://api.openalex.org/works/{suffix}"
+    if params:
+        url += "?" + urllib.parse.urlencode(params)
+    try:
+        data = json.loads(_get(url))
+    except Exception:  # noqa: BLE001 — fail soft (404 / rate-limit / parse)
+        return []
+    return [_parse_openalex_item(data)] if isinstance(data, dict) and data.get("display_name") else []
+
+
+def _parse_openalex_item(it: dict) -> dict:
+    """Map one OpenAlex work object to a candidate dict."""
+    authorships = it.get("authorships") or []
+    authors = [((a.get("author") or {}).get("display_name") or "") for a in authorships]
+    ids = it.get("ids") or {}
+    doi = (it.get("doi") or "").replace("https://doi.org/", "").lower()
+    arxiv_id = ""
+    for v in ids.values():
+        if isinstance(v, str) and "arxiv" in v.lower():
+            arxiv_id = v.rstrip("/").rsplit("/", 1)[-1]
+            break
+    return {
+        "source": SOURCE_OPENALEX,
+        "title": _clean(it.get("display_name"), limit=400),
+        "authors": authors,
+        "year": _coerce_year(it.get("publication_year")),
+        "venue": (((it.get("primary_location") or {}).get("source") or {}).get("display_name") or ""),
+        "type": it.get("type", "") or "",
+        "doi": doi,
+        "arxiv_id": arxiv_id,
+        "url": it.get("doi") or (it.get("primary_location") or {}).get("landing_page_url") or "",
+        "abstract": _reconstruct_openalex_abstract(it.get("abstract_inverted_index")),
+    }
 
 
 def _reconstruct_openalex_abstract(inverted: dict | None) -> str:
@@ -677,6 +730,22 @@ def validate_url(url: str, timeout: int = 15) -> bool:
 # ───────────────────────────────────────────────────────────────
 # Combined entry point (baseline-compatible signature)
 # ───────────────────────────────────────────────────────────────
+def _candidate_to_dict(c: Any) -> dict:
+    """Serialize a resolver Candidate without importing its class at module load."""
+    return {
+        "source": getattr(c, "source", ""),
+        "title": getattr(c, "title", ""),
+        "authors": list(getattr(c, "authors", []) or []),
+        "year": getattr(c, "year", None),
+        "venue": getattr(c, "venue", ""),
+        "type": (getattr(c, "extra", {}) or {}).get("type", ""),
+        "doi": getattr(c, "doi", ""),
+        "arxiv_id": getattr(c, "arxiv_id", ""),
+        "url": getattr(c, "url", ""),
+        "abstract": getattr(c, "abstract", ""),
+    }
+
+
 def lookup_paper(query: str, source: str = "auto", max_results: int = 4) -> dict:
     """Return canonical metadata candidates for a cited reference.
 
@@ -695,6 +764,20 @@ def lookup_paper(query: str, source: str = "auto", max_results: int = 4) -> dict
     decides existence / metadata correctness; this function never adjudicates.
     """
     candidates: list[dict] = []
+    if source == "auto":
+        try:
+            # Keep the CLI/tool path aligned with the production resolver: direct
+            # DOI/arXiv lookup + precise title queries first, broad search last.
+            from .resolver import MultiSourceResolver
+
+            resolver = MultiSourceResolver(validate_urls=False)
+            candidates = [
+                _candidate_to_dict(c) for c in resolver.candidates(query, max_results)
+            ]
+            return _lookup_response(query, candidates)
+        except Exception:  # noqa: BLE001 — fall through to the legacy broad fan-out
+            candidates = []
+
     if source in (SOURCE_CROSSREF, "auto"):
         candidates += search_crossref(query, max_results)
     if source in (SOURCE_ARXIV, "auto"):
@@ -706,6 +789,10 @@ def lookup_paper(query: str, source: str = "auto", max_results: int = 4) -> dict
     if source in (SOURCE_OPENALEX, "auto"):
         candidates += search_openalex(query, max_results)
 
+    return _lookup_response(query, candidates)
+
+
+def _lookup_response(query: str, candidates: list[dict]) -> dict:
     return {
         "query": query,
         "found": len(candidates),

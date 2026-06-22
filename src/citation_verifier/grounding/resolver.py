@@ -23,6 +23,7 @@ Import-safe and network-free at import time: the only hard dependency is
 from __future__ import annotations
 
 import re
+import threading
 from typing import TYPE_CHECKING, Any
 
 from ..interfaces import Candidate
@@ -41,10 +42,13 @@ DEFAULT_SOURCES: tuple[str, ...] = (
     paper_lookup.SOURCE_OPENALEX,
 )
 
-# Fuzzy-title acceptance threshold (rapidfuzz token_sort_ratio, 0..100).
-FUZZY_TITLE_THRESHOLD = 85.0
+# Fuzzy-title acceptance threshold with no author/year corroboration.
+FUZZY_TITLE_THRESHOLD = 95.0
 # Minimum acceptance when the gate (author/year) is satisfied but title is softer.
 FUZZY_TITLE_GATED_THRESHOLD = 78.0
+# Publication year is corroborative only; metadata often differs across arXiv,
+# online-first, proceedings, and journal versions.
+YEAR_CORROBORATION_WINDOW = 2
 
 # Patterns to pull a DOI / arXiv id out of a free-text reference string.
 _DOI_RE = re.compile(r"\b(10\.\d{4,9}/[-._;()/:A-Za-z0-9]+)\b")
@@ -88,6 +92,22 @@ def _author_overlap(claimed: list[str], canonical: list[str]) -> float:
     return len(a & b) / len(a)
 
 
+def _surname_matches_token(surname: str, token: str) -> bool:
+    """Loose surname match for PDF glue like ``YangZ`` vs ``Yang``."""
+    surname = surname.lower().strip()
+    token = token.lower().strip()
+    if not surname or not token:
+        return False
+    if surname == token:
+        return True
+    if (
+        min(len(surname), len(token)) >= 4
+        and (surname.startswith(token) or token.startswith(surname))
+    ):
+        return True
+    return False
+
+
 def _extract_doi(reference: str) -> str:
     m = _DOI_RE.search(reference or "")
     return m.group(1).rstrip(".").lower() if m else ""
@@ -101,6 +121,97 @@ def _extract_arxiv_id(reference: str) -> str:
 # A quoted segment in a reference is almost always the title (e.g.
 # `Authors. "Title". Venue. Year`). Straight or curly quotes, >= 8 chars.
 _QUOTED_TITLE_RE = re.compile(r"[\"“‘]([^\"“”‘’]{8,})[\"”’]")
+_SITE_SUFFIX_RE = re.compile(r"\s+-{2,}\s*[\w.-]+\.[a-z]{2,}\s*$", re.IGNORECASE)
+_VENUE_CLAUSE_RE = re.compile(
+    r"^(?:"
+    r"in:?\s+|"
+    r"proceedings\s+of(?:\s+the)?\s+|"
+    r"proc\.?\s+|"
+    r"journal\s+of\s+|"
+    r"advances\s+in\s+neural\s+information\s+processing\s+systems\b"
+    r")",
+    re.IGNORECASE,
+)
+_TITLE_TOKEN_STOPWORDS = {
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "by",
+    "for",
+    "from",
+    "in",
+    "is",
+    "of",
+    "on",
+    "or",
+    "the",
+    "to",
+    "toward",
+    "towards",
+    "via",
+    "with",
+    "without",
+}
+_ARXIV_HINTS = {
+    "arxiv",
+    "preprint",
+    "attention",
+    "bert",
+    "chatgpt",
+    "diffusion",
+    "embedding",
+    "gpt",
+    "language",
+    "llm",
+    "model",
+    "models",
+    "neural",
+    "transformer",
+}
+_DBLP_HINTS = {
+    "aaai",
+    "acl",
+    "acm",
+    "algorithm",
+    "artificial",
+    "chatbot",
+    "comput",
+    "computer",
+    "conference",
+    "cvf",
+    "cvpr",
+    "emnlp",
+    "ieee",
+    "ijcai",
+    "intelligence",
+    "language",
+    "neurips",
+    "nlp",
+    "proceedings",
+    "sigir",
+    "transformer",
+}
+
+
+def _looks_like_author_clause(clause: str) -> bool:
+    """Return True for the leading author-list segment of a reference."""
+    c = clause.strip()
+    if not c:
+        return False
+    if c.count(",") >= 2:
+        return True
+    # Surname-initial lists often have several one-letter initials before title.
+    initials = re.findall(r"\b[A-Z]\b", c)
+    return len(initials) >= 3 and len(c.split()) <= 14
+
+
+def _looks_like_venue_clause(clause: str) -> bool:
+    """Return True for common venue/proceedings clauses, not paper titles."""
+    c = clause.strip(" .,")
+    return bool(_VENUE_CLAUSE_RE.search(c))
 
 
 def _likely_title(reference: str) -> str:
@@ -116,16 +227,40 @@ def _likely_title(reference: str) -> str:
     if m:
         return m.group(1).strip()
     head = re.split(r"(?i)\b(?:arxiv|doi|https?://)", ref)[0]
-    best = ""
     for clause in re.split(r"\.\s+", head):
         c = clause.strip(" .,")
         if len(c) < 12 or re.search(r"\b(19|20)\d{2}\b", c):
             continue  # too short, or a year/venue tail
-        if " and " in f" {c.lower()} " or c.count(",") >= 2:
+        if _looks_like_author_clause(c):
             continue  # looks like an author list
-        if len(c) > len(best):
-            best = c
-    return best
+        if _looks_like_venue_clause(c):
+            continue
+        return c
+    return ""
+
+
+def _clean_title_variant(title: str) -> str:
+    """Normalize a title for fielded metadata queries without changing meaning."""
+    title = re.sub(r"\s+", " ", (title or "")).strip(" .")
+    title = _SITE_SUFFIX_RE.sub("", title).strip(" .")
+    return title
+
+
+def _likely_titles(reference: str) -> list[str]:
+    """Return queryable title variants, best first, deduped by normalized text."""
+    title = _likely_title(reference)
+    if not title:
+        return []
+    variants = [title, _clean_title_variant(title)]
+    out: list[str] = []
+    seen: set[str] = set()
+    for variant in variants:
+        variant = variant.strip()
+        key = _norm_title(variant)
+        if len(variant) >= 6 and key and key not in seen:
+            seen.add(key)
+            out.append(variant)
+    return out
 
 
 def _first_author(reference: str) -> str:
@@ -141,6 +276,71 @@ def _first_author(reference: str) -> str:
         head = head.split(",", 1)[0]
     toks = [t for t in re.findall(r"[^\W\d_]{3,}", head[:60]) if t.lower() != "and"]
     return max(toks, key=len) if toks else ""
+
+
+def _title_tokens(title: str) -> set[str]:
+    """Discriminative-ish tokens for guarding fuzzy title subset matches."""
+    return {
+        t
+        for t in _norm_title(_clean_title_variant(title)).split()
+        if len(t) > 1 and t not in _TITLE_TOKEN_STOPWORDS
+    }
+
+
+def _tokens(text: str) -> set[str]:
+    return set(_norm_title(text).split())
+
+
+def _should_search_arxiv(reference: str) -> bool:
+    """Route arXiv title/broad search to likely preprint or modern ML/CS refs."""
+    if _extract_arxiv_id(reference):
+        return True
+    ref = _norm_title(reference)
+    if "arxiv" in ref or "preprint" in ref:
+        return True
+    year = _extract_year(reference)
+    if year is not None and year < 2007:
+        return False
+    toks = _tokens(reference)
+    return bool(toks & _ARXIV_HINTS)
+
+
+def _should_search_dblp(reference: str) -> bool:
+    """Route DBLP broad search to likely CS/NLP/conference references."""
+    toks = _tokens(reference)
+    return bool(toks & _DBLP_HINTS)
+
+
+def _has_digit(token: str) -> bool:
+    return any(ch.isdigit() for ch in token)
+
+
+def _title_tokens_contradict(reference: str, candidate_title: str) -> bool:
+    """True when the candidate is missing too much of the cited title.
+
+    ``token_set_ratio`` is intentionally recall-heavy, but it can over-score a
+    generic subset ("OpenAI system card") while missing version-bearing tokens
+    ("o3", "o4-mini"). This gate uses the extracted title only, not the whole
+    reference, and rejects those subset false positives before author/year gates.
+    """
+    ref_titles = _likely_titles(reference)
+    if not ref_titles:
+        return False
+    ref_tokens = _title_tokens(ref_titles[0])
+    cand_tokens = _title_tokens(candidate_title)
+    if not ref_tokens or not cand_tokens:
+        return False
+
+    numbered = {t for t in ref_tokens if _has_digit(t)}
+    if numbered and not (numbered & cand_tokens):
+        return True
+
+    overlap = len(ref_tokens & cand_tokens) / len(ref_tokens)
+    if len(ref_tokens) <= 2:
+        return overlap < 1.0
+    if len(ref_tokens) <= 4:
+        return overlap < (2 / 3)
+    return overlap < 0.60
 
 
 def _fuzzy_title_score(reference: str, candidate_title: str) -> float:
@@ -196,6 +396,8 @@ class MultiSourceResolver:
         self.settings = settings
         self.sources: tuple[str, ...] = tuple(sources) if sources else DEFAULT_SOURCES
         self.validate_urls = validate_urls
+        self._fetch_cache: dict[tuple[str, tuple[Any, ...]], list[Candidate]] = {}
+        self._fetch_cache_lock = threading.RLock()
 
     # ── source fan-out ────────────────────────────────────────
     def candidates(self, reference: str, /, max_results: int = 4) -> list[Candidate]:
@@ -210,15 +412,38 @@ class MultiSourceResolver:
             + self._broad_candidates(reference, max_results)
         )
 
+    def _fetch(self, fn: Any, *args: Any) -> list[Candidate]:
+        """Fetch candidates once per resolver instance for identical source args."""
+        key = (getattr(fn, "__name__", repr(fn)), args)
+        with self._fetch_cache_lock:
+            cached = self._fetch_cache.get(key)
+        if cached is not None:
+            return list(cached)
+
+        rows = _fetch(fn, *args)
+        with self._fetch_cache_lock:
+            self._fetch_cache[key] = rows
+        return list(rows)
+
     def _id_candidates(self, reference: str) -> list[Candidate]:
         """Tier 1: direct lookup by the reference's own DOI / arXiv id (no search)."""
         rows: list[Candidate] = []
+        for fn, args in self._id_query_steps(reference):
+            rows += self._fetch(fn, *args)
+        return rows
+
+    def _id_query_steps(self, reference: str) -> list[tuple[Any, tuple[Any, ...]]]:
+        """Exact identifier lookups, ordered by abstract-bearing source first."""
+        rows: list[tuple[Any, tuple[Any, ...]]] = []
+        s2_key = getattr(self.settings, "s2_api_key", None)
         ref_arxiv = _extract_arxiv_id(reference)
         if ref_arxiv:
-            rows += _fetch(paper_lookup.fetch_arxiv_by_id, ref_arxiv)
+            rows.append((paper_lookup.fetch_semantic_scholar_by_arxiv, (ref_arxiv, s2_key)))
+            rows.append((paper_lookup.fetch_arxiv_by_id, (ref_arxiv,)))
         ref_doi = _extract_doi(reference)
         if ref_doi:
-            rows += _fetch(paper_lookup.fetch_crossref_by_doi, ref_doi)
+            rows.append((paper_lookup.fetch_semantic_scholar_by_doi, (ref_doi, s2_key)))
+            rows.append((paper_lookup.fetch_crossref_by_doi, (ref_doi,)))
         return rows
 
     def _title_candidates(self, reference: str, max_results: int = 4) -> list[Candidate]:
@@ -228,26 +453,62 @@ class MultiSourceResolver:
         surfaces the canonical paper where a reused title ("Attention is all you
         need") otherwise returns same-title namesakes.
         """
-        title = _likely_title(reference)
-        if not title:
+        rows: list[Candidate] = []
+        for fn, args in self._title_query_steps(reference, max_results):
+            rows += self._fetch(fn, *args)
+        return _dedupe_candidates(rows)
+
+    def _title_query_steps(
+        self, reference: str, max_results: int = 4
+    ) -> list[tuple[Any, tuple[Any, ...]]]:
+        """Precise title-query steps, with author-constrained then title-only forms."""
+        titles = _likely_titles(reference)
+        if not titles:
             return []
         author = _first_author(reference) or None
-        return (
-            _fetch(paper_lookup.search_semantic_scholar_match, title)
-            + _fetch(paper_lookup.search_arxiv_by_title, title, max_results, author)
-            + _fetch(paper_lookup.search_crossref_by_fields, title, author, max_results)
-        )
+
+        steps: list[tuple[Any, tuple[Any, ...]]] = []
+        seen: set[tuple[str, tuple[Any, ...]]] = set()
+
+        def add(fn: Any, *args: Any) -> None:
+            key = (getattr(fn, "__name__", repr(fn)), args)
+            if key not in seen:
+                seen.add(key)
+                steps.append((fn, args))
+
+        use_arxiv = _should_search_arxiv(reference)
+        for title in titles:
+            add(paper_lookup.search_semantic_scholar_match, title)
+            add(paper_lookup.search_crossref_by_fields, title, author, max_results)
+            if use_arxiv:
+                add(paper_lookup.search_arxiv_by_title, title, max_results, author)
+            if author:
+                add(paper_lookup.search_crossref_by_fields, title, None, max_results)
+                if use_arxiv:
+                    add(paper_lookup.search_arxiv_by_title, title, max_results, None)
+        return steps
 
     def _broad_candidates(self, reference: str, max_results: int = 4) -> list[Candidate]:
         """Tier 3: broad full-reference search across every enabled source."""
         rows: list[Candidate] = []
-        for src in self.sources:
+        for src in self._broad_sources(reference):
             try:
                 raw = self._search_source(src, reference, max_results)
             except Exception:  # noqa: BLE001 — defense in depth; sources fail soft
                 raw = []
             rows += [_dict_to_candidate(d) for d in raw]
         return rows
+
+    def _broad_sources(self, reference: str) -> tuple[str, ...]:
+        """Source routing for the expensive broad full-reference fallback."""
+        out: list[str] = []
+        for src in self.sources:
+            if src == paper_lookup.SOURCE_ARXIV and not _should_search_arxiv(reference):
+                continue
+            if src == paper_lookup.SOURCE_DBLP and not _should_search_dblp(reference):
+                continue
+            out.append(src)
+        return tuple(out)
 
     def _search_source(self, src: str, reference: str, max_results: int) -> list[dict]:
         """Dispatch one source by name (keeps optional keys threaded through)."""
@@ -282,23 +543,17 @@ class MultiSourceResolver:
         ``cite_key`` is accepted for Protocol symmetry; matching is driven by
         ``reference`` content.
         """
-        # 1) identifier.
-        match = self._match(reference, self._id_candidates(reference))
-        if match is not None:
-            return match
+        # 1) identifier, abstract-bearing first; stop at the first exact match.
+        for fn, args in self._id_query_steps(reference):
+            match = self._match(reference, self._fetch(fn, *args))
+            if match is not None:
+                return match
 
         # 2) title-field, most-precise-first; stop the moment one matches.
-        title = _likely_title(reference)
-        if title:
-            author = _first_author(reference) or None
-            for fn, args in (
-                (paper_lookup.search_semantic_scholar_match, (title,)),
-                (paper_lookup.search_arxiv_by_title, (title, 4, author)),
-                (paper_lookup.search_crossref_by_fields, (title, author, 4)),
-            ):
-                match = self._match(reference, _fetch(fn, *args))
-                if match is not None:
-                    return match
+        for fn, args in self._title_query_steps(reference, 4):
+            match = self._match(reference, self._fetch(fn, *args))
+            if match is not None:
+                return match
 
         # 3) broad fallback.
         return self._match(reference, self._broad_candidates(reference))
@@ -324,19 +579,21 @@ class MultiSourceResolver:
                 if c.arxiv_id and c.arxiv_id.lower().split("v")[0] == stem:
                     return self._to_resolved(c, MatchMethod.ARXIV, 1.0)
 
-        # 3) Fuzzy title, gated by author overlap + year (±1). Consider candidates
-        #    in descending title-score order and SKIP (not abort on) ones the gate
-        #    contradicts — a scholarly query routinely returns several same-title
-        #    rows (e.g. a mirror/repost DOI with a much later year alongside the
-        #    real record), so a gate-failing top hit must not hide a valid one.
+        # 3) Fuzzy title, corroborated (not vetoed) by author overlap + year.
+        #    Bibliography author/year fields are often abbreviated, stale, or
+        #    version-specific (arXiv vs proceedings vs journal), so title-token
+        #    contradiction is the hard precision gate; author/year just lower the
+        #    acceptance threshold when they agree.
         ranked = sorted(
             ((_fuzzy_title_score(reference, c.title), c) for c in cands),
-            key=lambda t: t[0],
+            key=lambda t: (t[0], bool(t[1].abstract)),
             reverse=True,
         )
         for score, c in ranked:
             if score < FUZZY_TITLE_GATED_THRESHOLD:
                 break  # ranked descending: no later candidate can clear the bar
+            if _title_tokens_contradict(reference, c.title):
+                continue
             gate = self._gate(c, reference, ref_year)
             if gate is False:
                 continue  # author/year contradicts THIS candidate; try the next
@@ -356,35 +613,42 @@ class MultiSourceResolver:
         The author check looks for the CANDIDATE's surnames (cleanly parsed from
         API metadata) in the raw reference text — rather than parsing the
         reference's own author list, which mangles ``Last, First`` order and middle
-        initials (``Diederik P. Kingma`` -> ``p``) and used to veto perfect title
-        matches. The year guard is unchanged. Together they still block the
-        token-subset false positives that ``_fuzzy_title_score`` can over-score.
+        initials (``Diederik P. Kingma`` -> ``p``). Author/year agreement is
+        positive evidence only: metadata sources disagree on arXiv, online,
+        conference, and journal years, and parsed author lists can be noisy.
+        Token-subset false positives are blocked by ``_title_tokens_contradict``.
 
         Returns:
-            True  — the reference names the cited work's authors (>=2, or >=half),
-                    or the year agrees (±1); and nothing contradicts.
-            False — a checkable signal CONTRADICTS: the candidate has >=2 authors
-                    and NONE appear in the reference (a different work), or the year
-                    is off by > 1. Hard reject.
-            None  — neither author nor year was checkable.
+            True  — the reference names the cited work's first author / enough
+                    authors, or the year agrees within the configured window.
+            False — reserved for future hard metadata contradictions.
+            None  — no positive corroboration; a missing author overlap alone is
+                    too noisy to veto a strong title match.
         """
         cand_surnames = {s for s in _author_surnames(c.authors) if s}
         ref_tokens = set(_norm_title(reference).split())
 
         author_state: bool | None = None
         if cand_surnames and ref_tokens:
-            present = sum(1 for s in cand_surnames if s in ref_tokens)
-            if present >= 2 or (present and present / len(cand_surnames) >= 0.5):
+            first = _last_name(c.authors[0]) if c.authors else ""
+            present = sum(
+                1
+                for s in cand_surnames
+                if any(_surname_matches_token(s, t) for t in ref_tokens)
+            )
+            if (
+                present >= 2
+                or (first and any(_surname_matches_token(first, t) for t in ref_tokens))
+                or (present and present / len(cand_surnames) >= 0.5)
+            ):
                 author_state = True
             elif present == 0 and len(cand_surnames) >= 2:
-                author_state = False  # the cited work's authors are absent -> different work
+                author_state = False  # soft negative; do not veto title/year matches
 
         year_state: bool | None = None
         if ref_year is not None and c.year is not None:
-            year_state = abs(c.year - ref_year) <= 1
+            year_state = abs(c.year - ref_year) <= YEAR_CORROBORATION_WINDOW
 
-        if author_state is False or year_state is False:
-            return False
         if author_state is True or year_state is True:
             return True
         return None
@@ -393,6 +657,7 @@ class MultiSourceResolver:
         url_valid: bool | None = None
         if self.validate_urls and c.url:
             url_valid = paper_lookup.validate_url(c.url)
+        abstract = c.abstract or self._abstract_top_up(c)
         return Resolved(
             source=c.source,
             match_method=method,
@@ -405,8 +670,18 @@ class MultiSourceResolver:
             arxiv_id=c.arxiv_id or None,
             url=c.url or None,
             url_valid=url_valid,
-            abstract=c.abstract or None,
+            abstract=abstract or None,
         )
+
+    def _abstract_top_up(self, c: Candidate) -> str:
+        """Exact-id abstract enrichment for matches from sources with sparse abstracts."""
+        if not c.doi:
+            return ""
+        oa_key = getattr(self.settings, "openalex_api_key", None)
+        for extra in self._fetch(paper_lookup.fetch_openalex_by_doi, c.doi, oa_key):
+            if extra.abstract and extra.doi.lower() == c.doi.lower():
+                return extra.abstract
+        return ""
 
 
 # ───────────────────────────────────────────────────────────────
@@ -448,3 +723,22 @@ def _fetch(fn: Any, *args: Any) -> list[Candidate]:
         return [_dict_to_candidate(d) for d in fn(*args)]
     except Exception:  # noqa: BLE001 — every source fails soft
         return []
+
+
+def _dedupe_candidates(cands: list[Candidate]) -> list[Candidate]:
+    """Keep source fan-out from returning the same canonical row several times."""
+    out: list[Candidate] = []
+    seen: set[tuple[str, str, str, str, str]] = set()
+    for c in cands:
+        key = (
+            c.source,
+            _norm_title(c.title),
+            c.doi.lower(),
+            c.arxiv_id.lower().split("v")[0],
+            c.url,
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(c)
+    return out
