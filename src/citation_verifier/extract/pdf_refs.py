@@ -56,6 +56,36 @@ def _clean(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
+def _line_text(line: dict) -> str:
+    """Reconstruct a rawdict line's text from its glyphs, re-inserting spaces.
+
+    Some PDFs encode inter-word spaces as positional (kerning) gaps with no space
+    glyph; joining span text verbatim then glues words ("Bird JJ" -> "BirdJJ"),
+    which wrecks author/title parsing and grounding. We walk the glyphs left to
+    right and insert a space wherever the gap to the previous glyph exceeds a
+    small fraction of the font size — well above intra-word kerning (~0) but below
+    a real space — while leaving existing space glyphs untouched.
+    """
+    out: list[str] = []
+    prev_x1: float | None = None
+    for span in line.get("spans", []):
+        size = span.get("size", 0.0) or 10.0
+        for ch in span.get("chars", []):
+            c = ch.get("c", "")
+            x0, _, x1, _ = ch["bbox"]
+            if (
+                prev_x1 is not None
+                and c != " "
+                and out
+                and out[-1] != " "
+                and (x0 - prev_x1) > 0.1 * size
+            ):
+                out.append(" ")
+            out.append(c)
+            prev_x1 = x1
+    return _clean("".join(out))
+
+
 def extract_reference_entries(pdf_path) -> list[tuple[str, str]]:
     """Return ``[(cite_key, reference_text)]``, one pair per bibliography entry.
 
@@ -90,12 +120,16 @@ def _layout_lines(pdf_path) -> list[_Line]:
         with fitz.open(str(pdf_path)) as doc:
             for pi, page in enumerate(doc, start=1):
                 w, h = page.rect.width, page.rect.height
-                for block in page.get_text("dict").get("blocks", []):
+                # rawdict (not dict) so we have per-glyph bboxes: some PDFs render
+                # inter-word spaces as kerning gaps with NO space glyph, which makes
+                # dict/words span text glue ("Bird JJ" -> "BirdJJ"); _line_text
+                # re-inserts spaces from the glyph gaps.
+                for block in page.get_text("rawdict").get("blocks", []):
                     if block.get("type") != 0:
                         continue
                     raw = []
                     for ln in block.get("lines", []):
-                        text = _clean("".join(s.get("text", "") for s in ln.get("spans", [])))
+                        text = _line_text(ln)
                         if not text:
                             continue
                         x0, y0, x1, y1 = ln["bbox"]

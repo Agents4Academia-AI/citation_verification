@@ -409,3 +409,26 @@ def test_pdf_table_caption_claim_is_flagged():
     assert not _TABLE_CAPTION_RE.match("We compare against prior work [12].")
     # a prose sentence that merely *references* a table is not a table cell
     assert not _TABLE_CAPTION_RE.match("As shown in Table 3, the method [12] wins.")
+
+
+def test_pdf_refs_line_text_reinserts_spaces_from_kerning_gaps():
+    # Some PDFs render inter-word spaces as positional gaps with no space glyph;
+    # _line_text must re-insert them from the glyph bboxes (regression: a reference
+    # came out glued as "BirdJJ,EkártA,FariaDR.Chatbot…", losing author+title).
+    from citation_verifier.extract.pdf_refs import _line_text
+
+    size = 8.0
+
+    def ch(c, x0, x1):
+        return {"c": c, "bbox": (x0, 0.0, x1, size)}
+
+    # "AB" adjacent (gap 0), then a wide gap (1.5 > 0.1*size), then "CD" -> "AB CD"
+    glued = {"spans": [{"size": size, "chars": [
+        ch("A", 0.0, 4.0), ch("B", 4.0, 8.0), ch("C", 9.5, 13.5), ch("D", 13.5, 17.5),
+    ]}]}
+    assert _line_text(glued) == "AB CD"
+    # an existing space glyph is preserved, not doubled
+    spaced = {"spans": [{"size": size, "chars": [
+        ch("A", 0.0, 4.0), ch(" ", 4.0, 6.0), ch("B", 6.0, 10.0),
+    ]}]}
+    assert _line_text(spaced) == "A B"
