@@ -366,7 +366,9 @@ _ETAL_TAIL_RE = re.compile(r"\s*,?\s+et\s+al\.?$", re.IGNORECASE)
 # two names. Each initial must carry its period: a *bare* capital begins the title
 # ("Huet, G. P. The calculus …"), so requiring the period keeps the author run from
 # swallowing the first title word.
-_AY_INITS = r"(?:[A-Z]\.(?:-[A-Z]\.?)*\s*){1,4}"
+# Initials like "Z.", "G. P.", "M.-A.", and "K.- F." (a despacing artifact puts a
+# space after the hyphen) — tolerate optional whitespace around the hyphen.
+_AY_INITS = r"(?:[A-Z]\.(?:\s*-\s*[A-Z]\.?)*\s*){1,4}"
 _AY_NAME = rf"[A-Z][\w'’`-]+,\s*{_AY_INITS}"
 _AY_RUN_RE = re.compile(
     rf"^\s*(?P<authors>{_AY_NAME}(?:\s*,?\s*(?:and\s+)?{_AY_NAME})*"

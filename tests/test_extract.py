@@ -556,3 +556,17 @@ def test_sentence_not_chopped_at_et_al_or_initials():
     txt = "Prior work (Hindle et al., 2012) showed code is natural. A new sentence."
     claim, _ = _sentence_around(txt, txt.index("Hindle"))
     assert "showed code is natural" in claim  # not truncated at "et al."
+
+
+def test_split_author_title_handles_spaced_hyphen_initial():
+    # "K.- F." (a despacing artifact adds a space after the hyphen) must not break
+    # the author-year run — else the whole list falls back to a comma-split that
+    # tears "Xue, B." into two and flags a false author mismatch.
+    from citation_verifier.extract.pdf import _split_author_title
+
+    a, t = _split_author_title(
+        "Xue, B., Zhu, Q., and Wong, K.- F. Reliablemath: Benchmark of reliable "
+        "mathematical reasoning on large language models. 2025."
+    )
+    assert a == ["Xue, B.", "Zhu, Q.", "Wong, K.- F."]
+    assert t == "Reliablemath: Benchmark of reliable mathematical reasoning on large language models"
