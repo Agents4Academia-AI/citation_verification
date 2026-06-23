@@ -375,7 +375,7 @@ def _sentence_around(text: str, pos: int, window: int = 600) -> tuple[str, tuple
     starts = [0] + [m.end() for m in _SENT_SPLIT.finditer(chunk)]
     ends = [m.start() for m in _SENT_SPLIT.finditer(chunk)] + [len(chunk)]
     s_start, s_end = 0, len(chunk)
-    for st, en in zip(starts, ends):
+    for st, en in zip(starts, ends, strict=False):
         if st <= rel <= en:
             s_start, s_end = st, en
             break
