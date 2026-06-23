@@ -67,6 +67,9 @@ papers/*/
 # file whose parent dir is still excluded.
 !papers/s12559-023-10236-2-agentic/
 !papers/s12559-023-10236-2-agentic/*
+# Second tracked demo: an author-year PDF (citation sites recovered via hyperlinks).
+!papers/For_testing-agentic/
+!papers/For_testing-agentic/*
 
 # Generated reports written to the repo root (e.g. report-<id>.md/json).
 report-*.md

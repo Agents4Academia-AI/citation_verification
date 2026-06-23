@@ -438,3 +438,70 @@ def test_pdf_refs_line_text_reinserts_spaces_from_kerning_gaps():
         ch("3", 0.0, 4.0), ch(".", 4.0, 5.0), ch("5", 6.6, 10.6),
     ]}]}
     assert _line_text(decimal) == "3.5"
+
+
+# ── B1: heal mangled diacritics in the layout parser ─────────────────────────
+def test_pdf_refs_clean_heals_mangled_diacritics():
+    from citation_verifier.extract.pdf_refs import _clean
+
+    assert _clean("Vuli´c I") == "Vulic I"            # orphan acute between letters
+    assert _clean("Yeti¸stiren B") == "Yetistiren B"   # spacing cedilla
+    assert _clean('Hakkani-T"ur D') == "Hakkani-Tur D"  # mangled umlaut (straight quote)
+    assert _clean("Rozi`ere B") == "Roziere B"          # grave/backtick
+    assert _clean("O'Brien J") == "O'Brien J"           # apostrophe is NOT a diacritic
+    assert _clean("Özsoy I") == "Özsoy I"               # precomposed accent kept intact
+
+
+# ── A1: detect comparison-table body dumps (skip their relevance) ────────────
+def test_pdf_looks_like_table_dump_vs_prose():
+    from citation_verifier.extract.pdf import _looks_like_table_dump
+
+    # table body: markers each followed by a year or a capitalized cell
+    assert _looks_like_table_dump("ELIZA [19] 1966 Chatbot SHRDLU [20] 1970 Task PARRY [21] 1972 Bot")
+    assert _looks_like_table_dump("ELIZA [19] No N/A SHRDLU [20] No Specific PARRY [21] No Limited")
+    # ordinary multi-citation prose (markers followed by punctuation/lowercase) must NOT fire
+    assert not _looks_like_table_dump("Several works [1], [2], [3], and [4] proposed methods.")
+    assert not _looks_like_table_dump("Technologies like Watson [25], Siri [26], Alexa [27] exist.")
+
+
+# ── author-year PDF citation extraction (hyperlink + text) ───────────────────
+def test_bind_author_year_matches_surname_year_and_disambiguates():
+    from citation_verifier.extract.pdf import _bind_author_year
+    from citation_verifier.schema import CitedAs
+
+    refs = {
+        "ref-1": CitedAs(authors=["Yang, K.", "Swope, A."], title="Leandojo: theorem proving", year=2023),
+        "ref-2": CitedAs(authors=["Yang, L.", "Zhang, Z."], title="Diffusion models: a survey", year=2025),
+        "ref-3": CitedAs(authors=["Martin-Lof, P."], title="An intuitionistic theory of types", year=1998),
+        "ref-4": CitedAs(authors=["Muennighoff, N."], title="Scaling data-constrained models", year=2023),
+        "ref-5": CitedAs(authors=["Coquand, T.", "Huet, G."], title="The calculus of constructions", year=1988),
+    }
+
+    def b(k):
+        return _bind_author_year(k, refs)
+
+    # two same-surname refs disambiguated by year (+ keyword)
+    assert b("yang2023leandojo").title.startswith("Leandojo")
+    assert b("yang2025diffusionmodelssurvey").title.startswith("Diffusion")
+    # CamelCase key + hyphenated surname
+    assert b("MartinLofTypeTheory1998").title.startswith("An intuitionistic")
+    # a unique surname binds even when the cited year is off by 2 (2025 vs 2023)
+    assert b("muennighoff2025scaling").authors[0] == "Muennighoff, N."
+    # DBLP-style key: a distinctive surname embedded in the key
+    assert b("DBLP:journals/iandc/CoquandH88").title.startswith("The calculus")
+    # no surname/year match -> no guess
+    assert b("nonexistent2020foo") is None
+
+
+def test_extract_text_citations_finds_author_year_forms():
+    from citation_verifier.extract.pdf_links import extract_text_citations
+
+    text = (
+        "We build on prior work (Yang et al., 2023) and extend it greatly. "
+        "Lightman et al. (2024) introduced a learned verifier for this. "
+        "Others (Smith and Jones, 2020) disagree with the approach."
+    )
+    sites = extract_text_citations(text)
+    keys = {s["cite_key"] for s in sites}
+    assert {"yang2023", "lightman2024", "smith2020"} <= keys
+    assert all(s["claim"] for s in sites)
