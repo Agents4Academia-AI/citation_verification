@@ -141,3 +141,37 @@ def test_fill_relevance_batch_applies_verdicts():
     assert SupportsClaim(out[0].supports_claim) is SupportsClaim.SUPPORTS
     assert Priority(out[0].priority) is Priority.OBLIGATORY
     assert SupportsClaim(out[1].supports_claim) is SupportsClaim.PARTIAL
+
+
+# ── table citations are not judged (in_table) ────────────────────────
+def _table_stub() -> CitationRecord:
+    return CitationRecord(
+        paper_id="p", claim_id="ct", cite_key="ref-9",
+        claim=Claim(claim_id="ct", text="Table 3 Comparison of models"),
+        cited_as=CitedAs(), in_table=True,
+    )
+
+
+def test_fill_relevance_skips_table_citations():
+    """A table citation stays inconclusive and never reaches the judge."""
+    called = []
+
+    def judge(**kwargs):
+        called.append(1)
+        return RelevanceVerdict(supports_claim="supports", priority="obligatory")
+
+    out = fill_relevance(_table_stub(), resolver=_NullResolver(), judge=judge)
+    assert not called
+    assert SupportsClaim(out.supports_claim) is SupportsClaim.INCONCLUSIVE
+
+
+def test_fill_relevance_batch_excludes_table_citations_from_the_judge():
+    table, prose = _table_stub(), _stub("We use method M as a baseline.")
+
+    def judge_batch(items):
+        assert [it["cite_key"] for it in items] == ["k1"]  # only the prose claim is judged
+        return [RelevanceVerdict(supports_claim="supports", priority="obligatory")]
+
+    out = fill_relevance_batch([table, prose], resolver=_NullResolver(), judge_batch=judge_batch)
+    assert SupportsClaim(out[0].supports_claim) is SupportsClaim.INCONCLUSIVE  # table untouched
+    assert SupportsClaim(out[1].supports_claim) is SupportsClaim.SUPPORTS

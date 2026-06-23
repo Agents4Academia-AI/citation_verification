@@ -318,9 +318,29 @@ _CITE_RE = re.compile(
 _SECTION_RE = re.compile(
     r"\\(?:section|subsection|subsubsection|chapter|paragraph)\*?\s*\{([^}]*)\}"
 )
+# Table float environments. A \cite inside one is a table cell/caption, not a
+# prose claim, so its relevance is not assessed (see CitationRecord.in_table).
+_TABLE_ENV_RE = re.compile(
+    r"\\begin\{(table\*?|tabular\*?|tabularx|longtable|wraptable|sidewaystable|threeparttable)\}"
+    r".*?\\end\{\1\}",
+    re.DOTALL,
+)
+# Set on a record (extraction) when its \cite sits inside a table; the relevance
+# stage / backend leaves such records inconclusive and surfaces this note.
+TABLE_NOTE = "cited inside a table — relevance not assessed"
 # Sentence boundary: a period/!/? followed by whitespace + capital/backslash,
 # applied to lightly-cleaned text. Kept simple and deterministic.
 _SENT_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Z\\])")
+
+
+def _table_spans(text: str) -> list[tuple[int, int]]:
+    """Char spans of table-float environments (a ``\\cite`` inside one is a table cell)."""
+    return [(m.start(), m.end()) for m in _TABLE_ENV_RE.finditer(text)]
+
+
+def _in_table(spans: list[tuple[int, int]], pos: int) -> bool:
+    """True when ``pos`` falls inside any table-float span."""
+    return any(lo <= pos < hi for lo, hi in spans)
 
 
 def _strip_line_comments(text: str) -> str:
@@ -515,12 +535,14 @@ class LatexExtractor:
 
         for _path, text in _read_tex_files(source.tex_dir or ""):
             text = _strip_line_comments(text)  # ignore commented-out \cite call-sites
+            table_spans = _table_spans(text)
             for cm in _CITE_RE.finditer(text):
                 keys = [k.strip() for k in cm.group(1).split(",") if k.strip()]
                 if not keys:
                     continue
                 section = _section_at(text, cm.start())
                 sentence, span = _sentence_around(text, cm.start())
+                in_table = _in_table(table_spans, cm.start())
                 for cite_key in keys:
                     claim_id = make_claim_id(source.paper_id, section, span, cite_key)
                     dedup = (source.paper_id, claim_id, cite_key)
@@ -528,6 +550,9 @@ class LatexExtractor:
                         continue
                     seen.add(dedup)
                     cited_as = references.get(cite_key) or CitedAs(raw="")
+                    notes = None if cite_key in references else "no bibliography entry for cite_key"
+                    if in_table:
+                        notes = f"{notes}; {TABLE_NOTE}" if notes else TABLE_NOTE
                     records.append(
                         CitationRecord(
                             paper_id=source.paper_id,
@@ -541,7 +566,8 @@ class LatexExtractor:
                                 char_span=span,
                             ),
                             cited_as=cited_as,
-                            notes=None if cite_key in references else "no bibliography entry for cite_key",
+                            in_table=in_table,
+                            notes=notes,
                         )
                     )
         return records

@@ -384,3 +384,28 @@ def test_pdf_refs_join_glues_urls_and_dehyphenates():
         _join(["https://aclanthology.org/", "2020.acl-main.1"])
         == "https://aclanthology.org/2020.acl-main.1"
     )
+
+
+# ── table-citation detection (relevance is not assessed for these) ───────────
+def test_latex_detects_cite_inside_table_environment():
+    from citation_verifier.extract.latex import _in_table, _table_spans
+
+    text = (
+        r"Prose cites \cite{a} here. "
+        r"\begin{table}\caption{C}\begin{tabular}{cc} A & \cite{b} \\ \end{tabular}\end{table} "
+        r"Then \cite{c} back in prose."
+    )
+    spans = _table_spans(text)
+    assert not _in_table(spans, text.index(r"\cite{a}"))  # prose before the table
+    assert _in_table(spans, text.index(r"\cite{b}"))       # inside the table float
+    assert not _in_table(spans, text.index(r"\cite{c}"))   # prose after the table
+
+
+def test_pdf_table_caption_claim_is_flagged():
+    from citation_verifier.extract.pdf import _TABLE_CAPTION_RE
+
+    assert _TABLE_CAPTION_RE.match("Table 3 Comparison of GPT models [12]")
+    assert _TABLE_CAPTION_RE.match("Tab. 2 Datasets used")
+    assert not _TABLE_CAPTION_RE.match("We compare against prior work [12].")
+    # a prose sentence that merely *references* a table is not a table cell
+    assert not _TABLE_CAPTION_RE.match("As shown in Table 3, the method [12] wins.")

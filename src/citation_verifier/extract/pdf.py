@@ -27,7 +27,7 @@ from pathlib import Path
 
 from ..interfaces import PaperSource
 from ..schema import CitationRecord, CitedAs, Claim, Paper
-from .latex import _coerce_year, _split_authors, make_claim_id
+from .latex import TABLE_NOTE, _coerce_year, _split_authors, make_claim_id
 from .pdf_refs import extract_reference_entries
 
 __all__ = ["PdfExtractor", "extract_pdf_text"]
@@ -496,6 +496,9 @@ def _parse_ref_entry(body: str) -> CitedAs:
 # silently dropped (it was missing ~half the citations on real two-column PDFs).
 _INTEXT_NUM_RE = re.compile(r"\[\s*(\d{1,3}(?:\s*[-–,]\s*\d{1,3})*)\s*\]")
 _SENT_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Z])")
+# A claim that opens with a table caption ("Table 3 Comparison of …") is a table
+# cell/caption, not a prose claim — its relevance is not assessed (in_table).
+_TABLE_CAPTION_RE = re.compile(r"^\s*(?:Table|TABLE|Tab\.)\s*\d+\b")
 _MAX_CLAIM_CHARS = 360
 _EMAIL_RE = re.compile(r"\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b")
 _AFFILIATION_START_RE = re.compile(
@@ -625,6 +628,7 @@ class PdfExtractor:
             if not cite_keys:
                 continue
             sentence, span = _sentence_around(claim_body, mm.start())
+            in_table = bool(_TABLE_CAPTION_RE.match(sentence))
             for cite_key in cite_keys:
                 claim_id = make_claim_id(source.paper_id, None, span, cite_key)
                 dedup = (source.paper_id, claim_id, cite_key)
@@ -632,6 +636,9 @@ class PdfExtractor:
                     continue
                 seen.add(dedup)
                 cited_as = references.get(cite_key) or CitedAs(raw="")
+                notes = None if cite_key in references else "no reference-list entry for marker"
+                if in_table:
+                    notes = f"{notes}; {TABLE_NOTE}" if notes else TABLE_NOTE
                 records.append(
                     CitationRecord(
                         paper_id=source.paper_id,
@@ -640,7 +647,8 @@ class PdfExtractor:
                         paper=paper,
                         claim=Claim(claim_id=claim_id, text=sentence, section=None, char_span=span),
                         cited_as=cited_as,
-                        notes=None if cite_key in references else "no reference-list entry for marker",
+                        in_table=in_table,
+                        notes=notes,
                     )
                 )
 
