@@ -280,6 +280,13 @@ def _likely_titles(reference: str) -> list[str]:
     if not title:
         return []
     variants = [title, _clean_title_variant(title)]
+    # A cited title may carry a colon-prefix the canonical record drops/changes
+    # ("I Speak, You Verify: Toward trustworthy neural program synthesis"), so also
+    # query the substantive part after the first colon.
+    if ":" in title:
+        after = title.split(":", 1)[1].strip()
+        if len(after.split()) >= 3:
+            variants.append(after)
     out: list[str] = []
     seen: set[str] = set()
     for variant in variants:
@@ -609,17 +616,25 @@ class MultiSourceResolver:
         ref_arxiv = _extract_arxiv_id(reference)
         ref_year = _extract_year(reference)
 
+        # An exact DOI/arXiv id is accepted ONLY if the title doesn't strongly
+        # contradict the cited one — a real-but-wrong id (typo, or a fabricated
+        # citation borrowing a live id) points at a different paper, which must be
+        # 'unresolved', not a confident 'yes'.
         # 1) DOI exact match.
         if ref_doi:
             for c in cands:
-                if c.doi and c.doi.lower() == ref_doi:
+                if c.doi and c.doi.lower() == ref_doi and not _title_tokens_contradict(reference, c.title):
                     return self._to_resolved(c, MatchMethod.DOI, 1.0)
 
         # 2) arXiv-id exact match.
         if ref_arxiv:
             stem = ref_arxiv.split("v")[0]
             for c in cands:
-                if c.arxiv_id and c.arxiv_id.lower().split("v")[0] == stem:
+                if (
+                    c.arxiv_id
+                    and c.arxiv_id.lower().split("v")[0] == stem
+                    and not _title_tokens_contradict(reference, c.title)
+                ):
                     return self._to_resolved(c, MatchMethod.ARXIV, 1.0)
 
         # 3) Fuzzy title, corroborated (not vetoed) by author overlap + year.
