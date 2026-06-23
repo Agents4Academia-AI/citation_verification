@@ -132,16 +132,38 @@ def _order_reading(words: list) -> list:
     return out
 
 
+def _is_two_column(words: list, page_width: float) -> bool:
+    """Detect a genuine two-column page (vs a single-column one with wide lines).
+
+    A two-column layout leaves a near-empty central gutter — very few words cross
+    the page midline — with substantial text on both sides. A single-column page
+    has many full-width lines straddling the midline; splitting it at the midpoint
+    would bisect every line and interleave the halves, scrambling the sentence. So
+    only split when the gutter is real. Per page: layouts mix within one document.
+    """
+    if len(words) < 40:
+        return False  # too little text to judge — treat as single-column (no split)
+    mid = page_width / 2
+    straddle = sum(1 for w in words if w[0] < mid < w[2])
+    left = sum(1 for w in words if (w[0] + w[2]) / 2 < mid)
+    right = len(words) - left
+    return straddle < 0.02 * len(words) and min(left, right) > 0.25 * len(words)
+
+
 def _sentence_at_rect(words, rect, page_width: float) -> tuple[str, tuple[int, int]]:
     """Sentence (claim) containing the citation at ``rect``; ``""`` when not found.
 
-    Words are read in the rect's column, ordered by line (clustered), then the
-    sentence covering the word the rect overlaps is returned (capped + normalized).
+    Words are read in the rect's column (only when the page is genuinely two-column),
+    ordered by line (clustered), then the sentence covering the word the rect overlaps
+    is returned (capped + normalized).
     """
     x0, y0, x1, y1 = rect.x0, rect.y0, rect.x1, rect.y1
-    mid = page_width / 2
-    col = 0 if (x0 + x1) / 2 < mid else 1
-    cw = _order_reading([w for w in words if (0 if (w[0] + w[2]) / 2 < mid else 1) == col])
+    if _is_two_column(words, page_width):
+        mid = page_width / 2
+        col = 0 if (x0 + x1) / 2 < mid else 1
+        cw = _order_reading([w for w in words if (0 if (w[0] + w[2]) / 2 < mid else 1) == col])
+    else:
+        cw = _order_reading(words)  # single column: read full width, never split mid-line
     if not cw:
         return "", (0, 0)
     offsets: list[int] = []

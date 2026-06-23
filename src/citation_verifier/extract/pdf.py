@@ -336,7 +336,15 @@ def _references_from_layout(pdf_path: str | Path) -> dict[str, CitedAs]:
 def _clean_ref_body(text: str) -> str:
     """Normalize whitespace inside one reference entry without changing content."""
     text = re.sub(r"\s+", " ", text or "").strip()
-    return re.sub(r"\s+([,.;:])", r"\1", text)
+    text = re.sub(r"\s+([,.;:])", r"\1", text)
+    # Rejoin a surname the glyph-spacer split across a transliteration apostrophe
+    # ("Murakhovs’ ka" -> "Murakhovs’ka"): the stray space made the lowercase tail
+    # look like a title word, so the author/title boundary landed inside the name.
+    text = re.sub(r"(?<=[A-Za-z])(['’])\s+(?=[a-z])", r"\1", text)
+    # Drop a trailing "cited on pages" back-reference some templates print after the
+    # year ("…, 2017.2,17" / "…, 2025.6") — anchored to the end so it never touches
+    # a mid-string arXiv id (e.g. "2503.18892").
+    return re.sub(r"(?<=\d)\.\s*\d{1,3}(?:\s*,\s*\d{1,3})*\s*$", "", text).strip()
 
 
 # Connectors that join names in an author list — a name followed by one of these
@@ -384,6 +392,74 @@ def _split_ay_authors(author_str: str) -> list[str]:
     return [re.sub(r"\s+", " ", u).strip().strip(",").strip() for u in units]
 
 
+# Given-name-first authors ("Serina Chang, Ashton Anderson, and Jake M Hofman.
+# Title" — the NeurIPS/arXiv style with full first names). A token is a capitalized
+# word — accent-tolerant ("Jörg", "Loáiciga"), hyphen-joined even when the second
+# part is lowercase ("Wen-tau"), apostrophe-joined ("O’Neil"), or a bare initial
+# ("M.", "D."). A name is 2–4 tokens, allowing a lowercase nobiliary particle
+# ("Niels van Berkel"). `_NAME_LETTER` is any Unicode letter (not just A–Z).
+_NAME_LETTER = r"[^\W\d_]"
+_GNF_TOKEN = rf"[A-ZÀ-Þ]{_NAME_LETTER}*(?:[-’']{_NAME_LETTER}+)*\.?"
+_GNF_PARTICLE = r"(?:van|von|der|den|del|della|de|di|da|du|dos|la|le|bin|al)"
+_GNF_NAME = rf"{_GNF_TOKEN}(?:\s+(?:{_GNF_PARTICLE}\s+)*{_GNF_TOKEN}){{1,3}}"
+# The last author after "and"/"&" may be a mononym/handle ("… and Vinci. Title").
+_GNF_MONONYM = rf"[A-ZÀ-Þ]{_NAME_LETTER}+(?:[-’']{_NAME_LETTER}+)*"
+_GNF_LAST = rf"(?:{_GNF_NAME}|{_GNF_MONONYM})"
+_TITLE_START = r"[A-Z0-9“”\"‘’'(]"  # a title may open with a capital, digit, quote, or paren
+# Author lists end at an unambiguous boundary before the title — "et al." or
+# ", and <Name>." — so the title may start with any capital/digit without leaking.
+# Comma separators keep each name from greedily eating the next, so neither the
+# leading list nor the title overshoots.
+_GNF_ETAL_RE = re.compile(
+    rf"^\s*(?P<authors>{_GNF_NAME}(?:\s*,\s*{_GNF_NAME})*)\s*,?\s+et\s+al\.\s+(?P<rest>{_TITLE_START}.+)$",
+    re.DOTALL,
+)
+_GNF_AND_RE = re.compile(
+    rf"^\s*(?P<authors>{_GNF_NAME}(?:\s*,\s*{_GNF_NAME})*\s*,?\s+(?:and|&)\s+{_GNF_LAST})"
+    rf"\.\s+(?P<rest>{_TITLE_START}.+)$",
+    re.DOTALL,
+)
+# A lone given-name-first author ("Harrison Chase. Langchain …"): 2–3 full-word
+# Title-case tokens (optional middle initial) then ". " + title. Full words (each
+# [A-Z][a-z]+) distinguish it from a Vancouver "Surname I." (whose last token is a
+# bare initial), so this never fires on the numbered/Vancouver style.
+_GNF_SOLO_RE = re.compile(
+    r"^\s*(?P<authors>[A-Z][a-z]+(?:\s+[A-Z]\.?)?(?:\s+[A-Z][a-z][A-Za-z'’-]*){1,2})"
+    r"\.\s+(?P<rest>[A-Z0-9].+)$",
+    re.DOTALL,
+)
+
+
+def _split_gnf_authors(author_str: str) -> list[str]:
+    """Split a given-name-first run into individual names, dropping ``and``/``et al``."""
+    author_str = _ETAL_TAIL_RE.sub("", author_str)
+    author_str = re.sub(r"\s*,?\s+(?:and|&)\s+", ", ", author_str)  # ", and X" / " & X" -> ", X"
+    parts = [p.strip(" .,") for p in author_str.split(",")]
+    return [p for p in parts if p and not re.fullmatch(r"(?i)et\s+al\.?", p)]
+
+
+def _split_given_name_first(head: str) -> tuple[list[str], str | None] | None:
+    """Authors as ``First [M.] Last, …, and First Last. Title`` (or ``…, et al. Title``).
+
+    Recognized by the ``et al.`` / ``, and <Name>.`` terminator, which Vancouver and
+    author-year tiers miss (no surname-comma-initials, no ``Surname I.`` run). ``None``
+    when the head isn't this shape, so the caller falls through to the next tier.
+    """
+    for rx in (_GNF_ETAL_RE, _GNF_AND_RE):
+        m = rx.match(head)
+        if m:
+            authors = _split_gnf_authors(m.group("authors"))
+            if len(authors) >= 2:  # a real list (a lone "Firstname Lastname. Title" isn't GNF-safe)
+                return authors, _title_from(m.group("rest"))
+    # Single author ("Harrison Chase. Langchain …") — needs the stricter full-word rule.
+    m = _GNF_SOLO_RE.match(head)
+    if m:
+        authors = _split_gnf_authors(m.group("authors"))
+        if len(authors) == 1:
+            return authors, _title_from(m.group("rest"))
+    return None
+
+
 def _title_from(title_raw: str) -> str | None:
     """Trim a reference title at the next sentence boundary or ``In:`` venue marker.
 
@@ -392,6 +468,9 @@ def _title_from(title_raw: str) -> str | None:
     pollutes the resolver's title query (e.g. "… applications, 2025" never matched).
     """
     title = re.split(r"\.\s+(?=[A-Z0-9])|\s+In:\s", title_raw, maxsplit=1)[0].strip(" .,")
+    # Cut a journal trailer that started lowercase so the split above missed it
+    # ("… knowledge. nature, 550(7676):354–359, 2017") — keyed on a volume(issue):page.
+    title = re.split(r"\.\s+\S.*?\b\d{1,4}\s*\(\d{1,4}\)\s*:\s*\d", title, maxsplit=1)[0].strip(" .,")
     title = re.sub(r",\s*(?:19|20)\d{2}[a-z]?$", "", title).strip(" .,")
     return title or None
 
@@ -426,6 +505,14 @@ def _split_author_title(body: str) -> tuple[list[str], str | None]:
         ay_authors = _split_ay_authors(m.group("authors"))
         if ay_authors:
             return ay_authors, _title_from(m.group("rest"))
+
+    # Tier 1: given-name-first run ("First Last, …, and First Last. Title"). Tried
+    # before Vancouver because Vancouver would mis-read a given-name + middle-initial
+    # ("Justin D. Weisz") as a single "Surname Initial" author and steal the surname
+    # into the title.
+    gnf = _split_given_name_first(head)
+    if gnf:
+        return gnf
 
     m = _AUTHOR_RUN_RE.match(head)
     if m:
@@ -543,6 +630,51 @@ _FOOTER_RE = re.compile(
     r"The Author\(s\).*|under exclusive licence.*)$",
     re.IGNORECASE,
 )
+# A standalone numbered section heading ("1 Introduction", "2.1 Method", "3 Experiments
+# and Results") — short, title-cased, no terminal punctuation. Dropped so it doesn't
+# glue onto an adjacent sentence ("…unlock this potential. 1 Introduction The development
+# …"); the sentence splitter can't break before a digit, so the heading would otherwise
+# fuse two sentences into one claim.
+_SECTION_HEADING_RE = re.compile(r"^\d+(?:\.\d+)*\.?\s+[A-Z][A-Za-z][\w &,'/-]{0,48}$")
+# A footnote / author-contribution line ("∗ Equal Contribution. † Project Lead.", or a
+# "• Yang Yue led the project …" bullet): starts with a footnote/bullet glyph. Not prose.
+_FOOTNOTE_RE = re.compile(r"^[*∗†‡§¶•●◦▪]+\s*\S")
+# Repeating venue/proceedings header-footer boilerplate ("39th Conference on Neural
+# Information Processing Systems (NeurIPS 2025).", "Proceedings of …", "Preprint. Under
+# review.", "Published as a conference paper at ICLR") — never a claim.
+_VENUE_HEADER_RE = re.compile(
+    r"^(?:\d+(?:st|nd|rd|th)\s+(?:Conference|Workshop|Annual|International)\b"
+    r"|(?:Proceedings|Advances)\s+(?:of|in)\b"
+    r"|Published\s+as\s+a\s+(?:conference|workshop)\s+paper\b"
+    r"|(?:Preprint|Under\s+review|Work\s+in\s+progress)\b"
+    r"|To\s+appear\s+in\b)",
+    re.IGNORECASE,
+)
+# CJK ideographs/kana. In an English-language paper a body line carrying CJK is an
+# author-name gloss / affiliation / contribution note ("… Yang Yue (乐阳) …"), not a
+# prose claim — drop it so it can't fuse into a page-1 claim.
+_CJK_RE = re.compile(r"[぀-ヿ㐀-䶿一-鿿豈-﫿]")
+
+
+_CJK_NAME_GLOSS_RE = re.compile(r"[A-Za-z]\)?\s*[（(]\s*[぀-ヿ㐀-䶿一-鿿]")
+
+
+def _is_cjk_boilerplate(line: str) -> bool:
+    """A CJK-bearing line that is author-block boilerplate, not a prose claim.
+
+    Conservative on purpose: an English-paper author note glosses names in CJK
+    ("… Yang Yue (乐阳) …") or is written predominantly in CJK (an affiliation), but a
+    multilingual/NLP paper may carry a genuine claim quoting a Chinese example or
+    dataset. So drop a CJK line ONLY when it has a parenthesized CJK name gloss after
+    a Latin token, or is mostly CJK — never a Latin-majority sentence.
+    """
+    if not _CJK_RE.search(line):
+        return False
+    if _CJK_NAME_GLOSS_RE.search(line):
+        return True
+    cjk = len(_CJK_RE.findall(line))
+    latin = sum(1 for c in line if c.isascii() and c.isalpha())
+    return cjk >= max(1, latin)  # predominantly CJK → affiliation/note, not English prose
 
 
 def _expand_num_marker(group: str) -> list[str]:
@@ -557,6 +689,41 @@ def _expand_num_marker(group: str) -> list[str]:
         elif part.strip().isdigit():
             keys.append(f"ref-{part.strip()}")
     return keys
+
+
+def _valid_marker_key(key: str, references: dict[str, CitedAs]) -> bool:
+    """A numeric ``[n]`` marker is a real citation only if it resolves to a ref entry.
+
+    ``ref-0`` is never valid (bibliographies are 1-indexed). When a reference list
+    was parsed, the key must be in it — this drops math/interval false positives
+    like ``Si ∈ [0, 100]`` (→ ref-0/ref-100) that aren't real markers. With no
+    parsed list we can't validate, so we keep the marker (best-effort floor).
+    """
+    if key == "ref-0":
+        return False
+    return key in references if references else True
+
+
+def _has_numbered_citations(claim_body: str, references: dict[str, CitedAs]) -> bool:
+    """True when the body's ``[n]`` markers densely resolve to the reference list.
+
+    This is the citation-style discriminator: a numbered-citation paper has many
+    ``[n]`` that map to real entries; an author-year paper only has stray ``[n]``
+    (math intervals, footnotes) that don't. Gating the numeric path on this keeps a
+    lone ``[0, 100]`` from short-circuiting a hyperlink/author-year paper (its 100+
+    ``cite.*`` sites would otherwise be dropped). Needs ≥3 markers, ≥60% resolving.
+    """
+    if not references:
+        return False
+    total = hits = 0
+    for mm in _INTEXT_NUM_RE.finditer(claim_body):
+        keys = [k for k in _expand_num_marker(mm.group(1)) if k != "ref-0"]
+        if not keys:
+            continue
+        total += 1
+        if all(k in references for k in keys):
+            hits += 1
+    return total >= 3 and hits >= 0.6 * total
 
 
 def _claim_scan_body(text: str) -> str:
@@ -575,6 +742,10 @@ def _claim_scan_body(text: str) -> str:
         if _EMAIL_RE.search(stripped) or _EMAIL_RE.search(next_line):
             continue
         if _FOOTER_RE.match(stripped):
+            continue
+        if _SECTION_HEADING_RE.match(stripped) or _FOOTNOTE_RE.match(stripped):
+            continue
+        if _VENUE_HEADER_RE.match(stripped) or _is_cjk_boilerplate(stripped):
             continue
         if _AFFILIATION_START_RE.match(stripped):
             in_affiliation = True
@@ -636,11 +807,44 @@ def _fold(s: str) -> str:
     return "".join(c for c in s if not unicodedata.combining(c)).lower()
 
 
-def _ay_surname(author: str) -> str:
-    """First-author surname, folded + de-hyphenated: 'Martin-Lof, P.' -> 'martinlof'."""
+def _ay_surnames(author: str) -> list[str]:
+    """Candidate first-author surnames (folded), across the author shapes a bibkey
+    might key on — the binder matches against ANY candidate:
+
+    * author-year comma — ``'Martin-Lof, P.'`` -> ``['martinlof']`` (before the comma);
+    * Vancouver — ``'Yang Z'`` / ``'Devlin J'`` -> first token (last is initials);
+    * given-name-first — ``'Philipp Brauner'`` -> last token, but an org name
+      (``'Qwen Team'``) keys on the first — so both ends are returned for either.
+
+    Vancouver is told apart by a last token that is an initials group (≤2 letters,
+    all uppercase like ``Z``/``ZQ``); a real short surname (``He``/``Wu``) carries a
+    lowercase letter and so is kept.
+    """
     a = (author or "").strip()
-    a = a.split(",")[0] if "," in a else (a.split()[0] if a.split() else a)
-    return _fold(re.sub(r"[^A-Za-z]", "", a))
+    if "," in a:
+        cands = [a.split(",")[0]]
+    else:
+        toks = a.split()
+        if len(toks) <= 1:
+            cands = toks or [a]
+        else:
+            last = re.sub(r"[^A-Za-z]", "", toks[-1])
+            cands = [toks[0]] if (1 <= len(last) <= 2 and last.isupper()) else [toks[-1], toks[0]]
+    out: list[str] = []
+    for c in cands:
+        # Fold (NFKD + drop diacritics) BEFORE removing non-letters, so "Konrád"
+        # folds to "konrad" — stripping first would delete the accented "á" → "konrd".
+        f = re.sub(r"[^A-Za-z]", "", _fold(c))
+        if f and f not in out:
+            out.append(f)
+        # Hyphenated or apostrophe surname: also offer the left part, since bibkeys
+        # often key on it ("Zamfirescu-Pereira" -> "zamfirescu" for key
+        # "zamfirescu2023johnny"; "Murakhovs’ka" -> "murakhovs" for "murakhovs2023…").
+        if split := re.split(r"[-'’]", c, maxsplit=1):
+            left = re.sub(r"[^A-Za-z]", "", _fold(split[0]))
+            if len(split) > 1 and len(left) >= 4 and left not in out:
+                out.append(left)
+    return out
 
 
 def _surname_matches(key_surname: str, ref_surname: str) -> bool:
@@ -667,28 +871,46 @@ def _bind_author_year(cite_key: str, references: dict[str, CitedAs]) -> CitedAs 
         year, kw = int(m.group(2)), (m.group(3) + m.group(4)).lower()
         by_surname = [
             c for c in references.values()
-            if c.authors and _surname_matches(surname, _ay_surname(c.authors[0]))
+            if c.authors and any(_surname_matches(surname, rs) for rs in _ay_surnames(c.authors[0]))
         ]
         if len(by_surname) == 1:
             return by_surname[0]  # a unique surname binds (cited year may differ slightly)
         if by_surname:
-            # Several same-surname refs: disambiguate by year (±1), then title keyword.
+            # Several same-surname refs: disambiguate by year (±1), then by the bibkey
+            # keyword as a WHOLE title word that is unique within the pool ("you" ->
+            # "Are you sure?…"). Word-boundary + uniqueness avoids substring false hits.
             pool = [c for c in by_surname if not c.year or abs(c.year - year) <= 1] or by_surname
             if len(pool) == 1:
                 return pool[0]
-            if len(kw) >= 4:
-                for c in pool:
-                    if kw[:5] in re.sub(r"[^a-z]", "", (c.title or "").lower()):
-                        return c
+            if len(kw) >= 3:  # the keyword as a whole title word, unique in the pool
+                hits = [c for c in pool if kw in re.findall(r"[a-z0-9]+", (c.title or "").lower())]
+                if len(hits) == 1:
+                    return hits[0]
+            if len(kw) >= 4:  # a CamelCase keyword ("BeyondPL") as a unique title prefix
+                hits = [c for c in pool if kw[:5] in re.sub(r"[^a-z0-9]", "", (c.title or "").lower())]
+                if len(hits) == 1:
+                    return hits[0]
+            return None  # a genuine same-surname ambiguity — never guess
+    # No surname match (incl. keyless keys like "2024bfcl"): bind by a UNIQUE title
+    # acronym (key initials == the title's leading initials) or a distinctive (>=4-char)
+    # title word. Only when exactly one reference matches — otherwise stay unresolved.
+    token = _fold(re.sub(r"[^A-Za-z]", "", (m.group(4) if m else cite_key)))
+    if len(token) >= 3:
+        hits = []
+        for c in references.values():
+            words = re.findall(r"[a-z0-9]+", (c.title or "").lower())
+            initials = "".join(w[0] for w in words)
+            if token == initials[: len(token)] or (len(token) >= 4 and token in words):
+                hits.append(c)
+        if len(hits) == 1:
+            return hits[0]
     # Fallback for non-standard keys (e.g. DBLP ".../CoquandH88"): a long, distinctive
     # surname embedded in the key and unique in the reference list.
     folded = _fold(re.sub(r"[^A-Za-z]", "", cite_key))
-    embedded = []
-    for c in references.values():
-        if c.authors:
-            ref_surname = _ay_surname(c.authors[0])
-            if len(ref_surname) >= 6 and ref_surname in folded:
-                embedded.append(c)
+    embedded = [
+        c for c in references.values()
+        if c.authors and any(len(rs) >= 6 and rs in folded for rs in _ay_surnames(c.authors[0]))
+    ]
     return embedded[0] if len(embedded) == 1 else None
 
 
@@ -721,8 +943,12 @@ class PdfExtractor:
         records: list[CitationRecord] = []
         seen: set[tuple[str, str, str]] = set()
 
-        for mm in _INTEXT_NUM_RE.finditer(claim_body):
-            cite_keys = _expand_num_marker(mm.group(1))
+        # Only mine [n] markers when this is actually a numbered-citation paper.
+        # Otherwise a stray math interval (e.g. "Si ∈ [0, 100]") would be read as a
+        # citation and suppress the author-year/hyperlink path entirely.
+        numbered = _has_numbered_citations(claim_body, references)
+        for mm in _INTEXT_NUM_RE.finditer(claim_body) if numbered else ():
+            cite_keys = [k for k in _expand_num_marker(mm.group(1)) if _valid_marker_key(k, references)]
             if not cite_keys:
                 continue
             sentence, span = _sentence_around(claim_body, mm.start())
