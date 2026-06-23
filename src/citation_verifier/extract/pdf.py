@@ -236,7 +236,14 @@ _REF_TAIL_RE = re.compile(
     r"\b(?:Publisher['’]?s\s+Note|Springer\s+Nature\s+remains|author\s+self-archiving)",
     re.IGNORECASE,
 )
-_ARXIV_RE = re.compile(r"arXiv:\s*([0-9]{4}\.[0-9]{4,5}(?:v\d+)?|[a-z\-]+/\d{7})", re.IGNORECASE)
+# arXiv id in either the "arXiv:2102.00182" form or a URL form
+# "arxiv.org/abs/2102.00182" / "arxiv.org/pdf/2102.00182(.pdf)" (optional v-suffix,
+# or old-style "math/0211159"). Many bibliographies cite only the URL.
+_ARXIV_RE = re.compile(
+    r"(?:arXiv:\s*|arxiv\.org/(?:abs|pdf)/)"
+    r"([0-9]{4}\.[0-9]{4,5}(?:v\d+)?|[a-z\-]+/\d{7})",
+    re.IGNORECASE,
+)
 _DOI_RE = re.compile(r"\b10\.\d{4,9}/[-._;()/:A-Za-z0-9]+", re.IGNORECASE)
 _URL_RE = re.compile(r"https?://[^\s]+")
 _YEAR_RE = re.compile(r"\b(19|20)\d{2}[a-z]?\b")
@@ -376,8 +383,14 @@ def _split_ay_authors(author_str: str) -> list[str]:
 
 
 def _title_from(title_raw: str) -> str | None:
-    """Trim a reference title at the next sentence boundary or ``In:`` venue marker."""
+    """Trim a reference title at the next sentence boundary or ``In:`` venue marker.
+
+    Also drop a trailing ``, 2024`` year suffix — author-year references write
+    ``Title, YEAR.`` so the year leaks into the title otherwise, which then
+    pollutes the resolver's title query (e.g. "… applications, 2025" never matched).
+    """
     title = re.split(r"\.\s+(?=[A-Z0-9])|\s+In:\s", title_raw, maxsplit=1)[0].strip(" .,")
+    title = re.sub(r",\s*(?:19|20)\d{2}[a-z]?$", "", title).strip(" .,")
     return title or None
 
 
@@ -482,9 +495,9 @@ def _parse_ref_entry(body: str) -> CitedAs:
         title=title,
         year=_coerce_year(year.group(0)) if year else None,
         venue=None,
-        doi=doi.group(0) if doi else None,
+        doi=doi.group(0).rstrip(".,;)") if doi else None,
         arxiv_id=arxiv.group(1) if arxiv else None,
-        url=url.group(0) if url else None,
+        url=url.group(0).rstrip(".,;)") if url else None,
     )
 
 
@@ -612,7 +625,7 @@ def _sentence_around(text: str, pos: int, window: int = 500) -> tuple[str, tuple
 # A BibTeX-style key: a leading surname, an optional separator, a 4-digit year,
 # then an optional suffix/keyword. Tolerates CamelCase and separators:
 # "yang2023leandojo", "Zhao_2024", "MartinLofTypeTheory1998", "kaplan2020scaling".
-_BIBKEY_RE = re.compile(r"^([A-Za-z]+?)[_:.\- ]?((?:19|20)\d{2})([a-z]?)(.*)$")
+_BIBKEY_RE = re.compile(r"^([A-Za-z][A-Za-z0-9]*?)[_:.\- ]?((?:19|20)\d{2})([a-z]?)(.*)$")
 
 
 def _fold(s: str) -> str:
@@ -647,7 +660,9 @@ def _bind_author_year(cite_key: str, references: dict[str, CitedAs]) -> CitedAs 
     """
     m = _BIBKEY_RE.match(cite_key)
     if m:
-        surname, year, kw = _fold(m.group(1)), int(m.group(2)), (m.group(3) + m.group(4)).lower()
+        # strip any digits from the surname token ("qwen3" -> "qwen") for matching
+        surname = _fold(re.sub(r"[^A-Za-z]", "", m.group(1)))
+        year, kw = int(m.group(2)), (m.group(3) + m.group(4)).lower()
         by_surname = [
             c for c in references.values()
             if c.authors and _surname_matches(surname, _ay_surname(c.authors[0]))

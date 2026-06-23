@@ -505,3 +505,54 @@ def test_extract_text_citations_finds_author_year_forms():
     keys = {s["cite_key"] for s in sites}
     assert {"yang2023", "lightman2024", "smith2020"} <= keys
     assert all(s["claim"] for s in sites)
+
+
+# ── identifier / title / bibkey fixes (A6, A7, A8) ───────────────────────────
+def test_parse_ref_entry_extracts_arxiv_id_from_url():
+    from citation_verifier.extract.pdf import _parse_ref_entry
+
+    c = _parse_ref_entry("Yang L. Diffusion models: a survey, 2025. URL https://arxiv.org/abs/2209.00796.")
+    assert c.arxiv_id == "2209.00796"
+    assert _parse_ref_entry("Foo B. Bar baz. arxiv.org/pdf/2102.00182v2").arxiv_id == "2102.00182v2"
+
+
+def test_title_from_strips_trailing_year_only_after_comma():
+    from citation_verifier.extract.pdf import _title_from
+
+    assert _title_from("Diffusion models: a comprehensive survey, 2025") == (
+        "Diffusion models: a comprehensive survey"
+    )
+    # no comma before the number -> kept (not a year suffix)
+    assert _title_from("A study of GPT 2 behaviour") == "A study of GPT 2 behaviour"
+
+
+def test_bind_author_year_handles_digit_and_org_keys():
+    from citation_verifier.extract.pdf import _bind_author_year
+    from citation_verifier.schema import CitedAs
+
+    refs = {
+        "ref-1": CitedAs(authors=["Qwen Team"], title="Qwen3 technical report", year=2025, arxiv_id="2505.09388"),
+    }
+    b = _bind_author_year("qwen3-2025", refs)
+    assert b is not None and b.arxiv_id == "2505.09388"
+
+
+# ── claim extraction reading order + sentence boundaries (A1, A2) ─────────────
+def test_order_reading_clusters_lines_despite_baseline_jitter():
+    from citation_verifier.extract.pdf_links import _order_reading
+
+    def w(x0, y0, t):
+        return (x0, y0, x0 + 10, y0 + 10, t, 0, 0, 0)
+
+    # "Expr" sits 0.6pt higher (inline code) — round(y) would bucket it as an
+    # earlier line and scramble; clustering keeps the line "translate Expr into".
+    words = [w(50, 100, "translate"), w(80, 99.4, "Expr"), w(110, 100, "into"), w(50, 114, "next")]
+    assert [x[4] for x in _order_reading(words)] == ["translate", "Expr", "into", "next"]
+
+
+def test_sentence_not_chopped_at_et_al_or_initials():
+    from citation_verifier.extract.pdf_links import _sentence_around
+
+    txt = "Prior work (Hindle et al., 2012) showed code is natural. A new sentence."
+    claim, _ = _sentence_around(txt, txt.index("Hindle"))
+    assert "showed code is natural" in claim  # not truncated at "et al."
