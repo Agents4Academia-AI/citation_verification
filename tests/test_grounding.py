@@ -360,3 +360,34 @@ def test_validate_url_only_flags_definitive_gone():
 
     assert validate_url("") is True
     assert validate_url("not-a-url") is True
+
+
+def test_subtitle_reference_reduces_colon_prefixed_title():
+    # a colon-prefix the canonical record drops ("I Speak, You Verify: <title>") —
+    # the fallback search uses the post-colon title, matched against the subtitle.
+    from citation_verifier.grounding.resolver import _subtitle_reference
+
+    ref = 'Key, D. "I Speak, You Verify: Toward trustworthy neural program synthesis" 2022'
+    assert _subtitle_reference(ref) == 'Key, D. "Toward trustworthy neural program synthesis" 2022'
+    assert _subtitle_reference('Foo B. "A plain title with no colon" 2020') == ""
+
+
+def test_match_rejects_exact_id_with_contradicting_title():
+    # an arXiv id that resolves to a DIFFERENT paper must not be accepted (-> unresolved),
+    # but a matching-title candidate at the same id is accepted.
+    import types
+
+    from citation_verifier.grounding.resolver import MultiSourceResolver
+
+    def cand(**kw):
+        d = dict(source="s2", title="", authors=[], year=None, venue="", doi="", arxiv_id="", url="", abstract="x", extra={})
+        d.update(kw)
+        return types.SimpleNamespace(**d)
+
+    r = MultiSourceResolver()
+    ref = 'Mejia F. "Kar: Evaluating model proof generation of lambda calculus" arXiv:2102.00182'
+    wrong = cand(arxiv_id="2102.00182", title="Entropic barriers as a reason for hardness", authors=["M. Bellitti"])
+    assert r._match(ref, [wrong]) is None  # id points elsewhere -> rejected
+    right = cand(arxiv_id="2102.00182", title="Kar: Evaluating model proof generation of lambda calculus")
+    res = r._match(ref, [right])
+    assert res is not None and getattr(res.match_method, "value", res.match_method) == "arxiv"

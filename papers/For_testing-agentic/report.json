@@ -85,7 +85,7 @@
       ],
       "confidence": 0.6,
       "model_tier": "judge",
-      "notes": "(based on abstract) LeanDojo enables programmatic interaction with the proof environment, which is related to proof-state reformulation, but the evidence does not explicitly describe 'proof-state reformulation between model calls' as a technique used or not used. · source: http://arxiv.org/pdf/2306.15626",
+      "notes": "(based on abstract) LeanDojo involves programmatic interaction with the proof environment, which is related to proof-state reformulation, but the evidence does not explicitly describe 'proof-state reformulation between model calls' as a technique used. · source: http://arxiv.org/pdf/2306.15626",
       "error": null,
       "labels": null
     },
@@ -172,7 +172,7 @@
       ],
       "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes LeanDojo as extracting data from Lean and enabling interaction with the proof environment programmatically, consistent with generating tactic strings that drive the proof assistant, though it does not explicitly mention 'surface syntax tactic strings' or the elaborator-to-Lean.Expr pipeline. · source: http://arxiv.org/pdf/2306.15626",
+      "notes": "(based on abstract) LeanDojo extracts data from Lean and enables interaction with the proof environment programmatically, and contains fine-grained data and models, consistent with generating tactic strings that the elaborator processes. · source: http://arxiv.org/pdf/2306.15626",
       "error": null,
       "labels": null
     },
@@ -257,9 +257,9 @@
           "url": "http://arxiv.org/pdf/2306.15626"
         }
       ],
-      "confidence": 0.9,
+      "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence explicitly describes LeanDojo as an open-source Lean playground with toolkits, data, models, and benchmarks for theorem proving using proof assistants, directly supporting its citation as a retrieval prover in the tactic-string lineage. · source: http://arxiv.org/pdf/2306.15626",
+      "notes": "(based on abstract) The evidence describes LeanDojo as an open-source Lean playground with toolkits, data, models, and benchmarks for theorem proving, consistent with 'LeanDojo and its retrieval prover' in the tactic-string lineage. · source: http://arxiv.org/pdf/2306.15626",
       "error": null,
       "labels": null
     },
@@ -302,7 +302,7 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "s2",
+        "source": "arxiv",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "DeepSeek-Prover: Advancing Theorem Proving in LLMs through Large-Scale Synthetic Data",
@@ -310,18 +310,18 @@
           "Huajian Xin",
           "Daya Guo",
           "Zhihong Shao",
-          "Z. Ren",
+          "Zhizhou Ren",
           "Qihao Zhu",
           "Bo Liu",
-          "C. Ruan",
+          "Chong Ruan",
           "Wenda Li",
           "Xiaodan Liang"
         ],
         "year": 2024,
-        "venue": "arXiv.org",
-        "doi": "10.48550/arxiv.2405.14333",
-        "arxiv_id": "2405.14333",
-        "url": "https://www.semanticscholar.org/paper/3648515cc35b517cdf60331cc4870e24616f9939",
+        "venue": "arXiv (preprint)",
+        "doi": null,
+        "arxiv_id": "2405.14333v1",
+        "url": "http://arxiv.org/abs/2405.14333v1",
         "url_valid": true,
         "abstract": "Proof assistants like Lean have revolutionized mathematical proof verification, ensuring high accuracy and reliability. Although large language models (LLMs) show promise in mathematical reasoning, their advancement in formal theorem proving is hindered by a lack of training data. To address this issue, we introduce an approach to generate extensive Lean 4 proof data derived from high-school and undergraduate-level mathematical competition problems. This approach involves translating natural language problems into formal statements, filtering out low-quality statements, and generating proofs t…"
       },
@@ -333,20 +333,20 @@
       "evidence": [
         {
           "kind": "metadata",
-          "source": "10.48550/arxiv.2405.14333",
-          "quote": "DeepSeek-Prover: Advancing Theorem Proving in LLMs through Large-Scale Synthetic Data — Huajian Xin, Daya Guo, Zhihong Shao, Z. Ren, Qihao Zhu, Bo Liu, C. Ruan, Wenda Li, Xiaodan Liang — 2024",
-          "url": "https://www.semanticscholar.org/paper/3648515cc35b517cdf60331cc4870e24616f9939"
+          "source": "2405.14333v1",
+          "quote": "DeepSeek-Prover: Advancing Theorem Proving in LLMs through Large-Scale Synthetic Data — Huajian Xin, Daya Guo, Zhihong Shao, Zhizhou Ren, Qihao Zhu, Bo Liu, Chong Ruan, Wenda Li, Xiaodan Liang — 2024",
+          "url": "http://arxiv.org/abs/2405.14333v1"
         },
         {
           "kind": "abstract",
-          "source": "10.48550/arxiv.2405.14333",
+          "source": "2405.14333v1",
           "quote": "Proof assistants like Lean have revolutionized mathematical proof verification, ensuring high accuracy and reliability. Although large language models (LLMs) show promise in mathematical reasoning, their advancement in formal theorem proving is hindered by a lack of training data. To address this issue, we introduce an approach to generate extensive Lean 4 proof data derived from high-school and undergraduate-level mathematical competition problems. This approach involves translating natural language problems into formal statements, filtering out low-quality statements, and generating proofs t…",
-          "url": "https://www.semanticscholar.org/paper/3648515cc35b517cdf60331cc4870e24616f9939"
+          "url": "http://arxiv.org/abs/2405.14333v1"
         }
       ],
-      "confidence": 0.85,
+      "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes generating Lean 4 proof data and generating proofs to create a dataset, consistent with producing tactic-level proofs in Lean's surface syntax that the elaborator then processes. · source: https://www.semanticscholar.org/paper/3648515cc35b517cdf60331cc4870e24616f9939",
+      "notes": "(based on abstract) The evidence describes generating Lean 4 proof data and generating proofs to create a large dataset, consistent with generating proof objects via tactic strings that Lean's elaborator processes. · source: http://arxiv.org/abs/2405.14333v1",
       "error": null,
       "labels": null
     },
@@ -389,7 +389,7 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "s2",
+        "source": "arxiv",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "DeepSeek-Prover: Advancing Theorem Proving in LLMs through Large-Scale Synthetic Data",
@@ -397,18 +397,18 @@
           "Huajian Xin",
           "Daya Guo",
           "Zhihong Shao",
-          "Z. Ren",
+          "Zhizhou Ren",
           "Qihao Zhu",
           "Bo Liu",
-          "C. Ruan",
+          "Chong Ruan",
           "Wenda Li",
           "Xiaodan Liang"
         ],
         "year": 2024,
-        "venue": "arXiv.org",
-        "doi": "10.48550/arxiv.2405.14333",
-        "arxiv_id": "2405.14333",
-        "url": "https://www.semanticscholar.org/paper/3648515cc35b517cdf60331cc4870e24616f9939",
+        "venue": "arXiv (preprint)",
+        "doi": null,
+        "arxiv_id": "2405.14333v1",
+        "url": "http://arxiv.org/abs/2405.14333v1",
         "url_valid": true,
         "abstract": "Proof assistants like Lean have revolutionized mathematical proof verification, ensuring high accuracy and reliability. Although large language models (LLMs) show promise in mathematical reasoning, their advancement in formal theorem proving is hindered by a lack of training data. To address this issue, we introduce an approach to generate extensive Lean 4 proof data derived from high-school and undergraduate-level mathematical competition problems. This approach involves translating natural language problems into formal statements, filtering out low-quality statements, and generating proofs t…"
       },
@@ -420,20 +420,20 @@
       "evidence": [
         {
           "kind": "metadata",
-          "source": "10.48550/arxiv.2405.14333",
-          "quote": "DeepSeek-Prover: Advancing Theorem Proving in LLMs through Large-Scale Synthetic Data — Huajian Xin, Daya Guo, Zhihong Shao, Z. Ren, Qihao Zhu, Bo Liu, C. Ruan, Wenda Li, Xiaodan Liang — 2024",
-          "url": "https://www.semanticscholar.org/paper/3648515cc35b517cdf60331cc4870e24616f9939"
+          "source": "2405.14333v1",
+          "quote": "DeepSeek-Prover: Advancing Theorem Proving in LLMs through Large-Scale Synthetic Data — Huajian Xin, Daya Guo, Zhihong Shao, Zhizhou Ren, Qihao Zhu, Bo Liu, Chong Ruan, Wenda Li, Xiaodan Liang — 2024",
+          "url": "http://arxiv.org/abs/2405.14333v1"
         },
         {
           "kind": "abstract",
-          "source": "10.48550/arxiv.2405.14333",
+          "source": "2405.14333v1",
           "quote": "Proof assistants like Lean have revolutionized mathematical proof verification, ensuring high accuracy and reliability. Although large language models (LLMs) show promise in mathematical reasoning, their advancement in formal theorem proving is hindered by a lack of training data. To address this issue, we introduce an approach to generate extensive Lean 4 proof data derived from high-school and undergraduate-level mathematical competition problems. This approach involves translating natural language problems into formal statements, filtering out low-quality statements, and generating proofs t…",
-          "url": "https://www.semanticscholar.org/paper/3648515cc35b517cdf60331cc4870e24616f9939"
+          "url": "http://arxiv.org/abs/2405.14333v1"
         }
       ],
-      "confidence": 0.85,
+      "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes generating proofs in Lean 4 using an expert iteration approach, directly supporting the claim that DeepSeek-Prover uses expert iteration to generate tactic strings. · source: https://www.semanticscholar.org/paper/3648515cc35b517cdf60331cc4870e24616f9939",
+      "notes": "(based on abstract) The evidence describes DeepSeek-Prover's approach of generating proofs for Lean 4, consistent with being cited as 'DeepSeek-Prover's expert iteration' in the tactic-string lineage. · source: http://arxiv.org/abs/2405.14333v1",
       "error": null,
       "labels": null
     },
@@ -476,7 +476,7 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "s2",
+        "source": "arxiv",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "DeepSeek-Prover: Advancing Theorem Proving in LLMs through Large-Scale Synthetic Data",
@@ -484,18 +484,18 @@
           "Huajian Xin",
           "Daya Guo",
           "Zhihong Shao",
-          "Z. Ren",
+          "Zhizhou Ren",
           "Qihao Zhu",
           "Bo Liu",
-          "C. Ruan",
+          "Chong Ruan",
           "Wenda Li",
           "Xiaodan Liang"
         ],
         "year": 2024,
-        "venue": "arXiv.org",
-        "doi": "10.48550/arxiv.2405.14333",
-        "arxiv_id": "2405.14333",
-        "url": "https://www.semanticscholar.org/paper/3648515cc35b517cdf60331cc4870e24616f9939",
+        "venue": "arXiv (preprint)",
+        "doi": null,
+        "arxiv_id": "2405.14333v1",
+        "url": "http://arxiv.org/abs/2405.14333v1",
         "url_valid": true,
         "abstract": "Proof assistants like Lean have revolutionized mathematical proof verification, ensuring high accuracy and reliability. Although large language models (LLMs) show promise in mathematical reasoning, their advancement in formal theorem proving is hindered by a lack of training data. To address this issue, we introduce an approach to generate extensive Lean 4 proof data derived from high-school and undergraduate-level mathematical competition problems. This approach involves translating natural language problems into formal statements, filtering out low-quality statements, and generating proofs t…"
       },
@@ -507,20 +507,20 @@
       "evidence": [
         {
           "kind": "metadata",
-          "source": "10.48550/arxiv.2405.14333",
-          "quote": "DeepSeek-Prover: Advancing Theorem Proving in LLMs through Large-Scale Synthetic Data — Huajian Xin, Daya Guo, Zhihong Shao, Z. Ren, Qihao Zhu, Bo Liu, C. Ruan, Wenda Li, Xiaodan Liang — 2024",
-          "url": "https://www.semanticscholar.org/paper/3648515cc35b517cdf60331cc4870e24616f9939"
+          "source": "2405.14333v1",
+          "quote": "DeepSeek-Prover: Advancing Theorem Proving in LLMs through Large-Scale Synthetic Data — Huajian Xin, Daya Guo, Zhihong Shao, Zhizhou Ren, Qihao Zhu, Bo Liu, Chong Ruan, Wenda Li, Xiaodan Liang — 2024",
+          "url": "http://arxiv.org/abs/2405.14333v1"
         },
         {
           "kind": "abstract",
-          "source": "10.48550/arxiv.2405.14333",
+          "source": "2405.14333v1",
           "quote": "Proof assistants like Lean have revolutionized mathematical proof verification, ensuring high accuracy and reliability. Although large language models (LLMs) show promise in mathematical reasoning, their advancement in formal theorem proving is hindered by a lack of training data. To address this issue, we introduce an approach to generate extensive Lean 4 proof data derived from high-school and undergraduate-level mathematical competition problems. This approach involves translating natural language problems into formal statements, filtering out low-quality statements, and generating proofs t…",
-          "url": "https://www.semanticscholar.org/paper/3648515cc35b517cdf60331cc4870e24616f9939"
+          "url": "http://arxiv.org/abs/2405.14333v1"
         }
       ],
-      "confidence": 0.8,
+      "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes DeepSeek-Prover as a system that generates Lean 4 proofs via tactic-level generation, supporting the claim that it differs from the Church Machine in medium (tactic strings vs. lambda calculus expressions). · source: https://www.semanticscholar.org/paper/3648515cc35b517cdf60331cc4870e24616f9939",
+      "notes": "(based on abstract) The evidence describes DeepSeek-Prover generating Lean 4 proofs via LLMs, directly supporting its citation as part of the DeepSeek-Prover family that differs from the Church Machine in medium. · source: http://arxiv.org/abs/2405.14333v1",
       "error": null,
       "labels": null
     },
@@ -569,26 +569,26 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "s2",
+        "source": "arxiv",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "Diffusion Models: A Comprehensive Survey of Methods and Applications",
         "authors": [
           "Ling Yang",
           "Zhilong Zhang",
+          "Yang Song",
           "Shenda Hong",
           "Runsheng Xu",
           "Yue Zhao",
-          "Yingxia Shao",
           "Wentao Zhang",
-          "Ming-Hsuan Yang",
-          "Bin Cui"
+          "Bin Cui",
+          "Ming-Hsuan Yang"
         ],
         "year": 2022,
-        "venue": "ACM Computing Surveys",
-        "doi": "10.1145/3626235",
-        "arxiv_id": "2209.00796",
-        "url": "https://arxiv.org/pdf/2209.00796",
+        "venue": "arXiv (preprint)",
+        "doi": null,
+        "arxiv_id": "2209.00796v15",
+        "url": "http://arxiv.org/abs/2209.00796v15",
         "url_valid": true,
         "abstract": "Diffusion models have emerged as a powerful new family of deep generative models with record-breaking performance in many applications, including image synthesis, video generation, and molecule design. In this survey, we provide an overview of the rapidly expanding body of work on diffusion models, categorizing the research into three key areas: efficient sampling, improved likelihood estimation, and handling data with special structures. We also discuss the potential for combining diffusion models with other generative models for enhanced results. We further review the wide-ranging applicatio…"
       },
@@ -602,20 +602,20 @@
       "evidence": [
         {
           "kind": "metadata",
-          "source": "10.1145/3626235",
-          "quote": "Diffusion Models: A Comprehensive Survey of Methods and Applications — Ling Yang, Zhilong Zhang, Shenda Hong, Runsheng Xu, Yue Zhao, Yingxia Shao, Wentao Zhang, Ming-Hsuan Yang, Bin Cui — 2022",
-          "url": "https://arxiv.org/pdf/2209.00796"
+          "source": "2209.00796v15",
+          "quote": "Diffusion Models: A Comprehensive Survey of Methods and Applications — Ling Yang, Zhilong Zhang, Yang Song, Shenda Hong, Runsheng Xu, Yue Zhao, Wentao Zhang, Bin Cui, Ming-Hsuan Yang — 2022",
+          "url": "http://arxiv.org/abs/2209.00796v15"
         },
         {
           "kind": "abstract",
-          "source": "10.1145/3626235",
+          "source": "2209.00796v15",
           "quote": "Diffusion models have emerged as a powerful new family of deep generative models with record-breaking performance in many applications, including image synthesis, video generation, and molecule design. In this survey, we provide an overview of the rapidly expanding body of work on diffusion models, categorizing the research into three key areas: efficient sampling, improved likelihood estimation, and handling data with special structures. We also discuss the potential for combining diffusion models with other generative models for enhanced results. We further review the wide-ranging applicatio…",
-          "url": "https://arxiv.org/pdf/2209.00796"
+          "url": "http://arxiv.org/abs/2209.00796v15"
         }
       ],
-      "confidence": 0.95,
+      "confidence": 0.92,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence is about diffusion models for image synthesis, video generation, and molecule design — it has no connection to Lean.Expr, Lean 4's kernel, or dependently typed lambda calculus; likely a citation error or wrong reference. · source: https://arxiv.org/pdf/2209.00796",
+      "notes": "(based on abstract) The evidence is about diffusion models for image synthesis, video generation, and molecule design — it has no connection to Lean.Expr, Lean 4's kernel, or dependently typed lambda calculus. · source: http://arxiv.org/abs/2209.00796v15",
       "error": null,
       "labels": null
     },
@@ -701,9 +701,9 @@
           "url": "http://arxiv.org/pdf/2305.20050"
         }
       ],
-      "confidence": 0.9,
+      "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes training process supervision models (learned judges) that score intermediate reasoning steps, directly supporting the reference to a 'learned judge' approach that the citing paper says it does not use. · source: http://arxiv.org/pdf/2305.20050",
+      "notes": "(based on abstract) The evidence describes process supervision providing feedback for each intermediate reasoning step, directly supporting the concept of a 'learned judge' that scores steps. · source: http://arxiv.org/pdf/2305.20050",
       "error": null,
       "labels": null
     },
@@ -789,9 +789,9 @@
           "url": "http://arxiv.org/pdf/2305.20050"
         }
       ],
-      "confidence": 0.95,
+      "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence explicitly describes process supervision that provides feedback for each intermediate reasoning step, directly supporting the claim about process-reward modelling training a separate judge for intermediate steps. · source: http://arxiv.org/pdf/2305.20050",
+      "notes": "(based on abstract) The evidence explicitly discusses process supervision which provides feedback for each intermediate reasoning step, directly supporting the claim about training a separate judge to score intermediate steps. · source: http://arxiv.org/pdf/2305.20050",
       "error": null,
       "labels": null
     },
@@ -839,50 +839,19 @@
         "url": "https://arxiv.org/abs/2102.00182"
       },
       "in_table": false,
-      "exists": "yes",
-      "resolved": {
-        "source": "arxiv",
-        "match_method": "arxiv",
-        "match_score": 1.0,
-        "title": "Entropic barriers as a reason for hardness in both classical and quantum algorithms",
-        "authors": [
-          "Matteo Bellitti",
-          "Federico Ricci-Tersenghi",
-          "Antonello Scardicchio"
-        ],
-        "year": 2021,
-        "venue": "Phys. Rev. Research 3, 043015 (2021)",
-        "doi": "10.1103/physrevresearch.3.043015",
-        "arxiv_id": "2102.00182v2",
-        "url": "http://arxiv.org/abs/2102.00182v2",
-        "url_valid": true,
-        "abstract": "We study both classical and quantum algorithms to solve a hard optimization problem, namely 3-XORSAT on 3-regular random graphs. By introducing a new quasi-greedy algorithm that is not allowed to jump over large energy barriers, we show that the problem hardness is mainly due to entropic barriers. We study, both analytically and numerically, several optimization algorithms, finding that entropic barriers affect in a similar way classical local algorithms and quantum annealing. For the adiabatic algorithm, the difficulty we identify is distinct from that of tunnelling under large barriers, but …"
-      },
+      "exists": "unresolved",
+      "resolved": null,
       "metadata_issues": [
-        "title mismatch: cited 'Kar: Evaluating model proof generation of lambda calculus' vs 'Entropic barriers as a reason for hardness in both classica…'",
-        "first-author mismatch: cited 'Mejia, F.' vs 'Matteo Bellitti'"
+        "could not retrieve a confident match — searched Crossref, arXiv, DBLP, Semantic Scholar, OpenAlex"
       ],
-      "supports_claim": "does_not",
-      "priority": "obligatory",
-      "severity": "high",
+      "supports_claim": "inconclusive",
+      "priority": "helpful",
+      "severity": "low",
       "compared_against": null,
-      "evidence": [
-        {
-          "kind": "metadata",
-          "source": "10.1103/physrevresearch.3.043015",
-          "quote": "Entropic barriers as a reason for hardness in both classical and quantum algorithms — Matteo Bellitti, Federico Ricci-Tersenghi, Antonello Scardicchio — 2021",
-          "url": "http://arxiv.org/abs/2102.00182v2"
-        },
-        {
-          "kind": "abstract",
-          "source": "10.1103/physrevresearch.3.043015",
-          "quote": "We study both classical and quantum algorithms to solve a hard optimization problem, namely 3-XORSAT on 3-regular random graphs. By introducing a new quasi-greedy algorithm that is not allowed to jump over large energy barriers, we show that the problem hardness is mainly due to entropic barriers. We study, both analytically and numerically, several optimization algorithms, finding that entropic barriers affect in a similar way classical local algorithms and quantum annealing. For the adiabatic algorithm, the difficulty we identify is distinct from that of tunnelling under large barriers, but …",
-          "url": "http://arxiv.org/abs/2102.00182v2"
-        }
-      ],
-      "confidence": 0.95,
-      "model_tier": "judge",
-      "notes": "(based on abstract) The evidence is about classical and quantum algorithms for 3-XORSAT optimization on random graphs, with no connection to Kernel Acceptance Rate, Lean, or formal proof verification; this appears to be a wrong reference. · source: http://arxiv.org/abs/2102.00182v2",
+      "evidence": [],
+      "confidence": null,
+      "model_tier": "bulk",
+      "notes": null,
       "error": null,
       "labels": null
     },
@@ -970,7 +939,7 @@
       ],
       "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes empirical scaling laws allowing determination of optimal compute allocation before large runs, directly supporting the claim about identifying sweet-spot allocation before any large run begins. · source: http://arxiv.org/abs/2001.08361v1",
+      "notes": "(based on abstract) The evidence describes scaling laws that allow determining the optimal allocation of a fixed compute budget, supporting the claim that sweet-spot allocation can be identified before large runs. · source: http://arxiv.org/abs/2001.08361v1",
       "error": null,
       "labels": null
     },
@@ -1038,9 +1007,9 @@
         "abstract": "We study empirical scaling laws for language model performance on the cross-entropy loss. The loss scales as a power-law with model size, dataset size, and the amount of compute used for training, with some trends spanning more than seven orders of magnitude. Other architectural details such as network width or depth have minimal effects within a wide range. Simple equations govern the dependence of overfitting on model/dataset size and the dependence of training speed on model size. These relationships allow us to determine the optimal allocation of a fixed compute budget. Larger models are s…"
       },
       "metadata_issues": [],
-      "supports_claim": "partial",
+      "supports_claim": "does_not",
       "priority": "obligatory",
-      "severity": "medium",
+      "severity": "high",
       "compared_against": null,
       "evidence": [
         {
@@ -1058,7 +1027,7 @@
       ],
       "confidence": 0.7,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes power-law scaling of loss with model size, dataset size, and compute, but the specific functional form L(N,D) with the exact parameters (E≈1.69, α≈0.34, β≈0.28) attributed here is more closely associated with Hoffmann et al.; Kaplan's work reports related but different parameterizations. · source: http://arxiv.org/abs/2001.08361v1",
+      "notes": "(based on abstract) The evidence describes power-law scaling of loss with model size, dataset size, and compute, but does not provide the specific functional form L(N,D) = E + A·N^−α + B·D^−β with the exact parameter values cited in the claim; additionally the claim attributes 'Chinchilla scaling law' to Kaplan but says 'based on earlier work of Hoffmann' which reverses the chronological order. · source: http://arxiv.org/abs/2001.08361v1",
       "error": null,
       "labels": null
     },
@@ -1146,7 +1115,7 @@
       ],
       "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence explicitly states that scaling trends span more than seven orders of magnitude, directly supporting the claim that small-scale fits extrapolate reliably over several orders of magnitude. · source: http://arxiv.org/abs/2001.08361v1",
+      "notes": "(based on abstract) The evidence explicitly states trends spanning more than seven orders of magnitude and that simple equations govern scaling relationships, directly supporting that small-scale fits extrapolate reliably. · source: http://arxiv.org/abs/2001.08361v1",
       "error": null,
       "labels": null
     },
@@ -1225,7 +1194,7 @@
       ],
       "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes a full-scale type theory system for formalizing intuitionistic mathematics with strengthened existence and disjunction rules, directly supporting the claim that Lean's dependent type theory is in the tradition of Martin-Löf Type Theory. · source: https://www.semanticscholar.org/paper/f43ae18b91214587290dd10c9d6634785810769c",
+      "notes": "(based on abstract) The evidence describes Martin-Löf's type theory as a full-scale system for formalizing intuitionistic mathematics with strengthened axioms for existence and disjunction, consistent with being cited as the tradition underlying dependent type theory. · source: https://www.semanticscholar.org/paper/f43ae18b91214587290dd10c9d6634785810769c",
       "error": null,
       "labels": null
     },
@@ -1304,7 +1273,7 @@
       ],
       "confidence": 0.82,
       "model_tier": "judge",
-      "notes": "(based on full text) The evidence confirms this is the Calculus of Constructions by Coquand & Huet with types and the Curry-Howard paradigm, but the claim calls it the 'Calculus of Inductive Constructions,' which is a later extension not presented in this paper. · source: https://doi.org/10.1016/0890-5401(88)90005-3",
+      "notes": "(based on full text) The evidence describes the Calculus of Constructions with types, λ-expressions, and the Curry–Howard correspondence, but the claim references the Calculus of *Inductive* Constructions (CIC), which is a later extension; the paper is the precursor, not the CIC itself. · source: https://doi.org/10.1016/0890-5401(88)90005-3",
       "error": null,
       "labels": null
     },
@@ -1402,9 +1371,9 @@
           "url": "https://www.semanticscholar.org/paper/8342b592fe238f3d230e4959b06fd10153c45db1"
         }
       ],
-      "confidence": 0.9,
+      "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes finding optimal model size and token count under a given compute budget, directly supporting the claim about identifying the sweet-spot allocation before any large run. · source: https://www.semanticscholar.org/paper/8342b592fe238f3d230e4959b06fd10153c45db1",
+      "notes": "(based on abstract) The evidence investigates optimal model size and token count under a given compute budget, supporting the claim about identifying sweet-spot compute allocation. · source: https://www.semanticscholar.org/paper/8342b592fe238f3d230e4959b06fd10153c45db1",
       "error": null,
       "labels": null
     },
@@ -1484,9 +1453,9 @@
         "abstract": "We investigate the optimal model size and number of tokens for training a transformer language model under a given compute budget. We find that current large language models are significantly undertrained, a consequence of the recent focus on scaling language models whilst keeping the amount of training data constant. By training over 400 language models ranging from 70 million to over 16 billion parameters on 5 to 500 billion tokens, we find that for compute-optimal training, the model size and the number of training tokens should be scaled equally: for every doubling of model size the number…"
       },
       "metadata_issues": [],
-      "supports_claim": "supports",
+      "supports_claim": "partial",
       "priority": "obligatory",
-      "severity": "ok",
+      "severity": "medium",
       "compared_against": null,
       "evidence": [
         {
@@ -1502,9 +1471,9 @@
           "url": "https://www.semanticscholar.org/paper/8342b592fe238f3d230e4959b06fd10153c45db1"
         }
       ],
-      "confidence": 0.85,
+      "confidence": 0.65,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes compute-optimal training scaling laws relating model size and training tokens, consistent with fitting the L(N,D) functional form, though the specific parameter values (E≈1.69, α≈0.34, β≈0.28) are not stated in the abstract. · source: https://www.semanticscholar.org/paper/8342b592fe238f3d230e4959b06fd10153c45db1",
+      "notes": "(based on abstract) The evidence describes compute-optimal scaling where model size and training tokens should scale equally, but does not present the specific functional form L(N,D) = E + A·N^−α + B·D^−β with the exact parameter values cited in the claim. · source: https://www.semanticscholar.org/paper/8342b592fe238f3d230e4959b06fd10153c45db1",
       "error": null,
       "labels": null
     },
@@ -1602,9 +1571,9 @@
           "url": "https://www.semanticscholar.org/paper/8342b592fe238f3d230e4959b06fd10153c45db1"
         }
       ],
-      "confidence": 0.65,
+      "confidence": 0.6,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes training over 400 models to determine compute-optimal scaling, which is consistent with being the natural-language frontier reference, but the specific details about the 21-cell fit and Table 3 parameters are not verifiable from the abstract alone. · source: https://www.semanticscholar.org/paper/8342b592fe238f3d230e4959b06fd10153c45db1",
+      "notes": "(based on abstract) The evidence describes compute-optimal training scaling but does not detail the specific natural-language frontier or calibration constants referenced in the claim. · source: https://www.semanticscholar.org/paper/8342b592fe238f3d230e4959b06fd10153c45db1",
       "error": null,
       "labels": null
     },
@@ -1704,7 +1673,7 @@
       ],
       "confidence": 0.6,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence provides the foundational scaling law work referenced, but the specific claims about warm-start collapse and twenty-one cell fits go beyond what can be confirmed from the abstract. · source: https://www.semanticscholar.org/paper/8342b592fe238f3d230e4959b06fd10153c45db1",
+      "notes": "(based on abstract) The evidence establishes the Chinchilla scaling framework but does not specifically address warm-start cells or the natural-language reference frontier described in the claim. · source: https://www.semanticscholar.org/paper/8342b592fe238f3d230e4959b06fd10153c45db1",
       "error": null,
       "labels": null
     },
@@ -1804,7 +1773,7 @@
       ],
       "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes the foundational scaling law form relating loss to model/data size, supporting the claim of borrowing the L(F) = E + AF^−α form from this work. · source: https://www.semanticscholar.org/paper/8342b592fe238f3d230e4959b06fd10153c45db1",
+      "notes": "(based on abstract) The evidence presents compute-optimal scaling laws, consistent with borrowing the L(F) = E + AF^−α functional form from Hoffmann et al. · source: https://www.semanticscholar.org/paper/8342b592fe238f3d230e4959b06fd10153c45db1",
       "error": null,
       "labels": null
     },
@@ -1891,7 +1860,7 @@
       ],
       "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence explicitly investigates scaling in data-constrained regimes with data repetition, finding that training with up to a certain amount of repeated data is useful, directly supporting the claim about repeated tokens being worth less than fresh ones. · source: http://arxiv.org/pdf/2305.16264",
+      "notes": "(based on abstract) The evidence directly investigates scaling in data-constrained regimes with data repetition, finding that training with up to a certain amount of repetition is useful, supporting the claim about repeated tokens being worth less than fresh ones. · source: http://arxiv.org/pdf/2305.16264",
       "error": null,
       "labels": null
     },
@@ -1978,7 +1947,7 @@
       ],
       "confidence": 0.7,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence discusses data repetition effects on scaling, which is relevant to why a 16-epoch row would collapse a scaling law fit, but the specific checkpoint and step details are not verifiable from the abstract. · source: http://arxiv.org/pdf/2305.16264",
+      "notes": "(based on abstract) The evidence addresses data repetition and its diminishing returns in data-constrained scaling, which is related to the claim about epoch count collapsing a scaling law fit, but does not discuss specific checkpoint steps or 16-epoch rows. · source: http://arxiv.org/pdf/2305.16264",
       "error": null,
       "labels": null
     },
@@ -2061,7 +2030,7 @@
       ],
       "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence explicitly describes calculating effective data transferred from pre-training by comparing how much data a same-size from-scratch model would need, directly supporting the claim about the DT = k D^αT N^βT transfer law. · source: https://www.semanticscholar.org/paper/4383a975c09b72ba2f1a77cd779bb6965dbfb2fb",
+      "notes": "(based on abstract) The evidence directly describes studying transfer learning scaling laws, calculating effective data transferred from pre-training, and determining how much data a same-size transformer would need from scratch, matching the claim about DT = k D^αT N^βT. · source: https://www.semanticscholar.org/paper/4383a975c09b72ba2f1a77cd779bb6965dbfb2fb",
       "error": null,
       "labels": null
     },
@@ -2144,7 +2113,7 @@
       ],
       "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes absorbing pre-training as an effective data transfer on the data axis of scaling laws, supporting the claim about an additive effective-token discount DF. · source: https://www.semanticscholar.org/paper/4383a975c09b72ba2f1a77cd779bb6965dbfb2fb",
+      "notes": "(based on abstract) The evidence describes absorbing pretraining benefit as effective data transferred, consistent with the claim about an additive effective-token discount on the data axis of the Chinchilla form. · source: https://www.semanticscholar.org/paper/4383a975c09b72ba2f1a77cd779bb6965dbfb2fb",
       "error": null,
       "labels": null
     },
@@ -2227,7 +2196,7 @@
       ],
       "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes the additive effective-token discount framework for transfer learning, directly supporting the reference to the additive form that the citing paper compares against. · source: https://www.semanticscholar.org/paper/4383a975c09b72ba2f1a77cd779bb6965dbfb2fb",
+      "notes": "(based on abstract) The evidence describes the additive effective-token transfer framework, directly supporting the reference to the additive effective-token discount of Hernandez et al. · source: https://www.semanticscholar.org/paper/4383a975c09b72ba2f1a77cd779bb6965dbfb2fb",
       "error": null,
       "labels": null
     },
@@ -2310,7 +2279,7 @@
       ],
       "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes the transfer scaling law framework that the citing paper refit in multiplicative form, directly supporting the attribution of the original transfer law to this work. · source: https://www.semanticscholar.org/paper/4383a975c09b72ba2f1a77cd779bb6965dbfb2fb",
+      "notes": "(based on abstract) The evidence describes the transfer scaling law framework with effective data transferred, directly supporting the citation as the source of the transfer law form being compared. · source: https://www.semanticscholar.org/paper/4383a975c09b72ba2f1a77cd779bb6965dbfb2fb",
       "error": null,
       "labels": null
     },
@@ -2377,9 +2346,9 @@
         "abstract": "Large language models have demonstrated impressive capabilities across various natural language processing tasks, especially in solving mathematical problems. However, large language models are not good at math theorem proving using formal languages like Lean. A significant challenge in this area is the scarcity of training data available in these formal languages. To address this issue, we propose a novel pipeline that iteratively generates and filters synthetic data to translate natural language mathematical problems into Lean 4 statements, and vice versa. Our results indicate that the synth…"
       },
       "metadata_issues": [],
-      "supports_claim": "supports",
+      "supports_claim": "partial",
       "priority": "obligatory",
-      "severity": "ok",
+      "severity": "medium",
       "compared_against": null,
       "evidence": [
         {
@@ -2395,9 +2364,9 @@
           "url": "https://www.semanticscholar.org/paper/1977056dc5b7cbbc26b2210a6d6d1a1e3ce2dad3"
         }
       ],
-      "confidence": 0.85,
+      "confidence": 0.7,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes a pipeline to translate and generate Lean 4 mathematical problems (the Lean Workbook), directly supporting the claim of using it as a public collection of formalised competition problems in the training corpus. · source: https://www.semanticscholar.org/paper/1977056dc5b7cbbc26b2210a6d6d1a1e3ce2dad3",
+      "notes": "(based on abstract) The evidence describes a pipeline for translating mathematical problems into Lean 4 statements, consistent with 'Lean Workbook,' but the evidence does not discuss formalised competition problems as a public collection used as a training corpus. · source: https://www.semanticscholar.org/paper/1977056dc5b7cbbc26b2210a6d6d1a1e3ce2dad3",
       "error": null,
       "labels": null
     },
@@ -2475,9 +2444,9 @@
         "abstract": "We introduce Goedel-Prover-V2, a series of open-source language models that set a new state-of-the-art in automated theorem proving. Built on the standard expert iteration and reinforcement learning pipeline, our approach incorporates three key innovations: (1) Scaffolded data synthesis: We generate synthetic tasks of increasing difficulty to train the model to master increasingly complex theorems; (2) Verifier-guided self-correction: We enable the model to iteratively revise its proofs by leveraging feedback from the Lean compiler; (3) Model averaging: We merge model checkpoints to mitigate t…"
       },
       "metadata_issues": [],
-      "supports_claim": "supports",
+      "supports_claim": "partial",
       "priority": "obligatory",
-      "severity": "ok",
+      "severity": "medium",
       "compared_against": null,
       "evidence": [
         {
@@ -2493,9 +2462,9 @@
           "url": "http://arxiv.org/abs/2508.03613v1"
         }
       ],
-      "confidence": 0.8,
+      "confidence": 0.65,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes Goedel-Prover-V2 as an automated theorem proving system using expert iteration and RL, supporting the claim that proofs generated by Lin et al. are used in the training corpus. · source: http://arxiv.org/abs/2508.03613v1",
+      "notes": "(based on abstract) The evidence describes Goedel-Prover-V2 for automated theorem proving but does not specifically mention generating proofs for Lean Workbook or NuminaMath-Lean collections referenced in the claim. · source: http://arxiv.org/abs/2508.03613v1",
       "error": null,
       "labels": null
     },
@@ -2593,7 +2562,7 @@
       ],
       "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes Goedel-Prover-V2 as using expert iteration and RL for Lean 4 theorem proving, directly supporting the claim that it differs from the Church Machine in medium (tactic-level vs. lambda calculus). · source: http://arxiv.org/abs/2508.03613v1",
+      "notes": "(based on abstract) The evidence describes Goedel-Prover-V2 as an automated theorem proving system using expert iteration and RL, directly supporting its citation as work closest in ambition but differing in medium from the Church Machine. · source: http://arxiv.org/abs/2508.03613v1",
       "error": null,
       "labels": null
     },
@@ -2636,7 +2605,7 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "arxiv",
+        "source": "s2",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "Numina-Lean-Agent: An Open and General Agentic Reasoning System for Formal Mathematics",
@@ -2656,35 +2625,41 @@
           "Wenda Li"
         ],
         "year": 2026,
-        "venue": "arXiv (preprint)",
-        "doi": null,
-        "arxiv_id": "2601.14027v1",
-        "url": "http://arxiv.org/abs/2601.14027v1",
+        "venue": "arXiv.org",
+        "doi": "10.48550/arxiv.2601.14027",
+        "arxiv_id": "2601.14027",
+        "url": "https://www.semanticscholar.org/paper/2467f0b8d8b29b9db9c1dcdede5505b62c04ddb1",
         "url_valid": true,
         "abstract": "Agentic systems have recently become the dominant paradigm for formal theorem proving, achieving strong performance by coordinating multiple models and tools. However, existing approaches often rely on task-specific pipelines and trained formal provers, limiting their flexibility and reproducibility. In this paper, we propose the paradigm that directly uses a general coding agent as a formal math reasoner. This paradigm is motivated by (1) A general coding agent provides a natural interface for diverse reasoning tasks beyond proving, (2) Performance can be improved by simply replacing the unde…"
       },
       "metadata_issues": [],
-      "supports_claim": "partial",
+      "supports_claim": "inconclusive",
       "priority": "obligatory",
-      "severity": "medium",
+      "severity": "low",
       "compared_against": null,
       "evidence": [
         {
           "kind": "metadata",
-          "source": "2601.14027v1",
+          "source": "10.48550/arxiv.2601.14027",
           "quote": "Numina-Lean-Agent: An Open and General Agentic Reasoning System for Formal Mathematics — Junqi Liu, Zihao Zhou, Zekai Zhu, Marco Dos Santos, Weikun He, Jiawei Liu, Ran Wang, Yunzhou Xie, Junqiao Zhao, Qiufeng Wang, Lihong Zhi, Jia Li, Wenda Li — 2026",
-          "url": "http://arxiv.org/abs/2601.14027v1"
+          "url": "https://www.semanticscholar.org/paper/2467f0b8d8b29b9db9c1dcdede5505b62c04ddb1"
+        },
+        {
+          "kind": "full_text",
+          "source": "2601.14027 §Introduction",
+          "quote": "% Experiments % experiments-putnam2025 %12/12 % best open source, alignment with private system Using Claude Opus 4.5~\\citep{ClaudeOpus45} as the base model, Numina-Lean-Agent successfully solved all 12 problems in the Putnam 2025, achieving state-of-the-art performance. This result matches the closed-source system AxiomProver and surpasses Harmonic’s Aristotle~\\citep{aristotle} by two problems. We report all solutions along with their computational costs and proof lengths in Section~\\ref{sec3}. Using Claude Opus 4.5 as the base model, Numina-Lean-Agent solves all problems in Putnam 2025 (12/1…",
+          "url": "https://www.semanticscholar.org/paper/2467f0b8d8b29b9db9c1dcdede5505b62c04ddb1"
         },
         {
           "kind": "abstract",
-          "source": "2601.14027v1",
+          "source": "10.48550/arxiv.2601.14027",
           "quote": "Agentic systems have recently become the dominant paradigm for formal theorem proving, achieving strong performance by coordinating multiple models and tools. However, existing approaches often rely on task-specific pipelines and trained formal provers, limiting their flexibility and reproducibility. In this paper, we propose the paradigm that directly uses a general coding agent as a formal math reasoner. This paradigm is motivated by (1) A general coding agent provides a natural interface for diverse reasoning tasks beyond proving, (2) Performance can be improved by simply replacing the unde…",
-          "url": "http://arxiv.org/abs/2601.14027v1"
+          "url": "https://www.semanticscholar.org/paper/2467f0b8d8b29b9db9c1dcdede5505b62c04ddb1"
         }
       ],
-      "confidence": 0.55,
+      "confidence": 0.6,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes a coding agent paradigm for formal math reasoning in Lean, which is related to NuminaMath, but the abstract does not specifically describe NuminaMath-Lean as a dataset/collection of formalised competition problems used in training. · source: http://arxiv.org/abs/2601.14027v1",
+      "notes": "(based on full text) The evidence describes Numina-Lean-Agent as a prover solving Putnam problems and mentions a GitHub release, but does not discuss NuminaMath-Lean as a public dataset of formalised competition problems used as training data. · source: https://www.semanticscholar.org/paper/2467f0b8d8b29b9db9c1dcdede5505b62c04ddb1",
       "error": null,
       "labels": null
     },
@@ -2727,7 +2702,7 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "arxiv",
+        "source": "s2",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "Numina-Lean-Agent: An Open and General Agentic Reasoning System for Formal Mathematics",
@@ -2747,41 +2722,41 @@
           "Wenda Li"
         ],
         "year": 2026,
-        "venue": "arXiv (preprint)",
-        "doi": null,
-        "arxiv_id": "2601.14027v1",
-        "url": "http://arxiv.org/abs/2601.14027v1",
+        "venue": "arXiv.org",
+        "doi": "10.48550/arxiv.2601.14027",
+        "arxiv_id": "2601.14027",
+        "url": "https://www.semanticscholar.org/paper/2467f0b8d8b29b9db9c1dcdede5505b62c04ddb1",
         "url_valid": true,
         "abstract": "Agentic systems have recently become the dominant paradigm for formal theorem proving, achieving strong performance by coordinating multiple models and tools. However, existing approaches often rely on task-specific pipelines and trained formal provers, limiting their flexibility and reproducibility. In this paper, we propose the paradigm that directly uses a general coding agent as a formal math reasoner. This paradigm is motivated by (1) A general coding agent provides a natural interface for diverse reasoning tasks beyond proving, (2) Performance can be improved by simply replacing the unde…"
       },
       "metadata_issues": [],
-      "supports_claim": "does_not",
+      "supports_claim": "inconclusive",
       "priority": "obligatory",
-      "severity": "high",
+      "severity": "low",
       "compared_against": null,
       "evidence": [
         {
           "kind": "metadata",
-          "source": "2601.14027v1",
+          "source": "10.48550/arxiv.2601.14027",
           "quote": "Numina-Lean-Agent: An Open and General Agentic Reasoning System for Formal Mathematics — Junqi Liu, Zihao Zhou, Zekai Zhu, Marco Dos Santos, Weikun He, Jiawei Liu, Ran Wang, Yunzhou Xie, Junqiao Zhao, Qiufeng Wang, Lihong Zhi, Jia Li, Wenda Li — 2026",
-          "url": "http://arxiv.org/abs/2601.14027v1"
+          "url": "https://www.semanticscholar.org/paper/2467f0b8d8b29b9db9c1dcdede5505b62c04ddb1"
         },
         {
           "kind": "full_text",
-          "source": "2601.14027v1 §Numina-Lean-MCP",
+          "source": "2601.14027 §Numina-Lean-MCP",
           "quote": "\\item Theorem Retrieval and Knowledge Enhancement: Multi-level search tools are integrated to effectively mitigate hallucinations. \\texttt{lean\\_local\\_search} focuses on mining definitions within local lean projects and the standard library (stdlib), while \\texttt{lean\\_loogle} facilitates searching the massive Mathlib repository via natural language or structured queries. This dual-retrieval mechanism ensures that every theorem cited by the model is factually existent and contextually appropriate. \\end{enumerate} % The \\icmltitle you define below is probably too long as a header. % Therefore…",
-          "url": "http://arxiv.org/abs/2601.14027v1"
+          "url": "https://www.semanticscholar.org/paper/2467f0b8d8b29b9db9c1dcdede5505b62c04ddb1"
         },
         {
           "kind": "abstract",
-          "source": "2601.14027v1",
+          "source": "10.48550/arxiv.2601.14027",
           "quote": "Agentic systems have recently become the dominant paradigm for formal theorem proving, achieving strong performance by coordinating multiple models and tools. However, existing approaches often rely on task-specific pipelines and trained formal provers, limiting their flexibility and reproducibility. In this paper, we propose the paradigm that directly uses a general coding agent as a formal math reasoner. This paradigm is motivated by (1) A general coding agent provides a natural interface for diverse reasoning tasks beyond proving, (2) Performance can be improved by simply replacing the unde…",
-          "url": "http://arxiv.org/abs/2601.14027v1"
+          "url": "https://www.semanticscholar.org/paper/2467f0b8d8b29b9db9c1dcdede5505b62c04ddb1"
         }
       ],
-      "confidence": 0.9,
+      "confidence": 0.55,
       "model_tier": "judge",
-      "notes": "(based on full text) The evidence discusses theorem retrieval and search tools for Lean/Mathlib; it contains nothing about compiler internals, short definitions, training pools, or filtering by compilation on a target toolchain. · source: http://arxiv.org/abs/2601.14027v1",
+      "notes": "(based on full text) The evidence discusses the Numina-Lean-Agent proving system and its solutions but does not mention NuminaMath-Lean as a training pool filtered by compilation on a target toolchain. · source: https://www.semanticscholar.org/paper/2467f0b8d8b29b9db9c1dcdede5505b62c04ddb1",
       "error": null,
       "labels": null
     },
@@ -2862,9 +2837,9 @@
           "url": "https://europepmc.org/articles/pmc1076489?pdf=render"
         }
       ],
-      "confidence": 0.78,
+      "confidence": 0.75,
       "model_tier": "judge",
-      "notes": "(based on full text) The evidence shows Curry's 1934 work on type/functionality assignments for combinatory terms, which is the foundational type-theoretic side of the Curry-Howard Correspondence, but the full correspondence equating proofs with programs is not articulated in this evidence. · source: https://europepmc.org/articles/pmc1076489?pdf=render",
+      "notes": "(based on full text) Curry's 1934 paper introduces functionality (types) in combinatory logic — the foundational 'types' half of what later became the Curry–Howard Correspondence — but it does not itself state the correspondence between proofs and programs. · source: https://europepmc.org/articles/pmc1076489?pdf=render",
       "error": null,
       "labels": null
     },
@@ -2941,9 +2916,9 @@
           "url": "https://www.semanticscholar.org/paper/1c28e7160184454808b5559faaa6570a1dc63f7c"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.55,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence mentions developing a notion of construction for interpreting intuitionistic mathematics, which is thematically connected to the Curry-Howard correspondence, but does not explicitly describe the correspondence between proofs and typed terms. · source: https://www.semanticscholar.org/paper/1c28e7160184454808b5559faaa6570a1dc63f7c",
+      "notes": "(based on abstract) The evidence mentions developing a notion of construction for interpreting intuitionistic mathematics, which is related to the Curry-Howard correspondence, but does not explicitly describe the proofs-as-programs isomorphism claimed. · source: https://www.semanticscholar.org/paper/1c28e7160184454808b5559faaa6570a1dc63f7c",
       "error": null,
       "labels": null
     },
@@ -3040,7 +3015,7 @@
       ],
       "confidence": 0.88,
       "model_tier": "judge",
-      "notes": "(based on full text) The evidence explicitly discusses packing documents into context-window-sized chunks and intra-document causal masking (conditioning only on tokens within the same document), which directly corresponds to the claimed intra-document packing under a block-diagonal attention mask. · source: https://doi.org/10.18653/v1/2024.acl-long.427",
+      "notes": "(based on full text) The evidence directly discusses intra-document causal masking where each token is conditioned only on tokens from the same document, which corresponds to the claimed block-diagonal attention mask with intra-document packing. · source: https://doi.org/10.18653/v1/2024.acl-long.427",
       "error": null,
       "labels": null
     },
@@ -3081,7 +3056,7 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "arxiv",
+        "source": "s2",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "Qwen3 Technical Report",
@@ -3109,17 +3084,17 @@
           "Jianhong Tu",
           "Jianwei Zhang",
           "Jianxin Yang",
-          "Jiaxi Yang",
-          "Jing Zhou",
+          "Jiaxin Yang",
           "Jingren Zhou",
-          "Junyang Lin",
-          "Kai Dang",
+          "Jingren Zhou",
+          "Junyan Lin",
+          "K. Dang",
           "Keqin Bao",
-          "Kexin Yang",
+          "Ke‐Pei Yang",
           "Le Yu",
-          "Lianghao Deng",
+          "Li-Chun Deng",
           "Mei Li",
-          "Mingfeng Xue",
+          "Min Xue",
           "Mingze Li",
           "Pei Zhang",
           "Peng Wang",
@@ -3137,7 +3112,7 @@
           "Xuancheng Ren",
           "Yang Fan",
           "Yang Su",
-          "Yichang Zhang",
+          "Yi-Chao Zhang",
           "Yinger Zhang",
           "Yu Wan",
           "Yuqiong Liu",
@@ -3148,10 +3123,10 @@
           "Zihan Qiu"
         ],
         "year": 2025,
-        "venue": "arXiv (preprint)",
+        "venue": null,
         "doi": null,
-        "arxiv_id": "2505.09388v1",
-        "url": "http://arxiv.org/abs/2505.09388v1",
+        "arxiv_id": "2505.09388",
+        "url": "https://www.semanticscholar.org/paper/d2d84d56f730f81d276a02b48d5d44db5bde0b4a",
         "url_valid": true,
         "abstract": "In this work, we present Qwen3, the latest version of the Qwen model family. Qwen3 comprises a series of large language models (LLMs) designed to advance performance, efficiency, and multilingual capabilities. The Qwen3 series includes models of both dense and Mixture-of-Expert (MoE) architectures, with parameter scales ranging from 0.6 to 235 billion. A key innovation in Qwen3 is the integration of thinking mode (for complex, multi-step reasoning) and non-thinking mode (for rapid, context-driven responses) into a unified framework. This eliminates the need to switch between different models--…"
       },
@@ -3165,20 +3140,20 @@
       "evidence": [
         {
           "kind": "metadata",
-          "source": "2505.09388v1",
-          "quote": "Qwen3 Technical Report — An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, Chujie Zheng, Dayiheng Liu, Fan Zhou, Fei Huang, Feng Hu, Hao Ge, Haoran Wei, Huan Lin, Jialong Tang, Jian Yang, Jianhong Tu, Jianwei Zhang, Jianxin Yang, Jiaxi Yang, Jing Zhou, Jingren Zhou, Junyang Lin, Kai Dang, Keqin Bao, Kexin Yang, Le Yu, Lianghao Deng, Mei Li, Mingfeng Xue, Mingze Li, Pei Zhang, Peng Wang, Qin Zhu, Rui Men, Ruize Gao, Shixuan Liu, Shuang Luo, Tianhao Li, Tianyi Tang, Wenbiao Yin, Xingzhang Ren, Xinyu Wang, Xinyu Zhang, Xuancheng",
-          "url": "http://arxiv.org/abs/2505.09388v1"
+          "source": "2505.09388",
+          "quote": "Qwen3 Technical Report — An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, Chujie Zheng, Dayiheng Liu, Fan Zhou, Fei Huang, Feng Hu, Hao Ge, Haoran Wei, Huan Lin, Jialong Tang, Jian Yang, Jianhong Tu, Jianwei Zhang, Jianxin Yang, Jiaxin Yang, Jingren Zhou, Jingren Zhou, Junyan Lin, K. Dang, Keqin Bao, Ke‐Pei Yang, Le Yu, Li-Chun Deng, Mei Li, Min Xue, Mingze Li, Pei Zhang, Peng Wang, Qin Zhu, Rui Men, Ruize Gao, Shixuan Liu, Shuang Luo, Tianhao Li, Tianyi Tang, Wenbiao Yin, Xingzhang Ren, Xinyu Wang, Xinyu Zhang, Xuancheng Re",
+          "url": "https://www.semanticscholar.org/paper/d2d84d56f730f81d276a02b48d5d44db5bde0b4a"
         },
         {
           "kind": "abstract",
-          "source": "2505.09388v1",
+          "source": "2505.09388",
           "quote": "In this work, we present Qwen3, the latest version of the Qwen model family. Qwen3 comprises a series of large language models (LLMs) designed to advance performance, efficiency, and multilingual capabilities. The Qwen3 series includes models of both dense and Mixture-of-Expert (MoE) architectures, with parameter scales ranging from 0.6 to 235 billion. A key innovation in Qwen3 is the integration of thinking mode (for complex, multi-step reasoning) and non-thinking mode (for rapid, context-driven responses) into a unified framework. This eliminates the need to switch between different models--…",
-          "url": "http://arxiv.org/abs/2505.09388v1"
+          "url": "https://www.semanticscholar.org/paper/d2d84d56f730f81d276a02b48d5d44db5bde0b4a"
         }
       ],
       "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes Qwen3 as a series of LLMs with dense architectures ranging from 0.6B to 235B parameters, supporting the claim of using Qwen3 pretrained checkpoints (Qwen3-{0.6, 1.7, 4}B) for warm-start initialization. · source: http://arxiv.org/abs/2505.09388v1",
+      "notes": "(based on abstract) The evidence describes Qwen3 as a series of LLMs with models ranging from 0.6B to 235B parameters including dense architectures, consistent with the claim of using Qwen3-{0.6, 1.7, 4}B pretrained checkpoints. · source: https://www.semanticscholar.org/paper/d2d84d56f730f81d276a02b48d5d44db5bde0b4a",
       "error": null,
       "labels": null
     },
@@ -3257,9 +3232,9 @@
           "url": "http://arxiv.org/abs/2509.19349v1"
         }
       ],
-      "confidence": 0.4,
+      "confidence": 0.45,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes an evolutionary agentic framework leveraging LLMs with inference-time scaling, but does not specifically discuss Monte-Carlo tree search, AlphaZero-style search, or proof search algorithms; the connection to the claim is tenuous. · source: http://arxiv.org/abs/2509.19349v1",
+      "notes": "(based on abstract) The evidence describes evolutionary agentic harnesses using LLMs as mutation operators, which is related to search-based algorithms, but does not specifically discuss AlphaZero/AlphaProof-style Monte-Carlo search or its application to kernel-grounded proof search. · source: http://arxiv.org/abs/2509.19349v1",
       "error": null,
       "labels": null
     },
@@ -3344,7 +3319,7 @@
       ],
       "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes AlphaGeometry as a theorem prover combining a neural language model with a symbolic deduction engine, which is related to proof search but does not specifically describe Monte-Carlo or AlphaZero-style search; it is cited here likely as context for AlphaProof-style approaches. · source: https://www.nature.com/articles/s41586-023-06747-5.pdf",
+      "notes": "(based on abstract) The evidence describes AlphaGeometry for olympiad-level geometry theorem proving combining language models and automated provers, which is related to search-based proof methods, but does not specifically discuss AlphaZero/AlphaProof-style Monte-Carlo search algorithms. · source: https://www.nature.com/articles/s41586-023-06747-5.pdf",
       "error": null,
       "labels": null
     },
@@ -3386,19 +3361,19 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "s2",
+        "source": "arxiv",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "Generative Language Modeling for Automated Theorem Proving",
         "authors": [
           "Stanislas Polu",
-          "I. Sutskever"
+          "Ilya Sutskever"
         ],
         "year": 2020,
-        "venue": "arXiv.org",
+        "venue": "arXiv (preprint)",
         "doi": null,
-        "arxiv_id": "2009.03393",
-        "url": "https://www.semanticscholar.org/paper/5fe0a4af3bd1479d5e39fbda2215c86bce54722b",
+        "arxiv_id": "2009.03393v1",
+        "url": "http://arxiv.org/abs/2009.03393v1",
         "url_valid": true,
         "abstract": "We explore the application of transformer-based language models to automated theorem proving. This work is motivated by the possibility that a major limitation of automated theorem provers compared to humans -- the generation of original mathematical terms -- might be addressable via generation from language models. We present an automated prover and proof assistant, GPT-f, for the Metamath formalization language, and analyze its performance. GPT-f found new short proofs that were accepted into the main Metamath library, which is to our knowledge, the first time a deep-learning based system ha…"
       },
@@ -3410,20 +3385,20 @@
       "evidence": [
         {
           "kind": "metadata",
-          "source": "2009.03393",
-          "quote": "Generative Language Modeling for Automated Theorem Proving — Stanislas Polu, I. Sutskever — 2020",
-          "url": "https://www.semanticscholar.org/paper/5fe0a4af3bd1479d5e39fbda2215c86bce54722b"
+          "source": "2009.03393v1",
+          "quote": "Generative Language Modeling for Automated Theorem Proving — Stanislas Polu, Ilya Sutskever — 2020",
+          "url": "http://arxiv.org/abs/2009.03393v1"
         },
         {
           "kind": "abstract",
-          "source": "2009.03393",
+          "source": "2009.03393v1",
           "quote": "We explore the application of transformer-based language models to automated theorem proving. This work is motivated by the possibility that a major limitation of automated theorem provers compared to humans -- the generation of original mathematical terms -- might be addressable via generation from language models. We present an automated prover and proof assistant, GPT-f, for the Metamath formalization language, and analyze its performance. GPT-f found new short proofs that were accepted into the main Metamath library, which is to our knowledge, the first time a deep-learning based system ha…",
-          "url": "https://www.semanticscholar.org/paper/5fe0a4af3bd1479d5e39fbda2215c86bce54722b"
+          "url": "http://arxiv.org/abs/2009.03393v1"
         }
       ],
       "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes GPT-f, a transformer-based automated theorem prover for Metamath that generates mathematical terms, directly supporting the claim as the origin of the GPTf lineage of tactic-string generation. · source: https://www.semanticscholar.org/paper/5fe0a4af3bd1479d5e39fbda2215c86bce54722b",
+      "notes": "(based on abstract) The evidence describes GPT-f, a transformer-based automated prover for Metamath that generates mathematical terms, directly supporting its citation as the origin of the GPTf lineage in the tactic-string approach. · source: http://arxiv.org/abs/2009.03393v1",
       "error": null,
       "labels": null
     },
@@ -3506,9 +3481,9 @@
           "url": "https://www.semanticscholar.org/paper/9231927bc0a9ed10de64cad05640587893eba4b1"
         }
       ],
-      "confidence": 0.9,
+      "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes PACT, which uses Transformer language models for tactic prediction and extracts data from kernel-level proof terms, directly supporting the claim as part of the GPTf lineage of tactic-string generation. · source: https://www.semanticscholar.org/paper/9231927bc0a9ed10de64cad05640587893eba4b1",
+      "notes": "(based on abstract) The evidence describes PACT methodology for tactic prediction using large Transformer language models with kernel-level proof terms, directly supporting its citation in the GPTf lineage of tactic-string generation. · source: https://www.semanticscholar.org/paper/9231927bc0a9ed10de64cad05640587893eba4b1",
       "error": null,
       "labels": null
     },
@@ -3593,9 +3568,9 @@
           "url": "https://www.semanticscholar.org/paper/b16c7d45183b9d595ab64301be019741b1528860"
         }
       ],
-      "confidence": 0.9,
+      "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes Llemma as a language model pre-trained on mathematical proof corpora capable of formal theorem proving, directly supporting the claim about Llemma's proof-corpus pre-training in the tactic-string generation lineage. · source: https://www.semanticscholar.org/paper/b16c7d45183b9d595ab64301be019741b1528860",
+      "notes": "(based on abstract) The evidence describes Llemma as a large language model for mathematics with continued pretraining on Proof-Pile-2 and capability for formal theorem proving, directly supporting its citation as 'Llemma's proof-corpus pre-training' in the tactic-string lineage. · source: https://www.semanticscholar.org/paper/b16c7d45183b9d595ab64301be019741b1528860",
       "error": null,
       "labels": null
     },
@@ -3679,9 +3654,9 @@
           "url": "https://arxiv.org/pdf/2205.11491"
         }
       ],
-      "confidence": 0.95,
+      "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence explicitly describes HyperTree Proof Search (HTPS) as a search algorithm for automated theorem proving, directly supporting the claim about HyperTree proof search in the tactic-string generation lineage. · source: https://arxiv.org/pdf/2205.11491",
+      "notes": "(based on abstract) The evidence explicitly describes HyperTree Proof Search (HTPS) as a new search algorithm for transformer-based automated theorem proving, directly matching the 'HyperTree proof search' citation in the tactic-string lineage. · source: https://arxiv.org/pdf/2205.11491",
       "error": null,
       "labels": null
     },
@@ -3766,7 +3741,7 @@
       ],
       "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes autoformalization — automatically translating natural language math to formal specifications — supporting the claim about systems that emit type-level statements directly. · source: https://arxiv.org/pdf/2205.12615",
+      "notes": "(based on abstract) The evidence describes autoformalization — automatically translating natural language mathematics to formal specifications — including translating competition problems to formal specifications in Isabelle, supporting the claim about emitting type-level statements directly. · source: https://arxiv.org/pdf/2205.12615",
       "error": null,
       "labels": null
     },
@@ -3854,7 +3829,7 @@
       ],
       "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes Thor as a framework integrating language models with automated theorem provers for premise selection, which is related to formal theorem proving but does not specifically describe emitting type-level statements directly as an autoformalisation system. · source: https://arxiv.org/pdf/2205.10893",
+      "notes": "(based on abstract) The evidence describes Thor as integrating language models with automated theorem provers for premise selection, which is related to theorem proving but does not specifically address emitting type-level statements directly as an autoformalisation system. · source: https://arxiv.org/pdf/2205.10893",
       "error": null,
       "labels": null
     },
@@ -3939,9 +3914,9 @@
           "url": "http://arxiv.org/abs/2211.14275v1"
         }
       ],
-      "confidence": 0.95,
+      "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence explicitly describes process-based supervision that provides feedback for each intermediate reasoning step, directly supporting the claim about process-reward modelling training a judge for intermediate steps. · source: http://arxiv.org/abs/2211.14275v1",
+      "notes": "(based on abstract) The evidence directly discusses process-based supervision which supervises the reasoning process itself at each intermediate step, directly supporting the claim about training a separate judge to score intermediate steps. · source: http://arxiv.org/abs/2211.14275v1",
       "error": null,
       "labels": null
     },
@@ -3982,19 +3957,47 @@
         "url": null
       },
       "in_table": false,
-      "exists": "unresolved",
-      "resolved": null,
-      "metadata_issues": [
-        "could not retrieve a confident match — searched Crossref, arXiv, DBLP, Semantic Scholar, OpenAlex"
-      ],
-      "supports_claim": "inconclusive",
-      "priority": "helpful",
-      "severity": "low",
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "Toward Trustworthy Neural Program Synthesis",
+        "authors": [
+          "Darren Key",
+          "Wen-Ding Li",
+          "Kevin Ellis"
+        ],
+        "year": 2022,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": "2210.00848",
+        "url": "https://www.semanticscholar.org/paper/9ce2ad854c23d1a2559da126784fc4ef4a549275",
+        "url_valid": true,
+        "abstract": "We develop an approach to estimate the probability that a program sampled from a large language model is correct. Given a natural language description of a programming problem, our method samples both candidate programs as well as candidate predicates specifying how the program should behave. This allows learning a model that forms a well-calibrated probabilistic prediction of program correctness. Our system also infers which predicates are useful to explain the behavior of the generated code, and humans preferred these in a human study over raw language model outputs. Our method is simple, ea…"
+      },
+      "metadata_issues": [],
+      "supports_claim": "partial",
+      "priority": "obligatory",
+      "severity": "medium",
       "compared_against": null,
-      "evidence": [],
-      "confidence": null,
-      "model_tier": "bulk",
-      "notes": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "2210.00848",
+          "quote": "Toward Trustworthy Neural Program Synthesis — Darren Key, Wen-Ding Li, Kevin Ellis — 2022",
+          "url": "https://www.semanticscholar.org/paper/9ce2ad854c23d1a2559da126784fc4ef4a549275"
+        },
+        {
+          "kind": "abstract",
+          "source": "2210.00848",
+          "quote": "We develop an approach to estimate the probability that a program sampled from a large language model is correct. Given a natural language description of a programming problem, our method samples both candidate programs as well as candidate predicates specifying how the program should behave. This allows learning a model that forms a well-calibrated probabilistic prediction of program correctness. Our system also infers which predicates are useful to explain the behavior of the generated code, and humans preferred these in a human study over raw language model outputs. Our method is simple, ea…",
+          "url": "https://www.semanticscholar.org/paper/9ce2ad854c23d1a2559da126784fc4ef4a549275"
+        }
+      ],
+      "confidence": 0.55,
+      "model_tier": "judge",
+      "notes": "(based on abstract) The evidence describes sampling programs and predicates to predict correctness during generation, which is conceptually related to executing-as-you-generate, but focuses on post-hoc reranking and correctness prediction rather than interleaving execution with generation. · source: https://www.semanticscholar.org/paper/9ce2ad854c23d1a2559da126784fc4ef4a549275",
       "error": null,
       "labels": null
     },
@@ -4073,9 +4076,9 @@
           "url": "https://www.semanticscholar.org/paper/cb2368358550cdec10b8b3702c4a8e0124338344"
         }
       ],
-      "confidence": 0.95,
+      "confidence": 0.92,
       "model_tier": "judge",
-      "notes": "(based on full text) The evidence is entirely about statistical mechanics, gas kinetics, and molecular entropy; it contains nothing about the entropy of printed English, character-level prediction, or linguistic redundancy. · source: https://www.semanticscholar.org/paper/cb2368358550cdec10b8b3702c4a8e0124338344",
+      "notes": "(based on full text) The evidence covers Boltzmann's work on statistical mechanics, gas theory, and thermodynamic entropy — it contains nothing about the entropy of printed English or linguistic redundancy. · source: https://www.semanticscholar.org/paper/cb2368358550cdec10b8b3702c4a8e0124338344",
       "error": null,
       "labels": null
     },
@@ -4154,9 +4157,9 @@
           "url": "https://www.semanticscholar.org/paper/cb2368358550cdec10b8b3702c4a8e0124338344"
         }
       ],
-      "confidence": 0.95,
+      "confidence": 0.93,
       "model_tier": "judge",
-      "notes": "(based on full text) The evidence covers thermodynamic entropy and Maxwell's kinetic theory; there is no discussion of English text entropy, bits per character, or linguistic redundancy as the claim asserts. · source: https://www.semanticscholar.org/paper/cb2368358550cdec10b8b3702c4a8e0124338344",
+      "notes": "(based on full text) The evidence discusses kinetic theory, gas pressure, and physical entropy; it does not address linguistic entropy, bits per character in English, or textual redundancy in any form. · source: https://www.semanticscholar.org/paper/cb2368358550cdec10b8b3702c4a8e0124338344",
       "error": null,
       "labels": null
     },
@@ -4201,23 +4204,27 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "s2",
+        "source": "crossref",
         "match_method": "fuzzy_title",
         "match_score": 1.0,
         "title": "On the naturalness of software",
         "authors": [
-          "Premkumar T. Devanbu"
+          "Abram Hindle",
+          "Earl T. Barr",
+          "Mark Gabel",
+          "Zhendong Su",
+          "Premkumar Devanbu"
         ],
-        "year": 2012,
-        "venue": "International Conference on Software Engineering",
-        "doi": "10.1109/icse.2012.6227135",
+        "year": 2016,
+        "venue": "Communications of the ACM",
+        "doi": "10.1145/2902362",
         "arxiv_id": null,
-        "url": "https://www.semanticscholar.org/paper/77bdb4c1117d72ad863845f35ba50929cb623776",
+        "url": "https://doi.org/10.1145/2902362",
         "url_valid": true,
         "abstract": "Natural languages like English are rich, complex, and powerful. The highly creative and graceful use of languages like English and Tamil, by masters like Shakespeare and Avvaiyar, can certainly delight and inspire. But in practice, given cognitive constraints and the exigencies of daily life, most human utterances are far simpler and much more repetitive and predictable. In fact, these utterances can be very usefully modeled using modern statistical methods. This fact has led to the phenomenal success of statistical approaches to speech recognition, natural language translation, question-answe…"
       },
       "metadata_issues": [
-        "first-author mismatch: cited 'Hindle, A.' vs 'Premkumar T. Devanbu'"
+        "year mismatch: cited 2012 vs 2016"
       ],
       "supports_claim": "supports",
       "priority": "obligatory",
@@ -4226,20 +4233,20 @@
       "evidence": [
         {
           "kind": "metadata",
-          "source": "10.1109/icse.2012.6227135",
-          "quote": "On the naturalness of software — Premkumar T. Devanbu — 2012",
-          "url": "https://www.semanticscholar.org/paper/77bdb4c1117d72ad863845f35ba50929cb623776"
+          "source": "10.1145/2902362",
+          "quote": "On the naturalness of software — Abram Hindle, Earl T. Barr, Mark Gabel, Zhendong Su, Premkumar Devanbu — 2016",
+          "url": "https://doi.org/10.1145/2902362"
         },
         {
           "kind": "abstract",
-          "source": "10.1109/icse.2012.6227135",
+          "source": "10.1145/2902362",
           "quote": "Natural languages like English are rich, complex, and powerful. The highly creative and graceful use of languages like English and Tamil, by masters like Shakespeare and Avvaiyar, can certainly delight and inspire. But in practice, given cognitive constraints and the exigencies of daily life, most human utterances are far simpler and much more repetitive and predictable. In fact, these utterances can be very usefully modeled using modern statistical methods. This fact has led to the phenomenal success of statistical approaches to speech recognition, natural language translation, question-answe…",
-          "url": "https://www.semanticscholar.org/paper/77bdb4c1117d72ad863845f35ba50929cb623776"
+          "url": "https://doi.org/10.1145/2902362"
         }
       ],
       "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes using statistical methods and n-gram models on software code, showing code is repetitive and predictable, directly supporting the claim that code is regular enough that plain n-gram models predict it well. · source: https://www.semanticscholar.org/paper/77bdb4c1117d72ad863845f35ba50929cb623776",
+      "notes": "(based on abstract) The evidence directly describes the naturalness of software — that code is repetitive and predictable — and that statistical n-gram models can usefully model it, supporting the claim that code is regular enough for plain n-gram models. · source: https://doi.org/10.1145/2902362",
       "error": null,
       "labels": null
     },
@@ -4284,23 +4291,27 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "s2",
+        "source": "crossref",
         "match_method": "fuzzy_title",
         "match_score": 1.0,
         "title": "On the naturalness of software",
         "authors": [
-          "Premkumar T. Devanbu"
+          "Abram Hindle",
+          "Earl T. Barr",
+          "Mark Gabel",
+          "Zhendong Su",
+          "Premkumar Devanbu"
         ],
-        "year": 2012,
-        "venue": "International Conference on Software Engineering",
-        "doi": "10.1109/icse.2012.6227135",
+        "year": 2016,
+        "venue": "Communications of the ACM",
+        "doi": "10.1145/2902362",
         "arxiv_id": null,
-        "url": "https://www.semanticscholar.org/paper/77bdb4c1117d72ad863845f35ba50929cb623776",
+        "url": "https://doi.org/10.1145/2902362",
         "url_valid": true,
         "abstract": "Natural languages like English are rich, complex, and powerful. The highly creative and graceful use of languages like English and Tamil, by masters like Shakespeare and Avvaiyar, can certainly delight and inspire. But in practice, given cognitive constraints and the exigencies of daily life, most human utterances are far simpler and much more repetitive and predictable. In fact, these utterances can be very usefully modeled using modern statistical methods. This fact has led to the phenomenal success of statistical approaches to speech recognition, natural language translation, question-answe…"
       },
       "metadata_issues": [
-        "first-author mismatch: cited 'Hindle, A.' vs 'Premkumar T. Devanbu'"
+        "year mismatch: cited 2012 vs 2016"
       ],
       "supports_claim": "supports",
       "priority": "obligatory",
@@ -4309,20 +4320,20 @@
       "evidence": [
         {
           "kind": "metadata",
-          "source": "10.1109/icse.2012.6227135",
-          "quote": "On the naturalness of software — Premkumar T. Devanbu — 2012",
-          "url": "https://www.semanticscholar.org/paper/77bdb4c1117d72ad863845f35ba50929cb623776"
+          "source": "10.1145/2902362",
+          "quote": "On the naturalness of software — Abram Hindle, Earl T. Barr, Mark Gabel, Zhendong Su, Premkumar Devanbu — 2016",
+          "url": "https://doi.org/10.1145/2902362"
         },
         {
           "kind": "abstract",
-          "source": "10.1109/icse.2012.6227135",
+          "source": "10.1145/2902362",
           "quote": "Natural languages like English are rich, complex, and powerful. The highly creative and graceful use of languages like English and Tamil, by masters like Shakespeare and Avvaiyar, can certainly delight and inspire. But in practice, given cognitive constraints and the exigencies of daily life, most human utterances are far simpler and much more repetitive and predictable. In fact, these utterances can be very usefully modeled using modern statistical methods. This fact has led to the phenomenal success of statistical approaches to speech recognition, natural language translation, question-answe…",
-          "url": "https://www.semanticscholar.org/paper/77bdb4c1117d72ad863845f35ba50929cb623776"
+          "url": "https://doi.org/10.1145/2902362"
         }
       ],
       "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence explicitly describes the naturalness of software and shows that statistical n-gram models model code well, directly supporting the claim that code sits above English in predictability. · source: https://www.semanticscholar.org/paper/77bdb4c1117d72ad863845f35ba50929cb623776",
+      "notes": "(based on abstract) The evidence explicitly argues that software is more predictable and repetitive than natural language and can be modeled by statistical methods, directly supporting that n-gram models predict code better than prose. · source: https://doi.org/10.1145/2902362",
       "error": null,
       "labels": null
     },
@@ -4379,9 +4390,9 @@
         "abstract": null
       },
       "metadata_issues": [],
-      "supports_claim": "supports",
+      "supports_claim": "partial",
       "priority": "obligatory",
-      "severity": "ok",
+      "severity": "medium",
       "compared_against": null,
       "evidence": [
         {
@@ -4397,9 +4408,9 @@
           "url": "https://www.semanticscholar.org/paper/87442f66f9daaf3c7ad1846012e7852fdcd6bce9"
         }
       ],
-      "confidence": 0.88,
+      "confidence": 0.78,
       "model_tier": "judge",
-      "notes": "(based on full text) The evidence confirms the de Bruijn factor measures the ratio of formalised proof size to informal source, describing it as a benchmark for proof assistant efficiency across texts and systems. · source: https://www.semanticscholar.org/paper/87442f66f9daaf3c7ad1846012e7852fdcd6bce9",
+      "notes": "(based on full text) The evidence confirms the de Bruijn factor measures the size of a formalised proof against its informal source, but does not frame it as a 'coding cost' equivalent to n-gram redundancy as the claim implies. · source: https://www.semanticscholar.org/paper/87442f66f9daaf3c7ad1846012e7852fdcd6bce9",
       "error": null,
       "labels": null
     },
@@ -4474,9 +4485,9 @@
           "url": "https://www.semanticscholar.org/paper/87442f66f9daaf3c7ad1846012e7852fdcd6bce9"
         }
       ],
-      "confidence": 0.72,
+      "confidence": 0.7,
       "model_tier": "judge",
-      "notes": "(based on full text) The evidence confirms the de Bruijn factor concept and its measurement across systems and texts, but the specific claimed value of 'near four' does not appear in the provided evidence. · source: https://www.semanticscholar.org/paper/87442f66f9daaf3c7ad1846012e7852fdcd6bce9",
+      "notes": "(based on full text) The evidence explains the de Bruijn factor concept and its measurement across systems, but does not mention the specific numerical value of 'near four' that the claim attributes to Wiedijk. · source: https://www.semanticscholar.org/paper/87442f66f9daaf3c7ad1846012e7852fdcd6bce9",
       "error": null,
       "labels": null
     },
@@ -4579,7 +4590,7 @@
       ],
       "confidence": 0.55,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes Code Llama as a family of code LLMs with state-of-the-art performance, but does not explicitly present cross-entropy loss comparisons showing code-LM evaluations sit an order of magnitude below natural-language references. · source: https://arxiv.org/pdf/2308.12950",
+      "notes": "(based on abstract) The evidence describes Code Llama as a family of code LLMs with state-of-the-art performance, but does not explicitly compare code-LM evaluations to natural-language references on a scaling axis or present entropy measurements. · source: https://arxiv.org/pdf/2308.12950",
       "error": null,
       "labels": null
     },
@@ -4740,7 +4751,7 @@
       ],
       "confidence": 0.95,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence explicitly investigates sycophancy in AI assistants finetuned with human feedback, describing it as matching user beliefs over truthful ones, directly supporting the claim's definition of sycophancy. · source: https://www.semanticscholar.org/paper/e6423c211fea2945aa71e1ac5ea24f8f595b4b0a",
+      "notes": "(based on abstract) The evidence directly investigates sycophancy in AI assistants — the tendency to match user beliefs over truthful ones — across multiple tasks, exactly matching the claim's definition. · source: https://www.semanticscholar.org/paper/e6423c211fea2945aa71e1ac5ea24f8f595b4b0a",
       "error": null,
       "labels": null
     },
@@ -4821,9 +4832,9 @@
           "url": "http://arxiv.org/abs/2508.18760v3"
         }
       ],
-      "confidence": 0.95,
+      "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence explicitly describes studying how large reasoning models fail to abstain on unanswerable math questions lacking sufficient conditions, directly supporting the claim about studying LLM responses to ill-formed mathematical questions. · source: http://arxiv.org/abs/2508.18760v3",
+      "notes": "(based on abstract) The evidence directly analyzes LRMs facing unanswerable questions including math problems lacking sufficient conditions, matching the claim about studying how LLMs answer ill-formed mathematical questions. · source: http://arxiv.org/abs/2508.18760v3",
       "error": null,
       "labels": null
     },
@@ -4867,7 +4878,7 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "arxiv",
+        "source": "s2",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions",
@@ -4878,10 +4889,10 @@
           "Samuel J. Bell"
         ],
         "year": 2025,
-        "venue": "arXiv (preprint)",
-        "doi": null,
-        "arxiv_id": "2506.09038v1",
-        "url": "http://arxiv.org/abs/2506.09038v1",
+        "venue": "arXiv.org",
+        "doi": "10.48550/arxiv.2506.09038",
+        "arxiv_id": "2506.09038",
+        "url": "https://www.semanticscholar.org/paper/077d0cb33c63a0b40de3d6fb6167673d5f76f180",
         "url_valid": true,
         "abstract": "For Large Language Models (LLMs) to be reliably deployed in both everyday and high-stakes domains, knowing when not to answer is equally critical as answering correctly. Real-world user queries, which can be underspecified, ill-posed, or fundamentally unanswerable, require LLMs to reason about uncertainty and selectively abstain -- i.e., refuse to answer definitively. However, abstention remains understudied, without a systematic evaluation framework for modern LLMs. In this work, we introduce AbstentionBench, a large-scale benchmark for holistically evaluating abstention across 20 diverse dat…"
       },
@@ -4893,20 +4904,20 @@
       "evidence": [
         {
           "kind": "metadata",
-          "source": "2506.09038v1",
+          "source": "10.48550/arxiv.2506.09038",
           "quote": "AbstentionBench: Reasoning LLMs Fail on Unanswerable Questions — Polina Kirichenko, Mark Ibrahim, Kamalika Chaudhuri, Samuel J. Bell — 2025",
-          "url": "http://arxiv.org/abs/2506.09038v1"
+          "url": "https://www.semanticscholar.org/paper/077d0cb33c63a0b40de3d6fb6167673d5f76f180"
         },
         {
           "kind": "abstract",
-          "source": "2506.09038v1",
+          "source": "10.48550/arxiv.2506.09038",
           "quote": "For Large Language Models (LLMs) to be reliably deployed in both everyday and high-stakes domains, knowing when not to answer is equally critical as answering correctly. Real-world user queries, which can be underspecified, ill-posed, or fundamentally unanswerable, require LLMs to reason about uncertainty and selectively abstain -- i.e., refuse to answer definitively. However, abstention remains understudied, without a systematic evaluation framework for modern LLMs. In this work, we introduce AbstentionBench, a large-scale benchmark for holistically evaluating abstention across 20 diverse dat…",
-          "url": "http://arxiv.org/abs/2506.09038v1"
+          "url": "https://www.semanticscholar.org/paper/077d0cb33c63a0b40de3d6fb6167673d5f76f180"
         }
       ],
-      "confidence": 0.9,
+      "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes AbstentionBench for evaluating LLM abstention on underspecified, ill-posed, or unanswerable queries, directly supporting the claim about studying how LLMs answer ill-formed questions. · source: http://arxiv.org/abs/2506.09038v1",
+      "notes": "(based on abstract) The evidence introduces AbstentionBench for evaluating LLM abstention on underspecified, ill-posed, or unanswerable queries, supporting the claim about studying how LLMs handle ill-formed questions. · source: https://www.semanticscholar.org/paper/077d0cb33c63a0b40de3d6fb6167673d5f76f180",
       "error": null,
       "labels": null
     },
@@ -4935,30 +4946,19 @@
       "cited_as": {
         "raw": "Xue, B., Zhu, Q., Wang, R., Wang, S., Wang, H., Hu, M., Mi, F., Wang, Y., Shang, L., Liu, Q., and Wong, K.- F. Reliablemath: Benchmark of reliable mathematical reasoning on large language models, 2025. URL https: //arxiv.org/abs/2507.03133.",
         "authors": [
-          "Xue",
-          "B.",
-          "Zhu",
-          "Q.",
-          "Wang",
-          "R.",
-          "Wang",
-          "S.",
-          "Wang",
-          "H.",
-          "Hu",
-          "M.",
-          "Mi",
-          "F.",
-          "Wang",
-          "Y.",
-          "Shang",
-          "L.",
-          "Liu",
-          "Q.",
-          "and Wong",
-          "K.- F. Reliablemath:"
+          "Xue, B.",
+          "Zhu, Q.",
+          "Wang, R.",
+          "Wang, S.",
+          "Wang, H.",
+          "Hu, M.",
+          "Mi, F.",
+          "Wang, Y.",
+          "Shang, L.",
+          "Liu, Q.",
+          "Wong, K.- F."
         ],
-        "title": "Benchmark of reliable mathematical reasoning on large language models",
+        "title": "Reliablemath: Benchmark of reliable mathematical reasoning on large language models",
         "year": 2025,
         "venue": null,
         "doi": null,
@@ -4993,9 +4993,7 @@
         "url_valid": true,
         "abstract": "Although demonstrating remarkable performance on reasoning tasks, Large Language Models (LLMs) still tend to fabricate unreliable responses when confronted with problems that are unsolvable or beyond their capability, severely undermining the reliability. Prior studies of LLM reliability have primarily focused on knowledge tasks to identify unanswerable questions, while mathematical reasoning tasks have remained unexplored due to the dearth of unsolvable math problems. To systematically investigate LLM reliability in mathematical reasoning tasks, we formulate the reliability evaluation for bot…"
       },
-      "metadata_issues": [
-        "author list differs substantially from the canonical record"
-      ],
+      "metadata_issues": [],
       "supports_claim": "supports",
       "priority": "obligatory",
       "severity": "ok",
@@ -5014,9 +5012,9 @@
           "url": "http://arxiv.org/abs/2507.03133v2"
         }
       ],
-      "confidence": 0.95,
+      "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence explicitly describes investigating LLM reliability on unsolvable math problems and fabricated responses to questions beyond their capability, directly supporting the claim about studying LLM responses to ill-formed mathematical questions. · source: http://arxiv.org/abs/2507.03133v2",
+      "notes": "(based on abstract) The evidence directly investigates LLM reliability on unsolvable math problems, formulating reliability evaluation for both answerable and unanswerable questions, matching the claim about studying how LLMs answer ill-formed mathematical questions. · source: http://arxiv.org/abs/2507.03133v2",
       "error": null,
       "labels": null
     },
@@ -5161,7 +5159,7 @@
       ],
       "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract) The evidence describes DeepSeek-Prover-V2 as a Lean 4 formal theorem prover using reinforcement learning and subgoal decomposition, directly supporting the claim about the DeepSeek-Prover family differing from the Church Machine in medium. · source: http://arxiv.org/abs/2504.21801v2",
+      "notes": "(based on abstract) The evidence describes DeepSeek-Prover-V2 for formal theorem proving in Lean 4, directly supporting its citation as part of the DeepSeek-Prover family that differs from the Church Machine in medium. · source: http://arxiv.org/abs/2504.21801v2",
       "error": null,
       "labels": null
     }
