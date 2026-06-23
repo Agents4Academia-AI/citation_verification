@@ -362,12 +362,14 @@ def test_validate_url_only_flags_definitive_gone():
     assert validate_url("not-a-url") is True
 
 
-def test_likely_titles_includes_post_colon_subtitle():
-    # a colon-prefix the canonical record drops ("I Speak, You Verify: <title>")
-    from citation_verifier.grounding.resolver import _likely_titles
+def test_subtitle_reference_reduces_colon_prefixed_title():
+    # a colon-prefix the canonical record drops ("I Speak, You Verify: <title>") —
+    # the fallback search uses the post-colon title, matched against the subtitle.
+    from citation_verifier.grounding.resolver import _subtitle_reference
 
-    v = _likely_titles('Key, D. "I Speak, You Verify: Toward trustworthy neural program synthesis" 2022')
-    assert "Toward trustworthy neural program synthesis" in v
+    ref = 'Key, D. "I Speak, You Verify: Toward trustworthy neural program synthesis" 2022'
+    assert _subtitle_reference(ref) == 'Key, D. "Toward trustworthy neural program synthesis" 2022'
+    assert _subtitle_reference('Foo B. "A plain title with no colon" 2020') == ""
 
 
 def test_match_rejects_exact_id_with_contradicting_title():

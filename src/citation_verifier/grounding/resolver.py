@@ -280,13 +280,6 @@ def _likely_titles(reference: str) -> list[str]:
     if not title:
         return []
     variants = [title, _clean_title_variant(title)]
-    # A cited title may carry a colon-prefix the canonical record drops/changes
-    # ("I Speak, You Verify: Toward trustworthy neural program synthesis"), so also
-    # query the substantive part after the first colon.
-    if ":" in title:
-        after = title.split(":", 1)[1].strip()
-        if len(after.split()) >= 3:
-            variants.append(after)
     out: list[str] = []
     seen: set[str] = set()
     for variant in variants:
@@ -376,6 +369,22 @@ def _title_tokens_contradict(reference: str, candidate_title: str) -> bool:
     if len(ref_tokens) <= 4:
         return overlap < (2 / 3)
     return overlap < 0.60
+
+
+def _subtitle_reference(reference: str) -> str:
+    """A reference variant whose colon-prefixed title is reduced to its post-colon
+    part ("I Speak, You Verify: Toward …" -> "Toward …"), for a fallback search.
+
+    Returns ``""`` when the title has no colon or the subtitle is too short to be
+    a reliable query.
+    """
+    title = _likely_title(reference)
+    if not title or ":" not in title:
+        return ""
+    subtitle = title.split(":", 1)[1].strip()
+    if len(subtitle.split()) < 3:
+        return ""
+    return reference.replace(title, subtitle, 1)
 
 
 def _ref_first_surname(reference: str) -> str:
@@ -617,7 +626,21 @@ class MultiSourceResolver:
             return fallback
 
         # 3) broad fallback.
-        return self._match(reference, self._broad_candidates(reference))
+        match = self._match(reference, self._broad_candidates(reference))
+        if match is not None:
+            return match
+
+        # 4) colon-subtitle fallback: a cited title may carry a tagline prefix the
+        #    canonical record drops ("I Speak, You Verify: <real title>"). Retry the
+        #    title tier against the post-colon title alone — matched against the
+        #    subtitle, so the dropped prefix is not read as a title contradiction.
+        sub_ref = _subtitle_reference(reference)
+        if sub_ref:
+            for fn, args in self._title_query_steps(sub_ref, 4):
+                match = self._match(sub_ref, self._fetch(fn, *args))
+                if match is not None:
+                    return match
+        return None
 
     def _match(self, reference: str, cands: list[Candidate]) -> Resolved | None:
         """Run the DOI -> arXiv-id -> fuzzy-title-gated cascade over ``cands``."""
