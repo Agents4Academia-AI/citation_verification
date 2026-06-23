@@ -391,3 +391,125 @@ def test_match_rejects_exact_id_with_contradicting_title():
     right = cand(arxiv_id="2102.00182", title="Kar: Evaluating model proof generation of lambda calculus")
     res = r._match(ref, [right])
     assert res is not None and getattr(res.match_method, "value", res.match_method) == "arxiv"
+
+
+# ── open-access full-text cascade (oa_fulltext, adapted from Klara Kaleb) ──
+
+
+def test_oa_html_to_text_strips_scripts_and_markup():
+    from citation_verifier.grounding.oa_fulltext import _html_to_text
+
+    html = "<html><head><style>.x{}</style></head><body><script>bad()</script><p>Hello &amp; world</p></body></html>"
+    out = _html_to_text(html)
+    assert "Hello" in out and "world" in out
+    assert "bad()" not in out and ".x{}" not in out and "<p>" not in out
+
+
+def test_oa_html_to_text_preserves_section_structure():
+    # headings must survive as their own lines so split_sections() can recover
+    # document structure (heading provenance + experimental-section gating).
+    from citation_verifier.grounding.fulltext import split_sections
+    from citation_verifier.grounding.oa_fulltext import _html_to_text
+
+    html = "<h2>Introduction</h2><p>We propose a method.</p><h2>Conclusion</h2><p>It works well.</p>"
+    out = _html_to_text(html)
+    assert "Introduction\n" in out  # heading isolated on its own line
+    sections = dict(split_sections(out))
+    assert "Introduction" in sections and "method" in sections["Introduction"].lower()
+    assert "Conclusion" in sections
+
+
+def test_oa_norm_doi_strips_prefixes():
+    from citation_verifier.grounding.oa_fulltext import _norm_doi
+
+    assert _norm_doi("https://doi.org/10.1/abc") == "10.1/abc"
+    assert _norm_doi("doi:10.1/abc") == "10.1/abc"
+    assert _norm_doi("  10.1/abc  ") == "10.1/abc"
+
+
+def test_oa_arxiv_html_text_extracts_and_guards(monkeypatch):
+    from citation_verifier.grounding import oa_fulltext as oa
+
+    body = "word " * 400  # comfortably past the _MIN_TEXT guard
+    monkeypatch.setattr(oa, "_http_get_text", lambda url, timeout=30: f"<html><body>{body}</body></html>")
+    assert "word" in oa.arxiv_html_text("2310.12345v2")
+    # too-short pages are rejected (stub / error / landing page guard)
+    monkeypatch.setattr(oa, "_http_get_text", lambda url, timeout=30: "<html><body>tiny</body></html>")
+    assert oa.arxiv_html_text("2310.12345") == ""
+    # empty id => no network, no text
+    assert oa.arxiv_html_text("") == ""
+
+
+def test_oa_arxiv_html_reports_actual_host(monkeypatch):
+    # provenance: when the first host (arxiv.org/html) is empty and ar5iv answers,
+    # the returned URL must be the ar5iv one — not assumed to be arxiv.org/html.
+    from citation_verifier.grounding import oa_fulltext as oa
+
+    body = "word " * 400
+
+    def fake_get(url, timeout=30):
+        return "" if "arxiv.org/html" in url else f"<html><body>{body}</body></html>"
+
+    monkeypatch.setattr(oa, "_http_get_text", fake_get)
+    text, url = oa.arxiv_html_text_with_url("2310.12345v2")
+    assert "word" in text
+    assert url == "https://ar5iv.org/abs/2310.12345"
+
+
+def test_oa_html_to_text_unescapes_entities():
+    # entities must keep their semantics (not be dropped to spaces).
+    from citation_verifier.grounding.oa_fulltext import _html_to_text
+
+    out = _html_to_text("<p>Caf&eacute; &amp; &#945;-decay</p>")
+    assert "Café" in out and " & " in out and "α-decay" in out
+
+
+def test_oa_unpaywall_is_env_gated_failsoft(monkeypatch):
+    from citation_verifier.grounding import oa_fulltext as oa
+
+    monkeypatch.delenv("UNPAYWALL_EMAIL", raising=False)
+    monkeypatch.delenv("CONTACT_EMAIL", raising=False)
+    # no contact email => Unpaywall is skipped without ever touching the network
+    monkeypatch.setattr(oa, "_http_get_json", lambda url, timeout=30: (_ for _ in ()).throw(AssertionError("net!")))
+    assert oa._unpaywall_pdf_urls("10.1/abc", 30) == []
+
+
+def test_oa_pdf_urls_orders_and_dedupes(monkeypatch):
+    from citation_verifier.grounding import oa_fulltext as oa
+
+    monkeypatch.setattr(oa, "_openalex_pdf_url", lambda doi, t: ["https://a/x.pdf"])
+    monkeypatch.setattr(oa, "_unpaywall_pdf_urls", lambda doi, t: ["https://a/x.pdf", "https://b/y.pdf"])
+    monkeypatch.setattr(oa, "_meta_pdf_url", lambda doi, t: ["https://c/z.pdf"])
+    assert oa.oa_pdf_urls("10.1/abc") == ["https://a/x.pdf", "https://b/y.pdf", "https://c/z.pdf"]
+    assert oa.oa_pdf_urls("") == []  # empty doi => no work
+
+
+def test_oa_pdf_urls_failsoft_when_a_resolver_raises(monkeypatch):
+    from citation_verifier.grounding import oa_fulltext as oa
+
+    monkeypatch.setattr(oa, "_openalex_pdf_url", lambda doi, t: (_ for _ in ()).throw(RuntimeError("boom")))
+    monkeypatch.setattr(oa, "_unpaywall_pdf_urls", lambda doi, t: ["https://b/y.pdf"])
+    monkeypatch.setattr(oa, "_meta_pdf_url", lambda doi, t: [])
+    assert oa.oa_pdf_urls("10.1/abc") == ["https://b/y.pdf"]
+
+
+def test_oa_fulltext_by_doi_returns_first_extractable(monkeypatch):
+    from citation_verifier.grounding import fulltext
+    from citation_verifier.grounding import oa_fulltext as oa
+
+    monkeypatch.setattr(
+        oa, "_oa_pdf_sources", lambda doi, t: [("https://a/x.pdf", "openalex_oa"), ("https://b/y.pdf", "unpaywall")]
+    )
+    seen = []
+
+    def fake_extract(url, timeout=30, max_chars=200_000):
+        seen.append(url)
+        return "FULL TEXT" if url.endswith("y.pdf") else ""
+
+    monkeypatch.setattr(fulltext, "fetch_full_text_from_url", fake_extract)
+    # bare-text wrapper still returns the text
+    assert oa.fulltext_by_doi("10.1/abc") == "FULL TEXT"
+    assert seen == ["https://a/x.pdf", "https://b/y.pdf"]  # tried in order, stopped at first hit
+    # provenance variant carries the channel + URL that succeeded
+    res = oa.fulltext_by_doi_with_source("10.1/abc")
+    assert (res.text, res.source, res.url) == ("FULL TEXT", "unpaywall", "https://b/y.pdf")
