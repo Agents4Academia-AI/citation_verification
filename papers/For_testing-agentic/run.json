@@ -1,0 +1,31 @@
+{
+  "paper_id": "For_testing",
+  "backend": "agentic",
+  "usage": {
+    "backend": "agentic",
+    "model": "bulk=claude-haiku-4-5-20251001;judge=claude-opus-4-6",
+    "input_tokens": 2158,
+    "output_tokens": 9498,
+    "total_tokens": 11656,
+    "cache_read_tokens": 31342,
+    "cache_creation_tokens": 17270,
+    "cost_usd": 0.417676,
+    "num_turns": 2,
+    "tool_calls": 69,
+    "wall_seconds": 255.87196856597438,
+    "by_tier": {
+      "bulk": {
+        "input_tokens": 2152,
+        "output_tokens": 1104,
+        "cost_usd": 0.007671999999999997
+      },
+      "judge": {
+        "input_tokens": 6,
+        "output_tokens": 8394,
+        "cost_usd": 0.410004
+      }
+    }
+  },
+  "num_records": 69,
+  "num_errors": 0
+}
