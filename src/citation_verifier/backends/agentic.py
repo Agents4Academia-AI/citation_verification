@@ -102,8 +102,11 @@ class AgenticBackend(BaseBackend):
                     "relevance pass skipped (records left unresolved/inconclusive)"
                 )
             else:
-                # Pass 2 — relevance over records that resolved (exists != no).
-                eligible = [r for r in result.records if _exists(r) is not Exists.NO]
+                # Pass 2 — relevance ONLY over records that resolved (exists == yes).
+                # An unresolved citation has no verified paper, so judging relevance
+                # would run on a scraped/near-miss abstract and emit a false verdict
+                # (e.g. a confident `does_not` against the wrong paper); abstain instead.
+                eligible = [r for r in result.records if _exists(r) is Exists.YES]
                 self._relevance_pass(eligible, fill_relevance, resolver, usage, result)
 
         # Fold a self-accounting LLM judge's REAL token/cost usage into the run.
