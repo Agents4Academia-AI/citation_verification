@@ -73,7 +73,7 @@ SEVERITY_STR: dict[str, str] = {
 # The frozen SKILL.md column header (load-bearing — tests pin this exactly).
 _COLUMNS = [
     "#",
-    "Citation (authors, short title, year)",
+    "Citation (authors, title, year)",
     "Cited where (the claim)",
     "Exists?",
     "Match notes",
@@ -101,7 +101,7 @@ def _cell(text: str | None) -> str:
 
 
 def _citation_cell(record: CitationRecord) -> str:
-    """Render col 2: 'authors, short title, year' from ``cited_as``."""
+    """Render col 2: 'authors, title, year' from ``cited_as`` (full title, untruncated)."""
     cited = record.cited_as
     authors = cited.authors or []
     if len(authors) > 2:
@@ -109,9 +109,8 @@ def _citation_cell(record: CitationRecord) -> str:
     else:
         who = ", ".join(authors)
     title = cited.title or ""
-    short_title = title if len(title) <= 60 else title[:57].rstrip() + "…"
     year = str(cited.year) if cited.year else ""
-    parts = [p for p in (who, short_title, year) if p]
+    parts = [p for p in (who, title, year) if p]
     rendered = ", ".join(parts)
     return rendered or _cell(cited.raw) or record.cite_key
 

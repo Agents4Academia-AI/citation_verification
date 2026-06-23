@@ -127,7 +127,7 @@ silently cap; say what you sampled).
 
 Then the table — exactly these columns:
 
-| # | Citation (authors, short title, year) | Cited where (the claim) | Exists? | Match notes | Supports claim? | Explanation |
+| # | Citation (authors, title, year) | Cited where (the claim) | Exists? | Match notes | Supports claim? | Explanation |
 |---|---|---|---|---|---|---|
 
 - Keep each cell short; put detail (quoted evidence, the canonical record) in

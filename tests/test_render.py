@@ -13,7 +13,7 @@ import pytest
 
 # The 7 columns, verbatim from SKILL.md.
 EXPECTED_HEADER = (
-    "| # | Citation (authors, short title, year) | Cited where (the claim) "
+    "| # | Citation (authors, title, year) | Cited where (the claim) "
     "| Exists? | Match notes | Supports claim? | Explanation |"
 )
 
