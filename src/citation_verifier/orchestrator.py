@@ -13,7 +13,7 @@ The single public entry point (exported lazily as
   5. persist   : write ``papers/<id>/report.json`` and ``papers/<id>/run.json``.
 
 Design rules honored from docs/decisions-phy.md:
-  - degrade-not-crash: a per-pair failure becomes one ``unverified`` row with
+  - degrade-not-crash: a per-pair failure becomes one ``unresolved/inconclusive`` row with
     ``record.error`` set and is appended to ``result.errors``; the run continues.
   - resumable: when ``resume`` is True and a prior ``report.json`` exists, its
     records are reused instead of re-running the backend.
@@ -70,8 +70,30 @@ def finalize_severity(records: list[CitationRecord]) -> None:
             rec.severity = derive_severity(rec.exists, rec.supports_claim, rec.priority)
 
 
+def _append_source_links(records: list[CitationRecord]) -> None:
+    """Append the resolved source link to each existing citation's explanation.
+
+    When a reference resolved (``exists == yes``), show *where* it was found in the
+    rendered notes so the verdict is auditable. In-place, idempotent, and
+    single-line (safe inside the markdown table cell).
+    """
+    for rec in records:
+        if getattr(rec.exists, "value", rec.exists) != Exists.YES.value or rec.resolved is None:
+            continue
+        r = rec.resolved
+        url = (r.url or "").strip()
+        if not url and r.doi:
+            url = f"https://doi.org/{r.doi}"
+        if not url and r.arxiv_id:
+            url = f"https://arxiv.org/abs/{r.arxiv_id}"
+        if not url or url in (rec.notes or ""):
+            continue
+        base = (rec.notes or "").rstrip()
+        rec.notes = f"{base} · source: {url}" if base else f"source: {url}"
+
+
 def _degraded_stub(source: PaperSource, error: str) -> CitationRecord:
-    """Build a single ``unverified`` placeholder record when a whole run degrades.
+    """Build a single ``unresolved/inconclusive`` placeholder record when a whole run degrades.
 
     Used when ingestion succeeds but extraction yields nothing or the backend is
     unavailable — the run still returns a valid (empty-but-honest) record set.
@@ -82,8 +104,8 @@ def _degraded_stub(source: PaperSource, error: str) -> CitationRecord:
         cite_key="run",
         claim=Claim(claim_id="run", text=""),
         cited_as=CitedAs(),
-        exists=Exists.UNVERIFIED,
-        supports_claim=SupportsClaim.UNVERIFIED,
+        exists=Exists.UNRESOLVED,
+        supports_claim=SupportsClaim.INCONCLUSIVE,
         error=error,
     )
 
@@ -282,6 +304,7 @@ def run_verification(
         if prior is not None:
             result.records = prior
             finalize_severity(result.records)
+            _append_source_links(result.records)
             # Restore the real token/cost accounting so a cached hit reports the
             # genuine usage (and does not overwrite run.json with zeros).
             prior_usage = _load_run(work_dir)
@@ -321,9 +344,9 @@ def run_verification(
     if backend_impl is None:
         result.errors.append(
             f"backend {backend!r} unavailable (sibling 'backends' package not "
-            "installed); returning unverified stubs"
+            "installed); returning unresolved/inconclusive stubs"
         )
-        # Without a backend we still return whatever stubs we have, unverified.
+        # Without a backend we still return whatever stubs we have, unresolved/inconclusive.
         result.records = stubs or [
             _degraded_stub(paper_source, "no extractor and no backend available")
         ]
@@ -343,6 +366,7 @@ def run_verification(
 
     # 4) Deterministic severity for any record the backend did not judge.
     finalize_severity(result.records)
+    _append_source_links(result.records)
 
     # 5) Persist artifacts.
     result.usage.wall_seconds = time.monotonic() - started

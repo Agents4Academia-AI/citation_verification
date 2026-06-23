@@ -5,7 +5,7 @@ relevance — STEP 2 (Relevance & Justification + Priority).
 claim it is attached to, sets the citation's priority (obligatory vs helpful),
 and attaches the evidence + justification backing the verdict. It fills:
 
-    record.supports_claim : supports | partial | does_not | unverified
+    record.supports_claim : supports | partial | does_not | inconclusive
     record.priority       : obligatory | helpful
     record.evidence       : the abstract/snippet the verdict rests on
     record.confidence     : 0..1
@@ -19,16 +19,16 @@ two-tier-routed judge here). Without a judge, a deterministic fallback runs:
   - **Priority** is inferred from cue words in the claim sentence (a method/
     baseline/dataset/"X showed that" => obligatory; survey/"see also"/background
     => helpful). This is a coarse but honest heuristic, not a hidden LLM.
-  - **Supports-claim** ABSTAINS to ``unverified`` unless a retrieved abstract is
+  - **Supports-claim** ABSTAINS to ``inconclusive`` unless a retrieved abstract is
     available; with an abstract present but no judge, it still abstains rather
     than guess (the skill's "never decide relevance without reading" rule). The
     abstract is recorded as evidence so a later judge pass can adjudicate.
 
 Per docs/decisions-phy.md: a relevance verdict must rest on *retrieved* evidence
-(the resolved abstract), never on model memory; absent evidence => ``unverified``.
+(the resolved abstract), never on model memory; absent evidence => ``inconclusive``.
 
 Degrade-not-crash: any judge/processing error sets ``record.error`` and leaves
-``supports_claim`` at ``unverified``.
+``supports_claim`` at ``inconclusive``.
 
 NOTE on the "construct-a-skill / justification" direction (SKILL.md): the judge
 callable is the seam for the relevance-justification skill — it receives the
@@ -83,7 +83,7 @@ class RelevanceVerdict:
 
     def __init__(
         self,
-        supports_claim: SupportsClaim | str = SupportsClaim.UNVERIFIED,
+        supports_claim: SupportsClaim | str = SupportsClaim.INCONCLUSIVE,
         priority: Priority | str | None = None,
         confidence: float | None = None,
         justification: str = "",
@@ -148,13 +148,13 @@ def fill_relevance(
 
     Returns:
         The same record, mutated in place. On any error, ``record.error`` is set
-        and ``supports_claim`` is left at ``unverified`` (degrade-not-crash).
+        and ``supports_claim`` is left at ``inconclusive`` (degrade-not-crash).
     """
     try:
         return _fill_relevance(record, resolver=resolver, judge=judge)
     except Exception as exc:  # noqa: BLE001 — degrade-not-crash
         record.error = f"relevance: {exc!r}"
-        record.supports_claim = SupportsClaim.UNVERIFIED
+        record.supports_claim = SupportsClaim.INCONCLUSIVE
         return record
 
 
@@ -190,7 +190,7 @@ def _fill_relevance(
     if abstract:
         record.evidence = _add_evidence(record.evidence, _abstract_evidence(record, abstract))
     # Honest abstain: support requires reading, which only the judge does.
-    record.supports_claim = SupportsClaim.UNVERIFIED
+    record.supports_claim = SupportsClaim.INCONCLUSIVE
     record.confidence = None
     return record
 
@@ -205,7 +205,7 @@ def fill_relevance_batch(
     ``[{"claim","abstract","resolved"}]`` and returning a list of
     :class:`RelevanceVerdict` aligned to the input. Verdicts are applied back in
     place. Degrade-not-crash: on a batch error every record abstains to
-    ``unverified``; a missing/`None` verdict abstains that one record.
+    ``inconclusive``; a missing/`None` verdict abstains that one record.
 
     This exists so an LLM judge pays the per-call SDK/session overhead once per
     chunk instead of once per citation (see backends/relevance_judge.py).
@@ -234,12 +234,15 @@ def fill_relevance_batch(
     except Exception as exc:  # noqa: BLE001 — degrade-not-crash
         for rec in records:
             rec.error = (rec.error + "; " if rec.error else "") + f"relevance batch: {exc!r}"
-            rec.supports_claim = SupportsClaim.UNVERIFIED
+            rec.supports_claim = SupportsClaim.INCONCLUSIVE
         return records
 
-    for rec, item, verdict in zip(records, items, verdicts, strict=False):
+    # Stage 2: the abstract couldn't decide these — re-judge against full-text chunks.
+    verdicts, escalated = _escalate_inconclusive(records, verdicts, judge_batch)
+
+    for pos, (rec, item, verdict) in enumerate(zip(records, items, verdicts, strict=False)):
         if verdict is None:
-            rec.supports_claim = SupportsClaim.UNVERIFIED
+            rec.supports_claim = SupportsClaim.INCONCLUSIVE
             continue
         rec.supports_claim = verdict.supports_claim
         if verdict.priority is not None:
@@ -247,7 +250,9 @@ def fill_relevance_batch(
         rec.confidence = verdict.confidence
         rec.model_tier = verdict.model_tier
         if verdict.justification:
-            rec.notes = (rec.notes + "\n" if rec.notes else "") + verdict.justification
+            source = "full text" if pos in escalated else "abstract"
+            note = f"(based on {source}) {verdict.justification}"
+            rec.notes = (rec.notes + "\n" if rec.notes else "") + note
         if item["abstract"]:
             rec.evidence = _add_evidence(rec.evidence, _abstract_evidence(rec, item["abstract"]))
     return records
@@ -297,6 +302,88 @@ def _abstract_evidence(record: CitationRecord, abstract: str) -> Evidence:
         kind="abstract",
         source=str(src or "structured"),
         quote=_snippet(abstract),
+        url=record.resolved.url if record.resolved else None,
+    )
+
+
+_FULLTEXT_CHUNKS = 3  # claim-relevant chunks fetched per escalated citation (Stage 2)
+
+
+def _escalate_inconclusive(
+    records: list[CitationRecord], verdicts: list, judge_batch
+) -> tuple[list, set[int]]:
+    """Stage 2: re-judge ``inconclusive`` records against the cited paper's full text.
+
+    The abstract could not decide these claims, so fetch the cited arXiv paper's
+    full text (LaTeX source, then PDF), select the few claim-relevant chunks, and
+    re-judge them in one batched call. Returns the (mutated) verdict list plus the
+    set of record positions re-judged on full text (for provenance). Fail-soft: a
+    record with no arXiv id / no fetchable text / a judge error keeps its Stage-1
+    verdict.
+    """
+    from ..grounding.fulltext import fetch_full_text, select_evidence_chunks, split_sections
+
+    fulltext_cache: dict[str, str] = {}  # fetch each cited paper at most once per run
+    esc_items: list[dict] = []
+    esc_meta: list[tuple[int, list[tuple[str, str]]]] = []
+    for pos, (rec, verdict) in enumerate(zip(records, verdicts, strict=False)):
+        if verdict is None:
+            continue
+        sc = getattr(verdict.supports_claim, "value", verdict.supports_claim)
+        if sc != SupportsClaim.INCONCLUSIVE.value:
+            continue
+        arxiv = rec.resolved.arxiv_id if rec.resolved else None
+        if not arxiv:
+            continue
+        if arxiv not in fulltext_cache:
+            fulltext_cache[arxiv] = fetch_full_text(arxiv)
+        full = fulltext_cache[arxiv]
+        if not full:
+            continue
+        chunks = select_evidence_chunks(rec.claim.text, split_sections(full), k=_FULLTEXT_CHUNKS)
+        if not chunks:
+            continue
+        evidence = "\n\n".join(f"[{h or 'body'}] {c}" for h, c in chunks)
+        esc_items.append(
+            {
+                "cite_key": rec.cite_key,
+                "claim_id": rec.claim_id,
+                "claim": rec.claim.text,
+                "abstract": evidence,
+                "resolved": rec.resolved,
+            }
+        )
+        esc_meta.append((pos, chunks))
+
+    if not esc_items:
+        return verdicts, set()
+    try:
+        esc_verdicts = judge_batch(esc_items)
+    except Exception:  # noqa: BLE001 — degrade-not-crash: keep the Stage-1 verdicts
+        return verdicts, set()
+
+    escalated: set[int] = set()
+    for (pos, chunks), v2 in zip(esc_meta, esc_verdicts, strict=False):
+        if v2 is None:
+            continue
+        verdicts[pos] = v2
+        escalated.add(pos)
+        records[pos].evidence = _add_evidence(
+            records[pos].evidence, _fulltext_evidence(records[pos], chunks)
+        )
+    return verdicts, escalated
+
+
+def _fulltext_evidence(record: CitationRecord, chunks: list[tuple[str, str]]) -> Evidence:
+    """Package retrieved full-text chunks as Evidence, tagged with their section."""
+    heading = (chunks[0][0] if chunks else "") or "full text"
+    src = ""
+    if record.resolved:
+        src = record.resolved.arxiv_id or record.resolved.url or ""
+    return Evidence(
+        kind="full_text",
+        source=f"{src or 'arxiv'} §{heading}",
+        quote=_snippet("  ".join(c for _, c in chunks)),
         url=record.resolved.url if record.resolved else None,
     )
 
