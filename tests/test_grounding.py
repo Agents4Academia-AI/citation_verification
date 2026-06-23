@@ -282,6 +282,43 @@ def test_abstract_top_up_prefers_real_arxiv_abstract_over_tldr(monkeypatch):
     assert MultiSourceResolver(validate_urls=False)._abstract_top_up(c) == "REAL ARXIV ABSTRACT"
 
 
+def test_s2_parse_and_candidate_carry_oa_pdf():
+    # S2's openAccessPdf.url (the web "View via Publisher"/PDF link) must survive
+    # parsing and the dict->Candidate adaptation via Candidate.extra.
+    item = {
+        "title": "ELIZA—a computer program",
+        "abstract": "An abstract that does not cover the specific claim.",
+        "isOpenAccess": True,
+        "openAccessPdf": {"url": "https://dl.acm.org/doi/pdf/10.1145/x", "status": "BRONZE"},
+        "externalIds": {"DOI": "10.1145/365153.365168"},
+    }
+    d = paper_lookup._parse_s2_item(item)
+    assert d["oa_pdf"] == "https://dl.acm.org/doi/pdf/10.1145/x"
+    c = _dict_to_candidate(d)
+    assert c.extra.get("oa_pdf") == "https://dl.acm.org/doi/pdf/10.1145/x"
+
+
+def test_s2_parse_missing_oa_pdf_is_empty():
+    d = paper_lookup._parse_s2_item({"title": "No OA paper", "externalIds": {}})
+    assert d["oa_pdf"] == ""
+    assert "oa_pdf" not in _dict_to_candidate(d).extra  # falsy -> not carried
+
+
+def test_to_resolved_prefers_oa_pdf_as_url():
+    # The OA PDF becomes resolved.url so Stage-2 relevance can fetch full text for
+    # an off-arXiv paper; it wins over the candidate's landing-page URL.
+    c = Candidate(
+        source="s2", title="t", url="https://www.semanticscholar.org/paper/abc",
+        abstract="present", extra={"oa_pdf": "https://ojs.aaai.org/.../download/2303"},
+    )
+    res = MultiSourceResolver(validate_urls=False)._to_resolved(c, MatchMethod.FUZZY_TITLE, 0.9)
+    assert res.url == "https://ojs.aaai.org/.../download/2303"
+    # without an OA PDF, the landing-page URL is kept.
+    c2 = Candidate(source="s2", title="t", url="https://landing.example/p", abstract="a")
+    res2 = MultiSourceResolver(validate_urls=False)._to_resolved(c2, MatchMethod.FUZZY_TITLE, 0.9)
+    assert res2.url == "https://landing.example/p"
+
+
 def test_present_abstract_short_circuits_all_top_up(monkeypatch):
     # "abstract 已经有就不查": a present abstract must skip every enrichment call.
     def boom(*a, **k):

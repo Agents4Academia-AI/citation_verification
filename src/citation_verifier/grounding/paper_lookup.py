@@ -512,7 +512,7 @@ def search_semantic_scholar(
         return []
 
     url = "https://api.semanticscholar.org/graph/v1/paper/search"
-    fields = "title,authors,year,venue,abstract,externalIds,url,tldr"
+    fields = "title,authors,year,venue,abstract,externalIds,url,tldr,openAccessPdf"
     try:
         data = _requests_get_json(
             requests,
@@ -526,7 +526,7 @@ def search_semantic_scholar(
     return [_parse_s2_item(it) for it in (data.get("data") or [])]
 
 
-_S2_FIELDS = "title,authors,year,venue,abstract,externalIds,url,tldr"
+_S2_FIELDS = "title,authors,year,venue,abstract,externalIds,url,tldr,openAccessPdf"
 
 
 def _parse_s2_item(it: dict) -> dict:
@@ -534,6 +534,8 @@ def _parse_s2_item(it: dict) -> dict:
     ext = it.get("externalIds") or {}
     tldr = it.get("tldr") or {}
     tldr_text = tldr.get("text") if isinstance(tldr, dict) else tldr
+    oa = it.get("openAccessPdf") or {}
+    oa_pdf = oa.get("url") if isinstance(oa, dict) else oa
     return {
         "source": SOURCE_S2,
         "title": _clean(it.get("title"), limit=400),
@@ -550,6 +552,12 @@ def _parse_s2_item(it: dict) -> dict:
         # only API-accessible evidence for those — carried through Candidate.extra
         # and used ONLY as a last-resort abstract fallback (see _abstract_top_up).
         "tldr": _clean(tldr_text),
+        # Direct OA full-text PDF link S2 curated for THIS exact paper (the web
+        # "View via Publisher"/PDF button). Present only when isOpenAccess; used as
+        # a Stage-2 full-text source for off-arXiv papers (see fulltext.py). It is
+        # the paper's own curated link, so unlike a title search it carries no
+        # namesake risk.
+        "oa_pdf": (oa_pdf or "").strip(),
     }
 
 
