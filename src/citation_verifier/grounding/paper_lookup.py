@@ -718,28 +718,36 @@ def _reconstruct_openalex_abstract(inverted: dict | None) -> str:
 # URL validation helper (fail-soft HEAD/GET)
 # ───────────────────────────────────────────────────────────────
 def validate_url(url: str, timeout: int = 15) -> bool:
-    """Return True iff ``url`` resolves to a live resource (2xx/3xx).
+    """Return ``False`` only when ``url`` is DEFINITIVELY gone (HTTP 404/410);
+    ``True`` otherwise.
 
-    Tries a cheap HEAD first, falls back to a ranged GET (some scholarly hosts
-    reject HEAD). Stdlib only; fail-soft -> ``False`` on any error or non-2xx/3xx.
+    Publisher PDF / landing URLs routinely reject bots, HEAD, or Range requests
+    with 403/401/405/429 — or time out — while opening fine in a browser. Treating
+    those as invalid produced false "URL did not validate" flags (e.g. a live
+    Science article). So only a clear 404/410 (the resource is gone) is a failure;
+    a block / redirect / timeout is inconclusive and NOT flagged. Stdlib only;
+    fail-soft. Tries HEAD then a ranged GET (some scholarly hosts reject HEAD).
     """
     if not url or not str(url).lower().startswith(("http://", "https://")):
-        return False
+        return True  # nothing fetchable to disprove — don't flag it as dead
 
-    def _try(method: str) -> bool:
+    def _try(method: str) -> bool | None:
         req = urllib.request.Request(url, method=method, headers={"User-Agent": USER_AGENT})
         if method == "GET":
             req.add_header("Range", "bytes=0-0")  # ask for 1 byte, not the body
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
-                return 200 <= getattr(resp, "status", 200) < 400
+            with urllib.request.urlopen(req, timeout=timeout):  # noqa: S310
+                return True  # any 2xx/3xx
         except urllib.error.HTTPError as e:
-            # A 405 (method not allowed) on HEAD is inconclusive, not a failure.
-            return False if e.code >= 400 else True
-        except Exception:  # noqa: BLE001
-            return False
+            return False if e.code in (404, 410) else None  # gone vs blocked/inconclusive
+        except Exception:  # noqa: BLE001 — timeout / connection error -> inconclusive
+            return None
 
-    return _try("HEAD") or _try("GET")
+    for method in ("HEAD", "GET"):
+        result = _try(method)
+        if result is not None:
+            return result
+    return True  # never got a definitive answer -> don't flag
 
 
 # ───────────────────────────────────────────────────────────────

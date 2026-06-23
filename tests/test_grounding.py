@@ -332,3 +332,31 @@ def test_present_abstract_short_circuits_all_top_up(monkeypatch):
     )
     res = MultiSourceResolver(validate_urls=False)._to_resolved(c, MatchMethod.FUZZY_TITLE, 0.9)
     assert res.abstract == "REAL ABSTRACT"
+
+
+def test_likely_title_handles_apostrophe_in_double_quotes():
+    # A curly apostrophe inside a double-quoted title must not end the quote
+    # (else "Let's verify step by step" is unextractable -> unresolved).
+    from citation_verifier.grounding.resolver import _likely_title
+
+    ref = 'Lightman, H., Kosaraju, V. "Let’s verify step by step" 2024'
+    assert _likely_title(ref) == "Let’s verify step by step"
+
+
+def test_first_author_surname_helpers():
+    from citation_verifier.grounding.resolver import _cand_first_surname, _ref_first_surname
+
+    assert _ref_first_surname("Hindle, A., Barr, E. T., Su, Z.") == "hindle"
+
+    class _C:
+        authors = ["Premkumar T. Devanbu"]
+
+    assert _cand_first_surname(_C()) == "devanbu"
+
+
+def test_validate_url_only_flags_definitive_gone():
+    # non-http / empty -> not flagged as dead (returns True, "nothing to disprove")
+    from citation_verifier.grounding.paper_lookup import validate_url
+
+    assert validate_url("") is True
+    assert validate_url("not-a-url") is True

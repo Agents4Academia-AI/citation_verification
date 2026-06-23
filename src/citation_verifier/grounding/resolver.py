@@ -120,7 +120,11 @@ def _extract_arxiv_id(reference: str) -> str:
 
 # A quoted segment in a reference is almost always the title (e.g.
 # `Authors. "Title". Venue. Year`). Straight or curly quotes, >= 8 chars.
-_QUOTED_TITLE_RE = re.compile(r"[\"“‘]([^\"“”‘’]{8,})[\"”’]")
+# A quoted title. Double-quoted form allows apostrophes inside (a curly ' / U+2019
+# in "Let's verify step by step" must NOT be read as a closing quote — that left
+# apostrophe-bearing titles unextractable → unresolved). Single-quoted form is the
+# secondary alternative.
+_QUOTED_TITLE_RE = re.compile(r"[\"“]([^\"“”]{8,})[\"”]|‘([^‘’]{8,})’")
 _SITE_SUFFIX_RE = re.compile(r"\s+-{2,}\s*[\w.-]+\.[a-z]{2,}\s*$", re.IGNORECASE)
 _VENUE_CLAUSE_RE = re.compile(
     r"^(?:"
@@ -249,7 +253,7 @@ def _likely_title(reference: str) -> str:
     ref = (reference or "").strip()
     m = _QUOTED_TITLE_RE.search(ref)
     if m:
-        return m.group(1).strip()
+        return (m.group(1) or m.group(2)).strip()
     head = re.split(r"(?i)\b(?:arxiv|doi|https?://)", ref)[0]
     for clause in re.split(r"\.\s+", head):
         c = clause.strip(" .,")
@@ -365,6 +369,21 @@ def _title_tokens_contradict(reference: str, candidate_title: str) -> bool:
     if len(ref_tokens) <= 4:
         return overlap < (2 / 3)
     return overlap < 0.60
+
+
+def _ref_first_surname(reference: str) -> str:
+    """The reference's leading surname, folded — 'Hindle, A., …' -> 'hindle'."""
+    m = re.match(r"\s*([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’-]{1,})", reference or "")
+    return m.group(1).lower() if m else ""
+
+
+def _cand_first_surname(c) -> str:
+    """A candidate's first-author surname, folded — 'Premkumar T. Devanbu' -> 'devanbu'."""
+    authors = getattr(c, "authors", None) or []
+    if not authors:
+        return ""
+    toks = re.sub(r"[^A-Za-z\s'’-]", " ", authors[0]).split()
+    return toks[-1].lower() if toks else ""
 
 
 def _fuzzy_title_score(reference: str, candidate_title: str) -> float:
@@ -608,12 +627,19 @@ class MultiSourceResolver:
         #    version-specific (arXiv vs proceedings vs journal), so title-token
         #    contradiction is the hard precision gate; author/year just lower the
         #    acceptance threshold when they agree.
+        # Rank by fuzzy title, then by first-author agreement with the reference
+        # (so a same-title record by a different lead author loses to the right
+        # one when both are returned), then by having an abstract.
+        ref_first = _ref_first_surname(reference)
         ranked = sorted(
-            ((_fuzzy_title_score(reference, c.title), c) for c in cands),
-            key=lambda t: (t[0], bool(t[1].abstract)),
+            (
+                (_fuzzy_title_score(reference, c.title), _cand_first_surname(c) == ref_first, bool(c.abstract), c)
+                for c in cands
+            ),
+            key=lambda t: (t[0], t[1], t[2]),
             reverse=True,
         )
-        for score, c in ranked:
+        for score, _first_ok, _has_abs, c in ranked:
             if score < FUZZY_TITLE_GATED_THRESHOLD:
                 break  # ranked descending: no later candidate can clear the bar
             if _title_tokens_contradict(reference, c.title):

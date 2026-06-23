@@ -417,16 +417,33 @@ _VERDICT_ALIASES = {
 }
 
 
+# A justification that states a clear contradiction (the evidence opposes the
+# claim) must not be softened to "partial"/"supports" — that is a "does not"
+# support. Conservative: only fires on explicit contradiction language, not on
+# mere absence ("does not mention/clarify", which is honest abstention).
+_CONTRADICTION_RE = re.compile(
+    r"\bcontradict|\bdoes not support\b|\bdo not support\b|\binconsistent with\b"
+    r"|\brefut|\bchronolog|\bthe opposite\b",
+    re.IGNORECASE,
+)
+
+
 def _verdict_from_row(data: dict) -> RelevanceVerdict:
     sc = _coerce(SupportsClaim, data.get("supports_claim"), SupportsClaim.INCONCLUSIVE)
     pr = _coerce(Priority, data.get("priority"), None)
     conf = data.get("confidence")
     conf = float(conf) if isinstance(conf, int | float) else None
+    justification = str(data.get("justification") or "").strip()
+    # A clearly-contradictory justification overrides a soft supports/partial label.
+    if sc in (SupportsClaim.SUPPORTS, SupportsClaim.PARTIAL) and _CONTRADICTION_RE.search(
+        justification
+    ):
+        sc = SupportsClaim.DOES_NOT
     return RelevanceVerdict(
         supports_claim=sc,
         priority=pr,
         confidence=conf,
-        justification=str(data.get("justification") or "").strip(),
+        justification=justification,
         model_tier=ModelTier.JUDGE,
     )
 

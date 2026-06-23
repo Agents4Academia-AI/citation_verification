@@ -175,3 +175,17 @@ def test_fill_relevance_batch_excludes_table_citations_from_the_judge():
     out = fill_relevance_batch([table, prose], resolver=_NullResolver(), judge_batch=judge_batch)
     assert SupportsClaim(out[0].supports_claim) is SupportsClaim.INCONCLUSIVE  # table untouched
     assert SupportsClaim(out[1].supports_claim) is SupportsClaim.SUPPORTS
+
+
+def test_verdict_downgrades_clear_contradiction_to_does_not():
+    from citation_verifier.backends.relevance_judge import _verdict_from_row
+
+    v = _verdict_from_row(
+        {"supports_claim": "partial", "justification": "chronologically impossible; the evidence contradicts the claim"}
+    )
+    assert SupportsClaim(v.supports_claim) is SupportsClaim.DOES_NOT
+    # mere absence ("does not mention") is honest abstention, not a contradiction
+    v2 = _verdict_from_row(
+        {"supports_claim": "partial", "justification": "the evidence does not mention this specific result"}
+    )
+    assert SupportsClaim(v2.supports_claim) is SupportsClaim.PARTIAL
