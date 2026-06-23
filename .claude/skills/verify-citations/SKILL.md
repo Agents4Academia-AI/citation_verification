@@ -127,17 +127,22 @@ silently cap; say what you sampled).
 
 Then the table — exactly these columns:
 
-| # | Citation (authors, short title, year) | Cited where (the claim) | Exists? | Metadata issues | Supports claim? | Priority | Issue / Severity |
-|---|---|---|---|---|---|---|---|
+| # | Citation (authors, short title, year) | Cited where (the claim) | Exists? | Match notes | Supports claim? | explanation |
+|---|---|---|---|---|---|---|
 
 - Keep each cell short; put detail (quoted evidence, the canonical record) in
   footnotes under the table if needed.
-- **Issue / Severity**: `high` (fabricated, wrong-paper, or wrong obligatory
-  citation / `does not` support), `medium` (metadata error, `partial` support on
-  an obligatory cite), `low` (minor metadata or helpful-cite issue), `ok`
-  (clean). Severity may be **derived deterministically** from
-  `(exists, supports_claim, priority)` by `derive_severity()` (see
-  `docs/DECISIONS.md`) so agent output and gold labels agree by construction.
+- **Cited where (the claim)**: when one claim cites several references (e.g.
+  `… and more [6, 7]`), prefix each such row with its own marker (`[6]` / `[7]`)
+  so the (claim, citation) pair the row refers to is unambiguous.
+- **explanation**: a short free-text justification for the row — the relevance
+  finding, the resolved source link, or why a citation is unresolved / skipped.
+  No severity word here; it carries only the explanation and any link.
+
+Severity is still computed (`high` / `medium` / `low` / `ok`, **derived
+deterministically** from `(exists, supports_claim, priority)` by
+`derive_severity()` — see `docs/DECISIONS.md`) but is surfaced only in the
+Summary, not as a per-row column.
 
 Then a **Summary**: counts of references checked, not-found, metadata errors,
 relevance problems; and a short **Fix before submission** list of the
@@ -149,10 +154,12 @@ high-severity items in priority order.
 |-------------------|-------------------------------------------------|---------------------------------------------|
 | Exists?           | `yes` / `no` / `unresolved`                     | yes / no / unresolved                       |
 | Supports claim?   | `supports` / `partial` / `does_not` / `inconclusive` | supports / partial / **does not** / inconclusive |
-| Priority          | `obligatory` / `helpful`                        | obligatory / helpful                        |
-| Issue / Severity  | `high` / `medium` / `low` / `ok`                | high / medium / low / ok                    |
 
 Only `does_not` differs between token and rendered string (`does_not` -> `does not`).
+
+`priority` (`obligatory` / `helpful`) and `severity` (`high` / `medium` / `low` /
+`ok`) remain schema enums but are no longer per-row columns: severity is shown in
+the **Summary**, and priority is internal (it feeds `derive_severity()`).
 
 ## Style
 

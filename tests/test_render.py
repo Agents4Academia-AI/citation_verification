@@ -11,10 +11,10 @@ from __future__ import annotations
 
 import pytest
 
-# The 8 columns, verbatim from SKILL.md and the architect's prompt.
+# The 7 columns, verbatim from SKILL.md.
 EXPECTED_HEADER = (
     "| # | Citation (authors, short title, year) | Cited where (the claim) "
-    "| Exists? | Metadata issues | Supports claim? | Priority | Issue / Severity |"
+    "| Exists? | Match notes | Supports claim? | explanation |"
 )
 
 # Machine token -> human string rendered in the table. Only does_not differs.
@@ -99,3 +99,45 @@ def test_json_round_trip_if_available(render, sample_records, tmp_path) -> None:
     back = from_json(out)
     assert [r.key for r in back] == [r.key for r in sample_records]
     assert [r.model_dump() for r in back] == [r.model_dump() for r in sample_records]
+
+
+def test_claim_marker_only_on_multi_citation_rows(render) -> None:
+    """A claim cited by >1 reference gets a per-row [n] marker; a lone cite does not."""
+    from citation_verifier.schema import CitationRecord, CitedAs, Claim, Exists
+
+    def rec(key, span):
+        return CitationRecord(
+            paper_id="p", claim_id=f"c-{key}", cite_key=key,
+            claim=Claim(claim_id=f"c-{key}", text="A claim cited in several places", char_span=span),
+            cited_as=CitedAs(title="T", year=2024), exists=Exists.YES,
+        )
+
+    shared = (10, 80)
+    recs = [rec("ref-6", shared), rec("ref-7", shared), rec("ref-3", (90, 140))]
+    rows = [ln for ln in _render_table(render, recs).splitlines() if ln.strip().startswith("|")]
+    body = rows[2:]  # drop header + divider
+    assert body[0].split("|")[3].strip().startswith("[6] ")   # multi-citation -> marked
+    assert body[1].split("|")[3].strip().startswith("[7] ")
+    assert not body[2].split("|")[3].strip().startswith("[")  # single citation -> no marker
+
+
+def test_explanation_cell_has_note_and_link_but_no_severity_word(render) -> None:
+    from citation_verifier.schema import (
+        CitationRecord,
+        CitedAs,
+        Claim,
+        Exists,
+        Severity,
+        SupportsClaim,
+    )
+
+    rec = CitationRecord(
+        paper_id="p", claim_id="c", cite_key="k",
+        claim=Claim(claim_id="c", text="X."), cited_as=CitedAs(title="T", year=2024),
+        exists=Exists.YES, supports_claim=SupportsClaim.SUPPORTS,
+        severity=Severity.LOW, notes="source: https://doi.org/10.1/x",
+    )
+    row = [ln for ln in _render_table(render, [rec]).splitlines() if ln.strip().startswith("|")][-1]
+    explanation = row.split("|")[-2].strip()
+    assert explanation == "source: https://doi.org/10.1/x"  # the note + link only
+    assert "low" not in explanation and "ok" not in explanation  # no severity word

@@ -4,7 +4,7 @@ render.py — deterministic rendering of records to the SKILL.md output.
 This module is pure (no LLM, no network). It turns a list of
 :class:`~citation_verifier.schema.CitationRecord` into:
 
-  - :func:`render_table`   — the EXACT 8-column SKILL.md Markdown table + scope line,
+  - :func:`render_table`   — the EXACT 7-column SKILL.md Markdown table + scope line,
   - :func:`render_summary` — counts + a "Fix before submission" high-severity list,
   - :func:`render_report`  — scope + table + summary + a usage footer,
   - :func:`to_json` / :func:`from_json` — a JSONL round-trip for records.
@@ -18,6 +18,8 @@ the ``*_STR`` maps below.
 from __future__ import annotations
 
 import json
+import re
+from collections import Counter
 from pathlib import Path
 
 from .interfaces import VerificationResult
@@ -74,10 +76,9 @@ _COLUMNS = [
     "Citation (authors, short title, year)",
     "Cited where (the claim)",
     "Exists?",
-    "Metadata issues",
+    "Match notes",
     "Supports claim?",
-    "Priority",
-    "Issue / Severity",
+    "explanation",
 ]
 TABLE_HEADER = "| " + " | ".join(_COLUMNS) + " |"
 _TABLE_DIVIDER = "| " + " | ".join(["---"] * len(_COLUMNS)) + " |"
@@ -115,22 +116,48 @@ def _citation_cell(record: CitationRecord) -> str:
     return rendered or _cell(cited.raw) or record.cite_key
 
 
-def _claim_cell(record: CitationRecord) -> str:
-    """Render col 3: the claim text (with section prefix when known)."""
+def _cite_marker(cite_key: str) -> str:
+    """A short per-row citation marker: ``[6]`` for ``ref-6``, else ``[<key>]``."""
+    m = re.match(r"ref-(\d+)$", cite_key or "")
+    return f"[{m.group(1)}]" if m else f"[{cite_key}]"
+
+
+def _claim_cell(record: CitationRecord, *, marker: str | None = None) -> str:
+    """Render col 3: the claim text (optional cite marker + section prefix).
+
+    When a claim is cited by more than one reference (e.g. ``… and more [6, 7]``)
+    every such row is prefixed with its own marker (``[6]`` / ``[7]``) so the
+    (claim, citation) pair the row refers to is unambiguous.
+    """
     claim = record.claim
     text = claim.text or ""
     if claim.section:
         text = f"[{claim.section}] {text}" if text else f"[{claim.section}]"
+    if marker:
+        text = f"{marker} {text}".strip()
     return text
 
 
 def _metadata_cell(record: CitationRecord) -> str:
-    """Render col 5: the metadata issues, semicolon-joined."""
+    """Render col 5 (Match notes): the ``metadata_issues``, semicolon-joined.
+
+    Holds match/metadata discrepancies when ``exists = yes`` and, when
+    ``exists = unresolved``, which sources were searched without a confident match.
+    """
     return "; ".join(record.metadata_issues)
 
 
+def _explanation_cell(record: CitationRecord) -> str:
+    """Render the final ``explanation`` column: the note/justification + any links.
+
+    No severity word (``ok`` / ``low`` / …) — severity now lives only in the
+    Summary. A clean row with nothing to explain renders empty.
+    """
+    return record.notes or record.error or ""
+
+
 def _severity_cell(record: CitationRecord) -> str:
-    """Render col 8: severity, optionally prefixed by a short issue note."""
+    """Severity + a short note, for the Summary's 'Fix before submission' list."""
     sev = SEVERITY_STR.get(_enum_value(record.severity), "ok")
     note = record.notes or record.error or ""
     if note:
@@ -139,7 +166,7 @@ def _severity_cell(record: CitationRecord) -> str:
 
 
 def render_table(records: list[CitationRecord]) -> str:
-    """Render records as the EXACT SKILL.md 8-column table + a scope line.
+    """Render records as the EXACT SKILL.md 7-column table + a scope line.
 
     Args:
         records: The verified records (one row each).
@@ -149,16 +176,29 @@ def render_table(records: list[CitationRecord]) -> str:
     """
     scope = _scope_line(records)
     lines = [scope, "", TABLE_HEADER, _TABLE_DIVIDER]
+    # A claim cited by >1 reference shares a char_span across its rows; mark each
+    # such row with its own cite marker so the (claim, citation) pair is clear.
+    shared_spans = {
+        span
+        for span, count in Counter(
+            rec.claim.char_span for rec in records if rec.claim and rec.claim.char_span
+        ).items()
+        if count > 1
+    }
     for i, rec in enumerate(records, start=1):
+        marker = (
+            _cite_marker(rec.cite_key)
+            if rec.claim and rec.claim.char_span in shared_spans
+            else None
+        )
         row = [
             str(i),
             _cell(_citation_cell(rec)),
-            _cell(_claim_cell(rec)),
+            _cell(_claim_cell(rec, marker=marker)),
             EXISTS_STR.get(_enum_value(rec.exists), "unresolved"),
             _cell(_metadata_cell(rec)),
             SUPPORTS_STR.get(_enum_value(rec.supports_claim), "inconclusive"),
-            PRIORITY_STR.get(_enum_value(rec.priority), "helpful"),
-            _severity_cell(rec),
+            _cell(_explanation_cell(rec)),
         ]
         lines.append("| " + " | ".join(row) + " |")
     return "\n".join(lines)
