@@ -68,7 +68,8 @@ class Priority(str, Enum):
 
 
 class Severity(str, Enum):
-    """Issue severity for the row. (SKILL.md 'Issue / Severity')
+    """Issue severity for the row. Surfaced in the report **Summary** (no longer a
+    per-row table column).
 
     May be judged by the model OR derived deterministically from
     ``(exists, supports_claim, priority)`` via :func:`derive_severity`
@@ -225,6 +226,11 @@ class CitationRecord(_Model):
     paper: Paper | None = None
     claim: Claim
     cited_as: CitedAs
+    in_table: bool = Field(
+        default=False,
+        description="Citation sits inside a table (a table cell/caption, not a prose "
+        "claim). Relevance is not assessed for these; left inconclusive with a note.",
+    )
 
     # ── correctness (table cols 4 & 5) ──
     exists: Exists = Exists.UNRESOLVED

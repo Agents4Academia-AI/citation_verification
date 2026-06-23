@@ -525,7 +525,7 @@
       "type": "object"
     },
     "Severity": {
-      "description": "Issue severity for the row. (SKILL.md 'Issue / Severity')\n\nMay be judged by the model OR derived deterministically from\n``(exists, supports_claim, priority)`` via :func:`derive_severity`\n(see docs/DECISIONS.md). The schema permits either; the field records\nwhichever was used.",
+      "description": "Issue severity for the row. Surfaced in the report **Summary** (no longer a\nper-row table column).\n\nMay be judged by the model OR derived deterministically from\n``(exists, supports_claim, priority)`` via :func:`derive_severity`\n(see docs/DECISIONS.md). The schema permits either; the field records\nwhichever was used.",
       "enum": [
         "high",
         "medium",
@@ -584,6 +584,12 @@
     },
     "cited_as": {
       "$ref": "#/$defs/CitedAs"
+    },
+    "in_table": {
+      "default": false,
+      "description": "Citation sits inside a table (a table cell/caption, not a prose claim). Relevance is not assessed for these; left inconclusive with a note.",
+      "title": "In Table",
+      "type": "boolean"
     },
     "exists": {
       "$ref": "#/$defs/Exists",

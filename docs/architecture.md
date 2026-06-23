@@ -79,7 +79,7 @@ becomes N records (it can be obligatory in one spot, background in another).
 6. **Severity**: derived deterministically from
    `(exists, supports_claim, priority)` via `derive_severity` (see DECISIONS.md),
    so agent output and gold agree by construction.
-7. **Render** (`render.py`): records → the exact SKILL.md 8-column table + a
+7. **Render** (`render.py`): records → the exact SKILL.md 7-column table + a
    summary; plus `report.json` / `run.json` under `papers/<paper_id>/`.
 
 ## Backend abstraction (the two-baseline comparison)
