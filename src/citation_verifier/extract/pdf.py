@@ -28,6 +28,7 @@ from pathlib import Path
 from ..interfaces import PaperSource
 from ..schema import CitationRecord, CitedAs, Claim, Paper
 from .latex import _coerce_year, _split_authors, make_claim_id
+from .pdf_refs import extract_reference_entries
 
 __all__ = ["PdfExtractor", "extract_pdf_text"]
 
@@ -253,6 +254,22 @@ def split_body_and_references(text: str) -> tuple[str, str]:
     return text[: matches[-1].start()], text[split_at:]
 
 
+def _is_dense_numbering(starts: list[re.Match]) -> bool:
+    """True when ``[N]`` / ``N.`` line-starts form a real numbered reference list.
+
+    An unnumbered (author-year) bibliography can still contain a few stray ``N.``
+    line-starts — a wrapped DOI (``…acl-long.\\n427. URL``) or an appendix list
+    (``1. … 2. …``). A genuine numbered list is a DENSE sequence (most of ``1..N``
+    present); a handful of strays across a wide span is not, so we fall back to the
+    blank-line split instead of collapsing the whole bibliography into junk entries.
+    """
+    nums = sorted(int(m.group(1) or m.group(2)) for m in starts)
+    if len(nums) < 3:
+        return False
+    span = nums[-1] - nums[0] + 1
+    return len(nums) >= 0.6 * span
+
+
 def parse_reference_block(ref_block: str) -> dict[str, CitedAs]:
     """Parse a PDF reference list into ``{cite_key: CitedAs}``.
 
@@ -271,7 +288,7 @@ def parse_reference_block(ref_block: str) -> dict[str, CitedAs]:
     starts = list(_NUM_ENTRY_RE.finditer(ref_block))
     out: dict[str, CitedAs] = {}
 
-    if starts:
+    if _is_dense_numbering(starts):
         for i, m in enumerate(starts):
             num = m.group(1) or m.group(2)
             body_start = m.end()
@@ -285,6 +302,26 @@ def parse_reference_block(ref_block: str) -> dict[str, CitedAs]:
         for i, chunk in enumerate(chunks, start=1):
             body = _clean_ref_body(chunk)
             out[f"ref-{i}"] = _parse_ref_entry(body)
+    return out
+
+
+def _references_from_layout(pdf_path: str | Path) -> dict[str, CitedAs]:
+    """Primary bibliography parse via the layout-aware extractor (:mod:`pdf_refs`).
+
+    Reads the PDF's geometry — column reading order, hanging-indent segmentation,
+    font-gated section stops, baseline-merged lines — so numbered (journal) *and*
+    author-year (conference) bibliographies are parsed by one path. Each entry's
+    text is then read into structured fields by :func:`_parse_ref_entry`.
+
+    Returns ``{}`` when PyMuPDF is unavailable or no reference section is found;
+    :meth:`PdfExtractor.extract` then falls back to :func:`parse_reference_block`
+    over the flat text (the always-available floor).
+    """
+    out: dict[str, CitedAs] = {}
+    for cite_key, body in extract_reference_entries(pdf_path):
+        body = _clean_ref_body(body)
+        if body:
+            out[cite_key] = _parse_ref_entry(body)
     return out
 
 
@@ -314,6 +351,28 @@ _AUTHOR_RUN_RE = re.compile(
 )
 _ETAL_TAIL_RE = re.compile(r"\s*,?\s+et\s+al\.?$", re.IGNORECASE)
 
+# Author-year style ("Surname, I., Surname, I., … [and Surname, I.] [et al]. Title"),
+# the dominant conference bibliography form (ICLR/ICML/NeurIPS). It differs from
+# Vancouver in that a comma sits *between the surname and its initials* — so the
+# whole-comma → " and " split Vancouver relies on would tear "Azerbayev, Z." into
+# two names. Each initial must carry its period: a *bare* capital begins the title
+# ("Huet, G. P. The calculus …"), so requiring the period keeps the author run from
+# swallowing the first title word.
+_AY_INITS = r"(?:[A-Z]\.(?:-[A-Z]\.?)*\s*){1,4}"
+_AY_NAME = rf"[A-Z][\w'’`-]+,\s*{_AY_INITS}"
+_AY_RUN_RE = re.compile(
+    rf"^\s*(?P<authors>{_AY_NAME}(?:\s*,?\s*(?:and\s+)?{_AY_NAME})*"
+    rf"(?:\s*,?\s+et\s+al\.?)?)\s*(?P<rest>[A-Z0-9].+)$",
+    re.DOTALL,
+)
+
+
+def _split_ay_authors(author_str: str) -> list[str]:
+    """Split an author-year run into ``["Surname, I.", …]`` (surname+initials kept whole)."""
+    author_str = _ETAL_TAIL_RE.sub("", author_str)
+    units = re.findall(rf"[A-Z][\w'’`-]+,\s*{_AY_INITS}", author_str)
+    return [re.sub(r"\s+", " ", u).strip().strip(",").strip() for u in units]
+
 
 def _title_from(title_raw: str) -> str | None:
     """Trim a reference title at the next sentence boundary or ``In:`` venue marker."""
@@ -341,6 +400,16 @@ def _split_author_title(body: str) -> tuple[list[str], str | None]:
     got merged with no spaces).
     """
     head = re.split(r"(?i)\b(?:arxiv|doi|https?://)", body)[0]
+
+    # Tier 0: author-year ("Surname, I., …. Title"). Tried first because its names
+    # carry an internal comma that the Vancouver tiers below would mis-split. The
+    # regex requires a comma right after a surname, which Vancouver ("Surname I")
+    # never has — so numbered/Vancouver references fall straight through.
+    m = _AY_RUN_RE.match(head)
+    if m:
+        ay_authors = _split_ay_authors(m.group("authors"))
+        if ay_authors:
+            return ay_authors, _title_from(m.group("rest"))
 
     m = _AUTHOR_RUN_RE.match(head)
     if m:
@@ -544,7 +613,9 @@ class PdfExtractor:
 
         body, ref_block = split_body_and_references(text)
         claim_body = _claim_scan_body(body)
-        references = parse_reference_block(ref_block)
+        # Primary: layout-aware parse straight from the PDF geometry. Fall back to
+        # the flat-text reference block only when PyMuPDF can't run (sidecar/.txt).
+        references = _references_from_layout(source.pdf_path) or parse_reference_block(ref_block)
         paper = self._build_paper(source)
         records: list[CitationRecord] = []
         seen: set[tuple[str, str, str]] = set()

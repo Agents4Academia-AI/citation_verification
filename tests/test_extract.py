@@ -67,29 +67,85 @@ def test_split_author_title_keeps_et_al_caps_titles_and_diacritics_out_of_author
     assert "Yetistiren B" in _normalize_pdf_text("Yeti \u0327stiren B, Tuzun E. Title")
 
 
+def test_split_author_title_handles_author_year_comma_initials():
+    # Author-year ("Surname, I., …. Title"): the comma sits INSIDE each name, so a
+    # name must stay whole (not torn into surname + initial) and an acronym title
+    # prefix ("Llemma:") must be kept — the bug that flat-comma splitting caused.
+    a, t = _split_author_title(
+        "Azerbayev, Z., Schoelkopf, H., Paster, K., et al. Llemma: An open "
+        "language model for mathematics. In ICLR, 2024."
+    )
+    assert a == ["Azerbayev, Z.", "Schoelkopf, H.", "Paster, K."]
+    assert t == "Llemma: An open language model for mathematics"
+    # an "and"-joined last author and a multi-initial "G. P." stay intact
+    a, t = _split_author_title(
+        "Coquand, T. and Huet, G. P. The calculus of constructions. "
+        "Information and Computation, 1988."
+    )
+    assert a == ["Coquand, T.", "Huet, G. P."]
+    assert t == "The calculus of constructions"
+    # hyphenated initials ("W.-D.") and a comma inside the title both survive
+    a, t = _split_author_title(
+        "Key, D., Li, W.-D., and Ellis, K. I Speak, You Verify: Toward "
+        "trustworthy neural program synthesis. 2024."
+    )
+    assert a == ["Key, D.", "Li, W.-D.", "Ellis, K."]
+    assert t == "I Speak, You Verify: Toward trustworthy neural program synthesis"
+    # a single author-year name
+    a, t = _split_author_title("Boltzmann, L. Lectures on gas theory. Univ Press, 2022.")
+    assert a == ["Boltzmann, L."] and t == "Lectures on gas theory"
+    # Vancouver ("Surname I", no comma after surname) must NOT match the author-year
+    # tier — it falls through to the Vancouver split unchanged.
+    a, t = _split_author_title("Radford A, Wu J, Child R. Language models. OpenAI. 2019.")
+    assert a == ["Radford A", "Wu J", "Child R"] and t == "Language models"
+
+
 def test_parse_reference_block_drops_trailing_publisher_boilerplate():
     # The last reference must not absorb the journal's trailing "Publisher's Note \u2026
     # Springer Nature remains neutral \u2026" boilerplate (observed swallowing ref-89).
     from citation_verifier.extract.pdf import parse_reference_block
 
     block = (
-        "89. Deng Y, Lam W. Nonfactoid question answering. IEEE Trans Neural Netw. 2023. "
+        "1. Foo A. A first reference. 2020.\n"
+        "2. Bar B. A second reference. 2021.\n"
+        "3. Deng Y, Lam W. Nonfactoid question answering. IEEE Trans Neural Netw. 2023. "
         "Publisher's Note Springer Nature remains neutral with regard to jurisdictional claims."
     )
     refs = parse_reference_block(block)
-    assert refs["ref-89"].title == "Nonfactoid question answering"
-    assert "Publisher" not in (refs["ref-89"].raw or "")
+    assert refs["ref-3"].title == "Nonfactoid question answering"
+    assert "Publisher" not in (refs["ref-3"].raw or "")
+
+
+def test_parse_reference_block_handles_author_year_despite_stray_numbers():
+    # An UNNUMBERED author-year bibliography can carry stray 'N.' line-starts (a
+    # wrapped DOI, an appendix list). Those must NOT flip it to the numbered path
+    # and collapse the whole list into a couple of junk entries (regression: a real
+    # paper parsed to 5 instead of ~79). One entry per author-year reference.
+    from citation_verifier.extract.pdf import parse_reference_block
+
+    block = (
+        "Azerbayev, Z., Schoelkopf, H. Llemma: an open language model. In ICLR, 2024.\n\n"
+        "Boltzmann, L. Lectures on gas theory. Univ of California Press, 2022.\n\n"
+        "Coquand, T. and Huet, G. The calculus of constructions. Inf. and Comp., 1988.\n\n"
+        "Curry, H. B. Functionality in combinatory logic. PNAS, 1934.\n"
+        "427. URL http://dx.doi.org/10.18653/v1/2024.acl-long.427.\n"  # stray wrapped-DOI number
+    )
+    refs = parse_reference_block(block)
+    assert len(refs) == 4  # one per author-year entry, not 1-2 junk numbered chunks
+    assert any((c.title or "").startswith("Lectures on gas theory") for c in refs.values())
 
 
 def test_parse_reference_block_normalizes_spaces_before_punctuation():
     from citation_verifier.extract.pdf import parse_reference_block
 
     block = (
-        "67. Cao Y , Lin Z, Xu X, Tang Y , Zhang Z, Zhang Y . Clinic: "
+        "1. Foo A. A first reference. 2020.\n"
+        "2. Bar B. A second reference. 2021.\n"
+        "3. Cao Y , Lin Z, Xu X, Tang Y , Zhang Z, Zhang Y . Clinic: "
         "A secure peer-to-peer healthcare blockchain framework with privacy "
         "preservation. IEEE Trans Ind Inf. 2020;16(6):4384–95."
     )
-    ref = parse_reference_block(block)["ref-67"]
+    ref = parse_reference_block(block)["ref-3"]
     assert ref.authors == ["Cao Y", "Lin Z", "Xu X", "Tang Y", "Zhang Z", "Zhang Y"]
     assert ref.title == (
         "Clinic: A secure peer-to-peer healthcare blockchain framework with privacy preservation"
@@ -262,3 +318,69 @@ def test_strip_line_comments_drops_commented_cites():
     assert "\\cite{keep}" in out
     assert "\\cite{also_keep}" in out  # escaped \% is not a comment
     assert "ghost" not in out and "ghost2" not in out
+
+
+# ── layout-aware reference segmentation (extract/pdf_refs.py) ─────────────────
+# These exercise the segmentation/join logic on synthetic _Line rows, so they run
+# offline (no PDF / PyMuPDF). The PyMuPDF layout pass itself is covered by the
+# live two-PDF check, not the unit suite.
+def _line(text, x0=50.0, y0=100.0, page=1, col=0, size=9.0):
+    from citation_verifier.extract.pdf_refs import _Line
+
+    return _Line(page=page, text=text, x0=x0, y0=y0, size=size, col=col)
+
+
+def test_pdf_refs_splits_numbered_list_on_markers_and_keys_them():
+    from citation_verifier.extract.pdf_refs import _is_numbered, _split_numbered
+
+    lines = [
+        _line("1. Radford A, Wu J. Language models. 2019."),
+        _line("Continued on a wrapped line."),
+        _line("2. Brown T, Mann B. Few-shot learners. 2020."),
+        _line("3. Devlin J. BERT. 2019."),
+    ]
+    assert _is_numbered(lines)
+    refs = _split_numbered(lines)
+    assert [k for k, _ in refs] == ["ref-1", "ref-2", "ref-3"]  # keyed to the [n] markers
+    body1 = dict(refs)["ref-1"]
+    assert body1.startswith("Radford A")            # "1. " marker stripped
+    assert "Continued on a wrapped line." in body1  # continuation merged into ref-1
+
+
+def test_pdf_refs_splits_author_year_on_hanging_indent():
+    from citation_verifier.extract.pdf_refs import _is_numbered, _split_by_indent
+
+    # entry-opening lines sit at the column-left margin (x0=50); continuations indent
+    lines = [
+        _line("Azerbayev, Z., et al. Llemma. 2024.", x0=50.0, y0=100.0),
+        _line("In ICLR, 2024.", x0=68.0, y0=112.0),
+        _line("Boltzmann, L. Lectures on gas theory. 2022.", x0=50.0, y0=130.0),
+    ]
+    assert not _is_numbered(lines)
+    refs = _split_by_indent(lines)
+    assert len(refs) == 2
+    assert refs[0].startswith("Azerbayev") and "In ICLR" in refs[0]  # continuation merged
+    assert refs[1].startswith("Boltzmann")
+
+
+def test_pdf_refs_is_numbered_rejects_stray_numbers():
+    from citation_verifier.extract.pdf_refs import _is_numbered
+
+    # a couple of stray "N." line-starts in an author-year list (a wrapped DOI tail)
+    # are NOT a dense numbered bibliography
+    lines = [
+        _line("Azerbayev, Z. Llemma. 2024."),
+        _line("427. tail of a wrapped DOI"),
+        _line("Boltzmann, L. Lectures. 2022."),
+    ]
+    assert not _is_numbered(lines)
+
+
+def test_pdf_refs_join_glues_urls_and_dehyphenates():
+    from citation_verifier.extract.pdf_refs import _join
+
+    assert _join(["Proceed-", "ings of ACL"]) == "Proceedings of ACL"
+    assert (
+        _join(["https://aclanthology.org/", "2020.acl-main.1"])
+        == "https://aclanthology.org/2020.acl-main.1"
+    )
