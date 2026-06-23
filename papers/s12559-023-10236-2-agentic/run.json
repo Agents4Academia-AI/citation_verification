@@ -4,25 +4,25 @@
   "usage": {
     "backend": "agentic",
     "model": "bulk=claude-haiku-4-5-20251001;judge=claude-opus-4-6",
-    "input_tokens": 8867,
-    "output_tokens": 16445,
-    "total_tokens": 25312,
-    "cache_read_tokens": 15671,
-    "cache_creation_tokens": 60564,
-    "cost_usd": 0.9981425000000002,
+    "input_tokens": 8889,
+    "output_tokens": 16949,
+    "total_tokens": 25838,
+    "cache_read_tokens": 55986,
+    "cache_creation_tokens": 22445,
+    "cost_usd": 0.6519329999999999,
     "num_turns": 3,
     "tool_calls": 176,
-    "wall_seconds": 434.57392673101276,
+    "wall_seconds": 421.51855327398516,
     "by_tier": {
       "bulk": {
-        "input_tokens": 8858,
+        "input_tokens": 8880,
         "output_tokens": 2816,
-        "cost_usd": 0.022937999999999993
+        "cost_usd": 0.022959999999999994
       },
       "judge": {
         "input_tokens": 9,
-        "output_tokens": 13629,
-        "cost_usd": 0.9752045000000001
+        "output_tokens": 14133,
+        "cost_usd": 0.6289729999999999
       }
     }
   },
