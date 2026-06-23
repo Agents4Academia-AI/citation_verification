@@ -462,3 +462,46 @@ def test_pdf_looks_like_table_dump_vs_prose():
     # ordinary multi-citation prose (markers followed by punctuation/lowercase) must NOT fire
     assert not _looks_like_table_dump("Several works [1], [2], [3], and [4] proposed methods.")
     assert not _looks_like_table_dump("Technologies like Watson [25], Siri [26], Alexa [27] exist.")
+
+
+# ── author-year PDF citation extraction (hyperlink + text) ───────────────────
+def test_bind_author_year_matches_surname_year_and_disambiguates():
+    from citation_verifier.extract.pdf import _bind_author_year
+    from citation_verifier.schema import CitedAs
+
+    refs = {
+        "ref-1": CitedAs(authors=["Yang, K.", "Swope, A."], title="Leandojo: theorem proving", year=2023),
+        "ref-2": CitedAs(authors=["Yang, L.", "Zhang, Z."], title="Diffusion models: a survey", year=2025),
+        "ref-3": CitedAs(authors=["Martin-Lof, P."], title="An intuitionistic theory of types", year=1998),
+        "ref-4": CitedAs(authors=["Muennighoff, N."], title="Scaling data-constrained models", year=2023),
+        "ref-5": CitedAs(authors=["Coquand, T.", "Huet, G."], title="The calculus of constructions", year=1988),
+    }
+
+    def b(k):
+        return _bind_author_year(k, refs)
+
+    # two same-surname refs disambiguated by year (+ keyword)
+    assert b("yang2023leandojo").title.startswith("Leandojo")
+    assert b("yang2025diffusionmodelssurvey").title.startswith("Diffusion")
+    # CamelCase key + hyphenated surname
+    assert b("MartinLofTypeTheory1998").title.startswith("An intuitionistic")
+    # a unique surname binds even when the cited year is off by 2 (2025 vs 2023)
+    assert b("muennighoff2025scaling").authors[0] == "Muennighoff, N."
+    # DBLP-style key: a distinctive surname embedded in the key
+    assert b("DBLP:journals/iandc/CoquandH88").title.startswith("The calculus")
+    # no surname/year match -> no guess
+    assert b("nonexistent2020foo") is None
+
+
+def test_extract_text_citations_finds_author_year_forms():
+    from citation_verifier.extract.pdf_links import extract_text_citations
+
+    text = (
+        "We build on prior work (Yang et al., 2023) and extend it greatly. "
+        "Lightman et al. (2024) introduced a learned verifier for this. "
+        "Others (Smith and Jones, 2020) disagree with the approach."
+    )
+    sites = extract_text_citations(text)
+    keys = {s["cite_key"] for s in sites}
+    assert {"yang2023", "lightman2024", "smith2020"} <= keys
+    assert all(s["claim"] for s in sites)

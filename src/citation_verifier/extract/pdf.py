@@ -28,6 +28,7 @@ from pathlib import Path
 from ..interfaces import PaperSource
 from ..schema import CitationRecord, CitedAs, Claim, Paper
 from .latex import TABLE_NOTE, _coerce_year, _split_authors, make_claim_id
+from .pdf_links import extract_link_citations, extract_text_citations
 from .pdf_refs import extract_reference_entries
 
 __all__ = ["PdfExtractor", "extract_pdf_text"]
@@ -606,6 +607,75 @@ def _sentence_around(text: str, pos: int, window: int = 500) -> tuple[str, tuple
 
 
 # ───────────────────────────────────────────────────────────────
+# Author-year citation binding (hyperlink / text → reference)
+# ───────────────────────────────────────────────────────────────
+# A BibTeX-style key: a leading surname, an optional separator, a 4-digit year,
+# then an optional suffix/keyword. Tolerates CamelCase and separators:
+# "yang2023leandojo", "Zhao_2024", "MartinLofTypeTheory1998", "kaplan2020scaling".
+_BIBKEY_RE = re.compile(r"^([A-Za-z]+?)[_:.\- ]?((?:19|20)\d{2})([a-z]?)(.*)$")
+
+
+def _fold(s: str) -> str:
+    """Lowercase + strip diacritics, for robust surname comparison."""
+    s = unicodedata.normalize("NFKD", s or "")
+    return "".join(c for c in s if not unicodedata.combining(c)).lower()
+
+
+def _ay_surname(author: str) -> str:
+    """First-author surname, folded + de-hyphenated: 'Martin-Lof, P.' -> 'martinlof'."""
+    a = (author or "").strip()
+    a = a.split(",")[0] if "," in a else (a.split()[0] if a.split() else a)
+    return _fold(re.sub(r"[^A-Za-z]", "", a))
+
+
+def _surname_matches(key_surname: str, ref_surname: str) -> bool:
+    """Surnames equal, or a CamelCase key prepends the surname to title words
+    ('martinloftypetheory' starts with the ref surname 'martinlof')."""
+    if not key_surname or not ref_surname:
+        return False
+    return key_surname == ref_surname or (
+        len(ref_surname) >= 5 and key_surname.startswith(ref_surname)
+    )
+
+
+def _bind_author_year(cite_key: str, references: dict[str, CitedAs]) -> CitedAs | None:
+    """Match a bibkey ('yang2023leandojo') to a parsed reference by surname + year.
+
+    Returns the matching :class:`CitedAs`, or ``None`` when there is no confident
+    match (no surname/year match, or an unresolved tie between same-author/year
+    entries — we never guess). The cite_key's trailing keyword breaks ties.
+    """
+    m = _BIBKEY_RE.match(cite_key)
+    if m:
+        surname, year, kw = _fold(m.group(1)), int(m.group(2)), (m.group(3) + m.group(4)).lower()
+        by_surname = [
+            c for c in references.values()
+            if c.authors and _surname_matches(surname, _ay_surname(c.authors[0]))
+        ]
+        if len(by_surname) == 1:
+            return by_surname[0]  # a unique surname binds (cited year may differ slightly)
+        if by_surname:
+            # Several same-surname refs: disambiguate by year (±1), then title keyword.
+            pool = [c for c in by_surname if not c.year or abs(c.year - year) <= 1] or by_surname
+            if len(pool) == 1:
+                return pool[0]
+            if len(kw) >= 4:
+                for c in pool:
+                    if kw[:5] in re.sub(r"[^a-z]", "", (c.title or "").lower()):
+                        return c
+    # Fallback for non-standard keys (e.g. DBLP ".../CoquandH88"): a long, distinctive
+    # surname embedded in the key and unique in the reference list.
+    folded = _fold(re.sub(r"[^A-Za-z]", "", cite_key))
+    embedded = []
+    for c in references.values():
+        if c.authors:
+            ref_surname = _ay_surname(c.authors[0])
+            if len(ref_surname) >= 6 and ref_surname in folded:
+                embedded.append(c)
+    return embedded[0] if len(embedded) == 1 else None
+
+
+# ───────────────────────────────────────────────────────────────
 # The extractor
 # ───────────────────────────────────────────────────────────────
 class PdfExtractor:
@@ -660,6 +730,37 @@ class PdfExtractor:
                         cited_as=cited_as,
                         in_table=in_table,
                         notes=notes,
+                    )
+                )
+
+        # Author-year citations (no [n] markers) — recover sites from cite.* link
+        # anchors (hyperref PDFs), else from author-year text patterns, and pair
+        # each with its surrounding sentence + the surname/year-matched reference.
+        if not records:
+            sites = extract_link_citations(source.pdf_path) or extract_text_citations(claim_body)
+            for site in sites:
+                cite_key = site["cite_key"]
+                span = tuple(site["span"])
+                claim_id = make_claim_id(source.paper_id, None, span, cite_key)
+                dedup = (source.paper_id, claim_id, cite_key)
+                if dedup in seen:
+                    continue
+                seen.add(dedup)
+                cited_as = _bind_author_year(cite_key, references) or CitedAs(raw="")
+                matched = bool(cited_as.title or cited_as.authors)
+                records.append(
+                    CitationRecord(
+                        paper_id=source.paper_id,
+                        claim_id=claim_id,
+                        cite_key=cite_key,
+                        paper=paper,
+                        claim=Claim(
+                            claim_id=claim_id, text=site["claim"], section=None, char_span=span
+                        ),
+                        cited_as=cited_as,
+                        notes=None
+                        if matched
+                        else "citation hyperlink not matched to a bibliography entry",
                     )
                 )
 
