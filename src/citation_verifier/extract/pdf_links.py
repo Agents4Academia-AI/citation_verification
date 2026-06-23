@@ -25,11 +25,17 @@ from __future__ import annotations
 import re
 import unicodedata
 
+from .pdf_refs import _clean as _normalize  # NFKC + diacritic heal (shared with refs)
+
 __all__ = ["extract_link_citations", "extract_text_citations"]
 
 # Sentence boundary: ./!/? then whitespace then a capital or an opening paren
-# (author-year citations often open the next clause with "(Surname …").
-_SENT_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Z(])")
+# (author-year citations often open the next clause with "(Surname …"), BUT not
+# after a single-capital initial ("Kingma D. P.") or the abbreviations "et al.",
+# "e.g.", "i.e." — those otherwise chop a claim down to "(2022)" / "Hindle et al.".
+_SENT_SPLIT = re.compile(
+    r"(?<=[.!?])(?<![A-Z]\.)(?<!et\sal\.)(?<!e\.g\.)(?<!i\.e\.)\s+(?=[A-Z(])"
+)
 _MAX_CLAIM_CHARS = 360
 _CITE_PREFIX = "cite."
 
@@ -106,20 +112,36 @@ def extract_text_citations(text: str) -> list[dict]:
     return _dedupe(sites)
 
 
+def _order_reading(words: list) -> list:
+    """Order words in reading order by clustering into lines, then top-to-bottom,
+    left-to-right. Clustering by baseline tolerance (not a flat ``round(y)`` sort)
+    is robust to small baseline jitter — inline code/math/sub-superscripts — that
+    would otherwise scramble a line (``"Lean.Expr that into the which"``)."""
+    lines: list[dict] = []
+    for w in sorted(words, key=lambda w: w[1]):  # by y0 (top down)
+        h = (w[3] - w[1]) or 10.0
+        for ln in lines:
+            if abs(w[1] - ln["y0"]) <= 0.6 * h:  # same baseline within tolerance
+                ln["words"].append(w)
+                break
+        else:
+            lines.append({"y0": w[1], "words": [w]})
+    out: list = []
+    for ln in lines:
+        out.extend(sorted(ln["words"], key=lambda w: w[0]))
+    return out
+
+
 def _sentence_at_rect(words, rect, page_width: float) -> tuple[str, tuple[int, int]]:
     """Sentence (claim) containing the citation at ``rect``; ``""`` when not found.
 
-    Words are read in the rect's column (so a two-column body is not scrambled),
-    concatenated with single spaces, and the sentence covering the word the rect
-    overlaps is returned, capped around the citation.
+    Words are read in the rect's column, ordered by line (clustered), then the
+    sentence covering the word the rect overlaps is returned (capped + normalized).
     """
     x0, y0, x1, y1 = rect.x0, rect.y0, rect.x1, rect.y1
     mid = page_width / 2
     col = 0 if (x0 + x1) / 2 < mid else 1
-    cw = sorted(
-        (w for w in words if (0 if (w[0] + w[2]) / 2 < mid else 1) == col),
-        key=lambda w: (round(w[1]), w[0]),
-    )
+    cw = _order_reading([w for w in words if (0 if (w[0] + w[2]) / 2 < mid else 1) == col])
     if not cw:
         return "", (0, 0)
     offsets: list[int] = []
@@ -138,7 +160,7 @@ def _sentence_at_rect(words, rect, page_width: float) -> tuple[str, tuple[int, i
 
 
 def _sentence_around(text: str, pos: int, window: int = 460) -> tuple[str, tuple[int, int]]:
-    """The sentence containing offset ``pos``, normalized + capped around it."""
+    """The sentence containing offset ``pos``, normalized + capped at word boundaries."""
     lo = max(0, pos - window)
     hi = min(len(text), pos + window)
     chunk = text[lo:hi]
@@ -151,19 +173,37 @@ def _sentence_around(text: str, pos: int, window: int = 460) -> tuple[str, tuple
             s0, s1 = st, en
             break
     raw = chunk[s0:s1]
-    rel_in = rel - s0
+    start_off = s0
     if len(raw) > _MAX_CLAIM_CHARS:
         half = _MAX_CLAIM_CHARS // 2
-        a = max(0, rel_in - half)
-        raw = raw[a : a + _MAX_CLAIM_CHARS]
-        s0 += a
-    sentence = re.sub(r"\s+", " ", raw).strip()
-    return sentence, (lo + s0, lo + s0 + len(raw))
+        a = max(0, (rel - s0) - half)
+        b = min(len(raw), a + _MAX_CLAIM_CHARS)
+        if a > 0:  # snap the start forward to a word boundary (never mid-word)
+            sp = raw.find(" ", a)
+            a = sp + 1 if 0 <= sp < b else a
+        if b < len(raw):  # snap the end back to a word boundary
+            sp = raw.rfind(" ", a, b)
+            b = sp if sp > a else b
+        start_off = s0 + a
+        raw = raw[a:b]
+    raw = re.sub(r"(?<=[A-Za-z])-\s+(?=[a-z])", "", raw)  # join line-break hyphenation
+    return _normalize(raw), (lo + start_off, lo + start_off + len(raw))
 
 
 def _dedupe(sites: list[dict]) -> list[dict]:
-    """Collapse sites that share a ``(cite_key, claim)`` (the two link halves)."""
-    seen: dict[tuple[str, str], dict] = {}
+    """Collapse sites of one cite_key whose spans OVERLAP (the name + year link
+    halves of a citation, or the same sentence reached from two rects) — keep the
+    longest claim. Distinct citation locations (non-overlapping spans) are kept."""
+    by_key: dict[str, list[dict]] = {}
     for s in sites:
-        seen.setdefault((s["cite_key"], s["claim"]), s)
-    return list(seen.values())
+        by_key.setdefault(s["cite_key"], []).append(s)
+    out: list[dict] = []
+    for group in by_key.values():
+        group.sort(key=lambda s: (s["span"][0], -len(s["claim"])))
+        kept: list[dict] = []
+        for s in group:
+            a0, a1 = s["span"]
+            if not any(a0 < k["span"][1] and a1 > k["span"][0] for k in kept):
+                kept.append(s)
+        out.extend(kept)
+    return out
