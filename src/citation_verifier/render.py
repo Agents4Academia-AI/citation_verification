@@ -46,14 +46,14 @@ __all__ = [
 EXISTS_STR: dict[str, str] = {
     Exists.YES.value: "yes",
     Exists.NO.value: "no",
-    Exists.UNVERIFIED.value: "unverified",
+    Exists.UNRESOLVED.value: "unresolved",
 }
 
 SUPPORTS_STR: dict[str, str] = {
     SupportsClaim.SUPPORTS.value: "supports",
     SupportsClaim.PARTIAL.value: "partial",
     SupportsClaim.DOES_NOT.value: "does not",  # token does_not -> table string
-    SupportsClaim.UNVERIFIED.value: "unverified",
+    SupportsClaim.INCONCLUSIVE.value: "inconclusive",
 }
 
 PRIORITY_STR: dict[str, str] = {
@@ -154,9 +154,9 @@ def render_table(records: list[CitationRecord]) -> str:
             str(i),
             _cell(_citation_cell(rec)),
             _cell(_claim_cell(rec)),
-            EXISTS_STR.get(_enum_value(rec.exists), "unverified"),
+            EXISTS_STR.get(_enum_value(rec.exists), "unresolved"),
             _cell(_metadata_cell(rec)),
-            SUPPORTS_STR.get(_enum_value(rec.supports_claim), "unverified"),
+            SUPPORTS_STR.get(_enum_value(rec.supports_claim), "inconclusive"),
             PRIORITY_STR.get(_enum_value(rec.priority), "helpful"),
             _severity_cell(rec),
         ]
@@ -191,7 +191,7 @@ def render_summary(records: list[CitationRecord]) -> str:
     """
     n = len(records)
     exists_no = sum(1 for r in records if _enum_value(r.exists) == Exists.NO.value)
-    unverified = sum(1 for r in records if _enum_value(r.exists) == Exists.UNVERIFIED.value)
+    unresolved = sum(1 for r in records if _enum_value(r.exists) == Exists.UNRESOLVED.value)
     does_not = sum(
         1 for r in records if _enum_value(r.supports_claim) == SupportsClaim.DOES_NOT.value
     )
@@ -202,7 +202,7 @@ def render_summary(records: list[CitationRecord]) -> str:
         "",
         f"- Pairs checked: **{n}**",
         f"- Fabricated / not found (`exists = no`): **{exists_no}**",
-        f"- Unverified: **{unverified}**",
+        f"- Unresolved: **{unresolved}**",
         f"- Does not support the claim: **{does_not}**",
         f"- High-severity issues: **{len(high)}**",
     ]

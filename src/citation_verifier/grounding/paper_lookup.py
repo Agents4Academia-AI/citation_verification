@@ -59,7 +59,7 @@ TIMEOUT = 20
 
 # HTTP statuses worth retrying: rate-limiting + transient server/gateway errors.
 # These are exactly what a burst of concurrent lookups provokes; a short backoff
-# turns a spurious "unverified" into a real match.
+# turns a spurious "unresolved" into a real match.
 _RETRY_CODES = frozenset({429, 500, 502, 503, 504})
 
 
@@ -159,7 +159,7 @@ def _get(
     """HTTP GET via stdlib urllib, throttled per host and retried on transient errors.
 
     Two layers keep a burst of concurrent lookups from turning real matches into
-    spurious "unverified" results:
+    spurious "unresolved" results:
 
       - **Throttle:** :func:`_throttle` spaces requests to rate-limited hosts
         (arXiv) across all threads *before* each attempt, so concurrency never

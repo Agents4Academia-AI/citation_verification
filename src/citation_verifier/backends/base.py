@@ -63,7 +63,7 @@ class BaseBackend(abc.ABC):
         """Verify ``stubs`` against ``source`` and return filled records + usage.
 
         Implementations MUST degrade rather than crash on a single bad pair
-        (set ``record.error`` and leave axes ``unverified``), and MUST return a
+        (set ``record.error`` and leave axes ``unresolved/inconclusive``), and MUST return a
         :class:`VerificationResult` whose ``records`` validate against
         ``spec/record.schema.json`` and whose ``usage`` is populated.
         """

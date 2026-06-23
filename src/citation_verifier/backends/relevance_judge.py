@@ -12,7 +12,7 @@ retrieved text — never model memory:
 
 No L2 (deep full-text retrieval): locating a paraphrased passage needs semantic
 retrieval — out of scope. When the abstract(+intro) lacks the specific claimed
-evidence, the judge HONESTLY abstains (`partial`/`unverified`) instead of guessing.
+evidence, the judge HONESTLY abstains (`partial`/`inconclusive`) instead of guessing.
 
 **Two transports (chosen by auth).** The judge needs an LLM but reaches it two
 ways:
@@ -151,7 +151,7 @@ class LLMRelevanceJudge:
         :class:`RelevanceVerdict` aligned to ``items``.
 
         Citations with no retrievable evidence abstain all their claims (no model
-        call); a chunk failure degrades every claim in it to ``unverified``.
+        call); a chunk failure degrades every claim in it to ``unresolved/inconclusive``.
         """
         # Warm the intro cache once (dedup'd by arXiv id + fetched in parallel).
         self._prefetch_intros(items)
@@ -332,7 +332,7 @@ _GROUP_SYSTEM = (
     "`claim_id` + the claim text from the citing paper). For EACH claim decide, "
     "using ONLY that citation's evidence (never prior knowledge), whether the cited "
     "work supports THAT specific claim. If the specific claimed fact/result/method "
-    "is not present in the evidence, use 'unverified' (or 'partial' if clearly "
+    "is not present in the evidence, use 'inconclusive' (or 'partial' if clearly "
     "related but not confirming); do NOT guess 'supports'. Classify each claim's "
     "priority: 'obligatory' (the claim depends on this source — a method "
     "used/extended, a baseline, a dataset, a specific result/quote) or 'helpful' "
@@ -340,7 +340,7 @@ _GROUP_SYSTEM = (
     "Return ONE JSON array, exactly one object per input CITATION, echoing its "
     "`cite_key`, with one verdict per claim_id: "
     '[{"cite_key":"...","claims":[{"claim_id":"...",'
-    '"supports_claim":"supports|partial|does_not|unverified",'
+    '"supports_claim":"supports|partial|does_not|inconclusive",'
     '"priority":"obligatory|helpful","confidence":0.0-1.0,'
     '"justification":"one short sentence"}]}]. Output JSON only, no prose.'
 )
@@ -403,21 +403,22 @@ def _chunks(seq: list, n: int):
 
 def _abstain(reason: str) -> RelevanceVerdict:
     return RelevanceVerdict(
-        supports_claim=SupportsClaim.UNVERIFIED, justification=reason, model_tier=ModelTier.JUDGE
+        supports_claim=SupportsClaim.INCONCLUSIVE, justification=reason, model_tier=ModelTier.JUDGE
     )
 
 
 _VERDICT_ALIASES = {
     "does not": "does_not",
     "doesnt": "does_not",
-    "n/a": "unverified",
-    "na": "unverified",
-    "unknown": "unverified",
+    "n/a": "inconclusive",
+    "na": "inconclusive",
+    "unknown": "inconclusive",
+    "unverified": "inconclusive",  # accept the old token; map to the renamed value
 }
 
 
 def _verdict_from_row(data: dict) -> RelevanceVerdict:
-    sc = _coerce(SupportsClaim, data.get("supports_claim"), SupportsClaim.UNVERIFIED)
+    sc = _coerce(SupportsClaim, data.get("supports_claim"), SupportsClaim.INCONCLUSIVE)
     pr = _coerce(Priority, data.get("priority"), None)
     conf = data.get("confidence")
     conf = float(conf) if isinstance(conf, int | float) else None

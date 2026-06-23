@@ -28,8 +28,8 @@ from citation_verifier.schema import (
 
 # The enum vocabularies exactly as the SKILL.md table promises (machine tokens).
 EXPECTED_ENUMS = {
-    "exists": ["yes", "no", "unverified"],
-    "supports_claim": ["supports", "partial", "does_not", "unverified"],
+    "exists": ["yes", "no", "unresolved"],
+    "supports_claim": ["supports", "partial", "does_not", "inconclusive"],
     "priority": ["obligatory", "helpful"],
     "severity": ["high", "medium", "low", "ok"],
 }
@@ -70,12 +70,12 @@ def test_record_key_is_paper_claim_cite() -> None:
 @pytest.mark.parametrize(
     ("exists", "supports", "priority", "expected"),
     [
-        (Exists.NO, SupportsClaim.UNVERIFIED, Priority.HELPFUL, Severity.HIGH),
+        (Exists.NO, SupportsClaim.INCONCLUSIVE, Priority.HELPFUL, Severity.HIGH),
         (Exists.NO, SupportsClaim.SUPPORTS, Priority.OBLIGATORY, Severity.HIGH),
         (Exists.YES, SupportsClaim.DOES_NOT, Priority.OBLIGATORY, Severity.HIGH),
         (Exists.YES, SupportsClaim.PARTIAL, Priority.OBLIGATORY, Severity.MEDIUM),
         (Exists.YES, SupportsClaim.DOES_NOT, Priority.HELPFUL, Severity.LOW),
-        (Exists.UNVERIFIED, SupportsClaim.UNVERIFIED, Priority.HELPFUL, Severity.LOW),
+        (Exists.UNRESOLVED, SupportsClaim.INCONCLUSIVE, Priority.HELPFUL, Severity.LOW),
         (Exists.YES, SupportsClaim.PARTIAL, Priority.HELPFUL, Severity.LOW),
         (Exists.YES, SupportsClaim.SUPPORTS, Priority.OBLIGATORY, Severity.OK),
         (Exists.YES, SupportsClaim.SUPPORTS, Priority.HELPFUL, Severity.OK),
@@ -86,7 +86,7 @@ def test_derive_severity(exists, supports, priority, expected) -> None:
 
 
 def test_derive_severity_accepts_raw_strings() -> None:
-    assert derive_severity("no", "unverified", "obligatory") is Severity.HIGH
+    assert derive_severity("no", "inconclusive", "obligatory") is Severity.HIGH
 
 
 # ── round-trip ──────────────────────────────────────────────────────────

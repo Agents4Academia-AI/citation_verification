@@ -86,7 +86,7 @@ def _flag_line(rec: CitationRecord) -> str:
         word = "Fabricated"
     elif _ev(rec.supports_claim) == SupportsClaim.DOES_NOT.value:
         word = "Doesn't support"
-    elif _ev(rec.exists) == Exists.UNVERIFIED.value:
+    elif _ev(rec.exists) == Exists.UNRESOLVED.value:
         word = "Unverified"
     else:
         word = "Flagged"
@@ -97,7 +97,7 @@ def _flagged_records(records: list[CitationRecord]) -> list[CitationRecord]:
     """Records worth surfacing, most-severe first, de-duplicated by join key.
 
     Order: fabricated (exists=no) -> high severity -> doesn't-support -> other
-    unverified. The same record never appears twice.
+    unresolved/inconclusive. The same record never appears twice.
     """
     def bucket(r: CitationRecord) -> int:
         if _ev(r.exists) == Exists.NO.value:
@@ -106,7 +106,7 @@ def _flagged_records(records: list[CitationRecord]) -> list[CitationRecord]:
             return 1
         if _ev(r.supports_claim) == SupportsClaim.DOES_NOT.value:
             return 2
-        if _ev(r.exists) == Exists.UNVERIFIED.value:
+        if _ev(r.exists) == Exists.UNRESOLVED.value:
             return 3
         return 99
 
@@ -128,12 +128,12 @@ def _is_outage(records: list[CitationRecord], errors: list[str]) -> bool:
 
     Primary, string-drift-proof signal: the orchestrator returns exactly one
     ``_degraded_stub`` record on every whole-run degrade path — recognised by its
-    sentinel (claim_id == cite_key == "run", exists=unverified). A belt-and-
+    sentinel (claim_id == cite_key == "run", exists=unresolved). A belt-and-
     suspenders error-string scan catches a future stub-shape change too.
     """
     if (
         len(records) == 1
-        and _ev(records[0].exists) == Exists.UNVERIFIED.value
+        and _ev(records[0].exists) == Exists.UNRESOLVED.value
         and records[0].cite_key == "run"
         and records[0].claim_id == "run"
     ):
@@ -191,7 +191,7 @@ def build_response(
     M = _denominator(result.errors)
 
     fab = [r for r in records if _ev(r.exists) == Exists.NO.value]
-    unver = [r for r in records if _ev(r.exists) == Exists.UNVERIFIED.value]
+    unver = [r for r in records if _ev(r.exists) == Exists.UNRESOLVED.value]
     no_support = [r for r in records if _ev(r.supports_claim) == SupportsClaim.DOES_NOT.value]
     high = [r for r in records if _ev(r.severity) == Severity.HIGH.value]
 

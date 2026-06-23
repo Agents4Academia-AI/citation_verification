@@ -21,15 +21,15 @@ Axes scored (mirrors docs/DECISIONS.md and the Notion plan):
   hallucination. Reported as precision / recall / F1, **de-duplicated per resolved
   paper** so a reference cited in N claim-sites does not count N times.
 * **Relevance** — ``supports_claim`` as a 4-way label, scored as macro-F1 across
-  ``{supports, partial, does_not, unverified}``.
+  ``{supports, partial, does_not, unresolved/inconclusive}``.
 * **Priority** — ``obligatory`` vs ``helpful``: accuracy plus F1 on the
   ``obligatory`` positive class.
-* **Abstention / calibration** — ``unverified`` is a *first-class* label, not a
+* **Abstention / calibration** — ``unresolved/inconclusive`` is a *first-class* label, not a
   silent gap: we report how often the agent abstains, whether it abstains when it
   should, and a coarse confidence-vs-correctness calibration gap.
 
 A missing prediction (``pred is None``) is scored as a full abstention:
-``exists = supports_claim = unverified``, ``priority`` defaulting to ``helpful``,
+``exists = supports_claim = unresolved/inconclusive``, ``priority`` defaulting to ``helpful``,
 ``confidence = 0.0``.
 """
 
@@ -42,9 +42,10 @@ from typing import Any
 #    pydantic enums — these are the wire/string values the schema serialises to). ──
 EXISTS_YES = "yes"
 EXISTS_NO = "no"
-EXISTS_UNVERIFIED = "unverified"
+EXISTS_UNRESOLVED = "unresolved"
+SUPPORTS_INCONCLUSIVE = "inconclusive"
 
-SUPPORTS_LABELS = ("supports", "partial", "does_not", "unverified")
+SUPPORTS_LABELS = ("supports", "partial", "does_not", "inconclusive")
 PRIORITY_LABELS = ("obligatory", "helpful")
 
 Pair = tuple[Any | None, Any]  # (pred|None, gold) — gold always present
@@ -127,11 +128,11 @@ def is_hallucination_pred(pred: Any) -> bool:
     """Predicted-positive: the agent flagged the row as fabricated or wrong-metadata.
 
     True when ``exists == "no"`` OR the agent recorded any ``metadata_issues``.
-    ``unverified`` is NOT a positive prediction (the agent declined to commit).
+    ``unresolved/inconclusive`` is NOT a positive prediction (the agent declined to commit).
     """
     if pred is None:
         return False
-    if _axis(pred, "exists", EXISTS_UNVERIFIED) == EXISTS_NO:
+    if _axis(pred, "exists", EXISTS_UNRESOLVED) == EXISTS_NO:
         return True
     return bool(_metadata_issues(pred))
 
@@ -147,7 +148,7 @@ def is_hallucination_gold(gold: Any) -> bool:
         flag = _get(labels, "is_hallucinated", None)
         if flag is not None:
             return bool(flag)
-    if _gold_axis(gold, "exists", EXISTS_UNVERIFIED) == EXISTS_NO:
+    if _gold_axis(gold, "exists", EXISTS_UNRESOLVED) == EXISTS_NO:
         return True
     return bool(_metadata_issues(gold))
 
@@ -235,14 +236,14 @@ def _macro_f1(
 
 
 def supports_macro_f1(pairs: Iterable[Pair]) -> float:
-    """Macro-F1 of ``supports_claim`` over {supports, partial, does_not, unverified}."""
+    """Macro-F1 of ``supports_claim`` over {supports, partial, does_not, unresolved/inconclusive}."""
     pairs = list(pairs)
     macro, _ = _macro_f1(
         pairs,
         pred_axis="supports_claim",
         gold_axis="supports_claim",
         labels=SUPPORTS_LABELS,
-        pred_default=EXISTS_UNVERIFIED,
+        pred_default=SUPPORTS_INCONCLUSIVE,
     )
     return macro
 
@@ -255,12 +256,12 @@ def relevance_metrics(pairs: Iterable[Pair]) -> dict[str, Any]:
         pred_axis="supports_claim",
         gold_axis="supports_claim",
         labels=SUPPORTS_LABELS,
-        pred_default=EXISTS_UNVERIFIED,
+        pred_default=SUPPORTS_INCONCLUSIVE,
     )
     correct = total = 0
     for pred, gold in pairs:
-        p = _axis(pred, "supports_claim", EXISTS_UNVERIFIED) if pred is not None else EXISTS_UNVERIFIED
-        g = _gold_axis(gold, "supports_claim", EXISTS_UNVERIFIED)
+        p = _axis(pred, "supports_claim", SUPPORTS_INCONCLUSIVE) if pred is not None else SUPPORTS_INCONCLUSIVE
+        g = _gold_axis(gold, "supports_claim", SUPPORTS_INCONCLUSIVE)
         total += 1
         correct += int(p == g)
     return {
@@ -306,28 +307,28 @@ def priority_metrics(pairs: Iterable[Pair]) -> dict[str, float]:
 
 
 # ───────────────────────────────────────────────────────────────
-# Abstention / calibration (unverified is a first-class label)
+# Abstention / calibration (unresolved/inconclusive is a first-class label)
 # ───────────────────────────────────────────────────────────────
 def _is_abstention(record: Any) -> bool:
-    """A row 'abstains' when it leaves either judged axis at ``unverified``."""
+    """A row 'abstains' when it leaves either judged axis at ``unresolved/inconclusive``."""
     if record is None:
         return True  # a missing prediction is a full abstention
-    ex = _axis(record, "exists", EXISTS_UNVERIFIED)
-    sc = _axis(record, "supports_claim", EXISTS_UNVERIFIED)
-    return ex == EXISTS_UNVERIFIED or sc == EXISTS_UNVERIFIED
+    ex = _axis(record, "exists", EXISTS_UNRESOLVED)
+    sc = _axis(record, "supports_claim", SUPPORTS_INCONCLUSIVE)
+    return ex == EXISTS_UNRESOLVED or sc == SUPPORTS_INCONCLUSIVE
 
 
 def _gold_unverifiable(gold: Any) -> bool:
     """Gold says the row is genuinely unverifiable on at least one judged axis."""
-    ex = _gold_axis(gold, "exists", EXISTS_UNVERIFIED)
-    sc = _gold_axis(gold, "supports_claim", EXISTS_UNVERIFIED)
-    return ex == EXISTS_UNVERIFIED or sc == EXISTS_UNVERIFIED
+    ex = _gold_axis(gold, "exists", EXISTS_UNRESOLVED)
+    sc = _gold_axis(gold, "supports_claim", SUPPORTS_INCONCLUSIVE)
+    return ex == EXISTS_UNRESOLVED or sc == SUPPORTS_INCONCLUSIVE
 
 
 def abstention_metrics(pairs: Iterable[Pair]) -> dict[str, float]:
     """Abstention rate + abstention P/R against gold-unverifiable, + calibration.
 
-    * ``abstention_rate`` — fraction of rows the agent left ``unverified``.
+    * ``abstention_rate`` — fraction of rows the agent left ``unresolved/inconclusive``.
     * ``abstention_precision/recall/f1`` — treating "agent abstained" as the
       positive prediction and "gold is genuinely unverifiable" as the positive
       label: did the agent abstain *when it should* and commit otherwise?
@@ -359,9 +360,9 @@ def abstention_metrics(pairs: Iterable[Pair]) -> dict[str, float]:
             # Calibration sample: committed row with a confidence value.
             conf = _get(pred, "confidence", None)
             # Correctness on the committed judged axes (exists + supports_claim).
-            ex_ok = _axis(pred, "exists", EXISTS_UNVERIFIED) == _gold_axis(gold, "exists", EXISTS_UNVERIFIED)
-            sc_ok = _axis(pred, "supports_claim", EXISTS_UNVERIFIED) == _gold_axis(
-                gold, "supports_claim", EXISTS_UNVERIFIED
+            ex_ok = _axis(pred, "exists", EXISTS_UNRESOLVED) == _gold_axis(gold, "exists", EXISTS_UNRESOLVED)
+            sc_ok = _axis(pred, "supports_claim", SUPPORTS_INCONCLUSIVE) == _gold_axis(
+                gold, "supports_claim", SUPPORTS_INCONCLUSIVE
             )
             row_correct = int(ex_ok and sc_ok)
             if conf is not None:

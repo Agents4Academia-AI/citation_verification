@@ -3,7 +3,7 @@ stages — the explicit verification pipeline (used by the 'agentic' backend).
 
 Each stage is a :class:`citation_verifier.interfaces.StageFn`: it takes one
 :class:`CitationRecord`, fills ONLY its own axes, and degrades-not-crashes
-(sets ``record.error`` and leaves axes ``unverified`` rather than raising).
+(sets ``record.error`` and leaves axes ``unresolved/inconclusive`` rather than raising).
 
     fill_correctness(record, *, resolver)            -> STEP 1 (exists, resolved, metadata_issues)
     fill_relevance(record, *, resolver, judge=None)  -> STEP 2 (supports_claim, priority, evidence)

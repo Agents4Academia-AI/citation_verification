@@ -11,7 +11,7 @@ record stub through fixed stages in a fixed order:
 
 Properties (per docs/decisions-phy.md):
   - **degrade-not-crash**: a stage that raises is caught per record; the record
-    gets ``error`` set and keeps ``unverified`` axes, and the run continues.
+    gets ``error`` set and keeps ``unresolved/inconclusive`` axes, and the run continues.
   - **deterministic severity**: never judged here — always
     :func:`citation_verifier.schema.derive_severity` from the three axes.
   - **usage accounting**: every stage that "spends" is recorded into a per-tier
@@ -99,7 +99,7 @@ class AgenticBackend(BaseBackend):
             if over_ceiling:
                 result.errors.append(
                     f"cost ceiling ${self.cost_ceiling:.2f} reached after correctness; "
-                    "relevance pass skipped (records left unverified)"
+                    "relevance pass skipped (records left unresolved/inconclusive)"
                 )
             else:
                 # Pass 2 — relevance over records that resolved (exists != no).
@@ -218,7 +218,7 @@ class AgenticBackend(BaseBackend):
             except Exception as exc:  # noqa: BLE001 — degrade-not-crash
                 result.errors.append(f"relevance batch failed: {exc!r}")
                 for rec in eligible:
-                    rec.supports_claim = SupportsClaim.UNVERIFIED.value
+                    rec.supports_claim = SupportsClaim.INCONCLUSIVE.value
             for rec in eligible:
                 rec.model_tier = ModelTier.JUDGE.value
             return
@@ -266,7 +266,7 @@ class AgenticBackend(BaseBackend):
         the ``stages`` / ``grounding`` modules exist on a teammate's branch, and
         so neither sibling can drag the SDK into our import path. If a sibling is
         missing we fall back to safe no-op stages / a null resolver, so the
-        backend still produces schema-valid ``unverified`` records.
+        backend still produces schema-valid ``unresolved/inconclusive`` records.
         """
         try:
             from ..stages import fill_correctness, fill_relevance  # type: ignore
@@ -292,7 +292,7 @@ _OUTPUT_TOKEN_FLOOR = 16
 def _noop_stage(record: CitationRecord, /, **_kwargs: Any) -> CitationRecord:
     """Identity stage used when a real stage module is not importable yet."""
     if record.error is None:
-        record.error = "stage module unavailable; record left unverified"
+        record.error = "stage module unavailable; record left unresolved/inconclusive"
     return record
 
 

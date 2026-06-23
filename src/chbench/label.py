@@ -10,8 +10,8 @@ harness joins them on ``(paper_id, claim_id, cite_key)``.
 
 What gets labelled (``Labels``):
     exists          : yes if the gold resolver matched; no if a seed flagged the
-                      reference as fabricated; unverified if offline/no match.
-    supports_claim  : left ``unverified`` here — relevance gold needs human or a
+                      reference as fabricated; unresolved if offline/no match.
+    supports_claim  : left ``inconclusive`` here — relevance gold needs human or a
                       DIFFERENT-model judge (anti-circularity); this module only
                       sets it when a seed hint provides it. (HONEST: no LLM call.)
     priority        : heuristic (obligatory/helpful) from claim-site cues, marked
@@ -108,7 +108,7 @@ def _build_one(parsed: dict[str, Any], resolved_dict: dict[str, Any] | None) -> 
         exists = Exists.YES
         provenance = f"gold: {resolved.source}-resolver ({resolved.match_method})"
     else:
-        exists = Exists.UNVERIFIED
+        exists = Exists.UNRESOLVED
         provenance = "gold: offline/no-match (needs resolution)"
 
     metadata_issues = _detect_metadata_issues(cited_as, resolved)
@@ -116,7 +116,7 @@ def _build_one(parsed: dict[str, Any], resolved_dict: dict[str, Any] | None) -> 
 
     supports = SupportsClaim(seed_hint["supports_claim"]) if seed_hint.get(
         "supports_claim"
-    ) else SupportsClaim.UNVERIFIED
+    ) else SupportsClaim.INCONCLUSIVE
 
     severity = derive_severity(exists, supports, priority)
     is_hallucinated = exists is Exists.NO or bool(metadata_issues)

@@ -44,7 +44,7 @@ map are in `schema.py` and `tests/test_schema.py`.
 ## 5. One unit of work, degrade-not-crash, resumable — [frozen]
 
 The orchestrator (`run_verification`) maps over `(claim, citation)` pairs with
-bounded context. A stuck/failed pair degrades to a single `unverified` row (its
+bounded context. A stuck/failed pair degrades to a single `unresolved/inconclusive` row (its
 `error` field set) and the run continues. Per-paper artifacts land under
 `papers/<paper_id>/`.
 
@@ -57,8 +57,8 @@ citation-intent) from optional Semantic Scholar. Match cascade **DOI > arXiv-id 
 fuzzy-title** (fuzzy gated by author overlap + year ±1); the LLM only adjudicates
 the fuzzy tier against *retrieved* fields. The cited URL is validated.
 
-- **[frozen]** The abstain rule: `unverified` beats guessing; a web hit alone
-  never upgrades `unverified → yes` without a corroborating structured record.
+- **[frozen]** The abstain rule: `unresolved/inconclusive` beats guessing; a web hit alone
+  never upgrades `unresolved/inconclusive → yes` without a corroborating structured record.
 - **[open]** *Demoting WebSearch/WebFetch to a gated last resort* (off by
   default, `ENABLE_WEB_SEARCH`). Proposed to narrow the baseline's broad web use;
   to confirm at merge.
@@ -91,7 +91,7 @@ The agent never imports `evals/` and vice versa. `evals/run_eval.py` joins agent
 `report.json` to gold on `(paper_id, claim_id, cite_key)`, validates against the
 spec, and reports correctness P/R/F1 (positive class = fabricated/wrong-metadata),
 relevance macro-F1, priority accuracy + obligatory-F1, and abstention/calibration
-(`unverified` is a first-class scored label). Headline = correctness-F1.
+(`unresolved/inconclusive` is a first-class scored label). Headline = correctness-F1.
 
 ## 11. Anti-circularity for gold — [frozen]
 
@@ -127,7 +127,7 @@ the MVP) so comparison-objectiveness lands later without a breaking schema chang
 2. API keys: register shared S2 / OpenAlex keys before forking, or ship the demo
    on the keyless Crossref + arXiv + DBLP floor and treat keyed sources as a
    post-demo upgrade.
-3. Eval scoring constants: the abstention-aware reward/penalty for `unverified`,
+3. Eval scoring constants: the abstention-aware reward/penalty for `unresolved/inconclusive`,
    confidence semantics (per-axis vs per-record), and whether correctness-F1
    splits into fabrication vs perturbed-metadata sub-scores.
 4. Relevance gold source for the headline: human adjudication (small, trusted) vs

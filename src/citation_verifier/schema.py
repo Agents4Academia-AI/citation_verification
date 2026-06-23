@@ -13,8 +13,8 @@ gold-label format, so agent output and gold labels agree by construction.
 Closed enums mirror SKILL.md EXACTLY (machine tokens; the renderer maps them to
 the human strings used in the table):
 
-    exists          : yes | no | unverified
-    supports_claim  : supports | partial | does_not | unverified
+    exists          : yes | no | unresolved
+    supports_claim  : supports | partial | does_not | inconclusive
     priority        : obligatory | helpful
     severity        : high | medium | low | ok
 
@@ -44,7 +44,7 @@ class Exists(str, Enum):
 
     YES = "yes"
     NO = "no"
-    UNVERIFIED = "unverified"
+    UNRESOLVED = "unresolved"
 
 
 class SupportsClaim(str, Enum):
@@ -57,7 +57,7 @@ class SupportsClaim(str, Enum):
     SUPPORTS = "supports"
     PARTIAL = "partial"
     DOES_NOT = "does_not"
-    UNVERIFIED = "unverified"
+    INCONCLUSIVE = "inconclusive"
 
 
 class Priority(str, Enum):
@@ -96,7 +96,7 @@ class MatchMethod(str, Enum):
     DOI = "doi"
     ARXIV = "arxiv"
     FUZZY_TITLE = "fuzzy_title"
-    NONE = "none"  # no confident match (drives exists=no / unverified upstream)
+    NONE = "none"  # no confident match (drives exists=no / unresolved upstream)
 
 
 # ───────────────────────────────────────────────────────────────
@@ -227,12 +227,12 @@ class CitationRecord(_Model):
     cited_as: CitedAs
 
     # ── correctness (table cols 4 & 5) ──
-    exists: Exists = Exists.UNVERIFIED
+    exists: Exists = Exists.UNRESOLVED
     resolved: Resolved | None = None
     metadata_issues: list[str] = Field(default_factory=list)
 
     # ── relevance & priority (table cols 6 & 7) ──
-    supports_claim: SupportsClaim = SupportsClaim.UNVERIFIED
+    supports_claim: SupportsClaim = SupportsClaim.INCONCLUSIVE
     priority: Priority = Priority.HELPFUL
 
     # ── severity (table col 8) ──
@@ -274,7 +274,7 @@ def derive_severity(
       - fabricated (exists=no)                                  -> high
       - obligatory cite that does_not support                  -> high
       - obligatory cite with metadata/partial trouble          -> medium
-      - helpful cite that is wrong/partial, or any unverified  -> low
+      - helpful cite that is wrong/partial, or any unresolved/inconclusive  -> low
       - everything clean                                       -> ok
     """
     ex = Exists(exists)
@@ -289,7 +289,7 @@ def derive_severity(
         return Severity.MEDIUM
     if sc is SupportsClaim.DOES_NOT:  # helpful cite that does not support
         return Severity.LOW
-    if ex is Exists.UNVERIFIED or sc is SupportsClaim.UNVERIFIED:
+    if ex is Exists.UNRESOLVED or sc is SupportsClaim.INCONCLUSIVE:
         return Severity.LOW
     if sc is SupportsClaim.PARTIAL:  # helpful + partial
         return Severity.LOW

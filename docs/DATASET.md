@@ -25,8 +25,8 @@ Labelled axes (`Labels`):
 
 | field | how it is set |
 |---|---|
-| `exists` | `yes` if the gold resolver matched; `no` if a seed flags a fabricated reference or `inject` synthesizes one; `unverified` if offline / no match |
-| `supports_claim` | `unverified` by default — relevance gold needs a **human or a different-model judge** (anti-circularity), never the agent's judge |
+| `exists` | `yes` if the gold resolver matched; `no` if a seed flags a fabricated reference or `inject` synthesizes one; `unresolved/inconclusive` if offline / no match |
+| `supports_claim` | `unresolved/inconclusive` by default — relevance gold needs a **human or a different-model judge** (anti-circularity), never the agent's judge |
 | `priority` | heuristic `obligatory`/`helpful` from claim-site cues; provenance flags it as heuristic for human override |
 | `severity` | derived deterministically via the contract's `derive_severity(exists, supports_claim, priority)` |
 | `is_hallucinated` | `True` when `exists=no` OR a metadata error was detected — the positive class for correctness P/R/F1 |
