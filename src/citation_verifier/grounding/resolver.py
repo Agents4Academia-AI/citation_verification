@@ -599,11 +599,22 @@ class MultiSourceResolver:
             if match is not None:
                 return match
 
-        # 2) title-field, most-precise-first; stop the moment one matches.
+        # 2) title-field, most-precise-first. Short-circuit on a match whose FIRST
+        #    author also agrees with the reference; otherwise keep searching (a
+        #    same-title record by a different lead author — e.g. S2 returning
+        #    "Devanbu" for the Hindle paper — must not win over the right one), and
+        #    fall back to it only if nothing better turns up.
+        ref_first = _ref_first_surname(reference)
+        fallback = None
         for fn, args in self._title_query_steps(reference, 4):
             match = self._match(reference, self._fetch(fn, *args))
-            if match is not None:
+            if match is None:
+                continue
+            if not ref_first or _cand_first_surname(match) == ref_first:
                 return match
+            fallback = fallback or match
+        if fallback is not None:
+            return fallback
 
         # 3) broad fallback.
         return self._match(reference, self._broad_candidates(reference))
