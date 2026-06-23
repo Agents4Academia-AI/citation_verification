@@ -164,6 +164,12 @@ def _fill_relevance(
     # Always set a priority (coarse heuristic; a judge may override below).
     record.priority = _infer_priority(record.claim.text)
 
+    # A table citation is a table cell/caption, not a prose claim — do not judge
+    # its relevance; leave inconclusive (the extraction note explains why).
+    if record.in_table:
+        record.supports_claim = SupportsClaim.INCONCLUSIVE
+        return record
+
     abstract = _retrieve_abstract(record, resolver)
 
     if judge is not None:
@@ -213,8 +219,19 @@ def fill_relevance_batch(
     if not records:
         return records
 
-    items: list[dict] = []
+    # Table citations are table cells/captions, not prose claims — never judge
+    # them; leave inconclusive (their extraction note already explains why). Judge
+    # only the rest, and keep all records for the return.
+    judged = [rec for rec in records if not rec.in_table]
     for rec in records:
+        if rec.in_table:
+            rec.priority = _infer_priority(rec.claim.text)
+            rec.supports_claim = SupportsClaim.INCONCLUSIVE
+    if not judged:
+        return records
+
+    items: list[dict] = []
+    for rec in judged:
         rec.priority = _infer_priority(rec.claim.text)
         abstract = _retrieve_abstract(rec, resolver)
         # cite_key + claim_id let a batched judge group claim-sites by citation and
@@ -232,15 +249,15 @@ def fill_relevance_batch(
     try:
         verdicts = judge_batch(items)
     except Exception as exc:  # noqa: BLE001 — degrade-not-crash
-        for rec in records:
+        for rec in judged:
             rec.error = (rec.error + "; " if rec.error else "") + f"relevance batch: {exc!r}"
             rec.supports_claim = SupportsClaim.INCONCLUSIVE
         return records
 
     # Stage 2: the abstract couldn't decide these — re-judge against full-text chunks.
-    verdicts, escalated = _escalate_inconclusive(records, verdicts, judge_batch)
+    verdicts, escalated = _escalate_inconclusive(judged, verdicts, judge_batch)
 
-    for pos, (rec, item, verdict) in enumerate(zip(records, items, verdicts, strict=False)):
+    for pos, (rec, item, verdict) in enumerate(zip(judged, items, verdicts, strict=False)):
         if verdict is None:
             rec.supports_claim = SupportsClaim.INCONCLUSIVE
             continue

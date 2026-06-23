@@ -7,7 +7,7 @@ without flagging — only a genuinely different surname/initial should flag.
 
 from __future__ import annotations
 
-from citation_verifier.stages.correctness import _author_issue, _same_author
+from citation_verifier.stages.correctness import _author_issue, _same_author, _unresolved_note
 
 
 def test_same_author_matches_abbreviated_and_glued_forms():
@@ -17,7 +17,18 @@ def test_same_author_matches_abbreviated_and_glued_forms():
     assert _same_author("Ferrucci DA", "David A Ferrucci")
     assert _same_author("Chen C-FR", "Chun-Fu Chen")          # 3-letter initials
     assert _same_author("YangZ", "Zhengyuan Yang")            # glued despacing artifact
+    assert _same_author("V aswani A", "Ashish Vaswani")       # despace split "V aswani" -> Vaswani
+    assert _same_author("Y uan H", "Hongping Yuan")           # despace split "Y uan" -> Yuan
     assert _same_author("Yang, Zhengyuan", "Zhengyuan Yang")  # "Last, First"
+
+
+def test_unresolved_note_lists_the_searched_sources():
+    class _Resolver:
+        sources = ("crossref", "arxiv", "s2", "dblp")
+
+    note = _unresolved_note(_Resolver())
+    assert "could not retrieve" in note
+    assert "Crossref" in note and "Semantic Scholar" in note and "arXiv" in note
 
 
 def test_same_author_rejects_real_differences():

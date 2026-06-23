@@ -66,7 +66,7 @@ def fill_correctness(record: CitationRecord, *, resolver: Resolver) -> CitationR
         # Absence is a red flag, not proof of fabrication: abstain.
         record.exists = Exists.UNRESOLVED
         record.resolved = resolved
-        record.metadata_issues = ["no confident match in structured sources"]
+        record.metadata_issues = [_unresolved_note(resolver)]
         return record
 
     record.resolved = resolved
@@ -74,6 +74,27 @@ def fill_correctness(record: CitationRecord, *, resolver: Resolver) -> CitationR
     record.metadata_issues = _diff_metadata(record, resolved)
     record.evidence = _dedupe_evidence(record.evidence + [_metadata_evidence(resolved)])
     return record
+
+
+# Human-readable names for the grounding sources, for the unresolved note.
+_SOURCE_NAMES = {
+    "crossref": "Crossref",
+    "arxiv": "arXiv",
+    "dblp": "DBLP",
+    "s2": "Semantic Scholar",
+    "openalex": "OpenAlex",
+}
+
+
+def _unresolved_note(resolver: Resolver) -> str:
+    """Explain an unresolved citation: which sources were searched without a match."""
+    sources = getattr(resolver, "sources", ()) or ()
+    where = ", ".join(_SOURCE_NAMES.get(str(s), str(s)) for s in sources)
+    return (
+        f"could not retrieve a confident match — searched {where}"
+        if where
+        else "could not retrieve a confident match in structured sources"
+    )
 
 
 # ───────────────────────────────────────────────────────────────
@@ -216,6 +237,10 @@ def _name_key(author: str) -> tuple[str, str]:
     a = (author or "").strip()
     if not a:
         return ("", "")
+    # Heal a despacing-split surname: a lone capital + a lowercase run ("V aswani"
+    # -> "Vaswani", "Y uan" -> "Yuan"). A capital before a *capitalized* word is
+    # given-name-first ("M Jadeja") and is left as initial + surname.
+    a = re.sub(r"^([A-Z]) (?=[a-z])", r"\1", a)
     if "," in a:  # "Last, First M"
         last, rest = (p.strip() for p in a.split(",", 1))
         return (_fold(last.split()[-1]) if last.split() else "", _fold(rest[:1]))
