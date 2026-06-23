@@ -1,117 +1,152 @@
 # citation_verification
 
-> An agent that, given an arXiv link or a PDF, **verifies the citations in a
-> paper draft** and emits a verification table: which references are real, whether
-> their metadata is correct, and whether each cited paper actually supports the
-> claim it is attached to.
+> Given an arXiv link or a PDF, **verify the citations in a paper draft** and emit a
+> verification table: which references are real, whether their metadata is correct,
+> and whether each cited paper actually supports the claim it is attached to.
 
-Built during [Agents4Academia](https://github.com/Agents4Academia-AI),
-14–26 June 2026.
+Built during [Agents4Academia](https://github.com/Agents4Academia-AI), 14–26 June 2026.
 
 ---
 
-## What it does (the Notion 3-step plan → concrete files)
+## What it does
 
-The method lives in **`.claude/skills/verify-citations/SKILL.md`** (the frozen
-contract: the output table + value vocabularies). Each step maps to code:
+Three checks (the Notion plan), each grounded in **retrieved evidence, never model
+memory**. The method and the frozen output table live in
+[`SKILL.md`](.claude/skills/verify-citations/SKILL.md).
 
-| Notion step | What it checks | Where it lives |
+| Step | Question it answers | Output fields |
 |---|---|---|
-| **STEP 1 — Reality & Accuracy** | Real vs fake citations; authors/venue/year/title; validate the cited URL. | `grounding/` (multi-source resolver: Crossref/arXiv/DBLP, optional S2/OpenAlex) → `stages/correctness.py` → `exists`, `metadata_issues` |
-| **STEP 2 — Relevance & Justification** | Does the cited paper support the claim? Obligatory vs helpful. *Construct a justification.* | `stages/relevance.py` → `supports_claim`, `priority`; the "construct-a-skill / justification" note is in SKILL.md |
-| **STEP 3 — Objectiveness of Comparison** | For obligatory baselines, were they actually compared against? | reserved seam: `stages/comparison.py` + `CitationRecord.compared_against` |
+| **1 — Reality & Accuracy** | Is the citation real? Are authors / venue / year / title right? Does the cited URL resolve? | `exists`, `metadata_issues` |
+| **2 — Relevance & Justification** | Does the cited paper actually support the claim? Is it obligatory or just helpful? | `supports_claim`, `priority` + a quoted justification |
+| **3 — Objectiveness** *(reserved seam)* | For obligatory baselines, were they actually compared against? | `compared_against` |
 
-The pipeline framework is: **extract** text + references (prefer LaTeX
-`.bbl`/`.bib` + `\cite` call-sites) → **check correctness** of each citation
-against structured sources and validate its URL → if correct, **check relevance**
-→ **justify** the relevance verdict. Every verdict is grounded in retrieved
-evidence, never model memory.
+## How it works
 
-### Two interchangeable backends (and a comparison)
+The unit of work is **one `(claim, citation)` pair** — a reference cited in N
+places becomes N rows (it can be obligatory in one spot, background in another).
+Each pair flows through a deterministic pipeline:
 
-The same input and the **same output schema** are produced by two backends so we
-can compare quality *and token/cost*:
+```
+arXiv id / URL / PDF
+  → ingest       → PaperSource (paper_id, work_dir, tex_available?)
+  → extract      → LaTeX .bbl/.bib + \cite sites (PDF fallback) → record stubs
+  → correctness  → resolve DOI > arXiv-id > fuzzy-title; validate URL → exists, metadata_issues
+  → relevance    → judge the claim against the retrieved abstract / full text → supports_claim, priority
+  → render       → the SKILL.md table + report.json under papers/<paper_id>/
+```
 
-| Backend | What it is | File |
-|---|---|---|
-| `claude_code` | Skill-driven, grounded, concurrent judge: existence is grounded deterministically (no LLM), then the SKILL.md method judges (claim, citation) pairs in concurrent, no-tool `query()` chunks. | `backends/claude_code.py` |
-| `agentic` | Explicit, staged pipeline: extract → correctness → relevance. Deterministic control flow. | `backends/agentic.py` |
+A stuck pair degrades to one `unresolved` / `inconclusive` row and the run
+continues. The full layered design, the `(claim, citation)` data flow, and the
+extension seams are in **[`docs/architecture.md`](docs/architecture.md)**.
 
-Per-run token/cost accounting (`RunUsage`, `backends/usage.py`) lets us put the
-two side by side. Both emit `CitationRecord`s; the renderer turns them into the
-identical SKILL.md table.
+**Backend.** The default is **`agentic`** — the explicit, deterministic staged
+pipeline above, with two-tier model routing (`MODEL_BULK` for correctness,
+`MODEL_JUDGE` for relevance). A second backend, `claude_code` (a skill-driven
+concurrent judge), lives behind the same `VerificationBackend` seam for a
+quality/cost comparison and is opt-in via `--backend claude_code`; both emit the
+identical schema.
 
 ## The contract (frozen seam)
 
 Everything agrees on one schema: **`CitationRecord`**, keyed by
 `(paper_id, claim_id, cite_key)`, 1:1 with the SKILL.md table
-(`src/citation_verifier/schema.py`). JSON is the source of truth; the Markdown
-table is rendered deterministically from it (`render.py`). The same schema is the
-**gold-label format** for our dataset (`src/chbench/`), so agent output and gold
+([`schema.py`](src/citation_verifier/schema.py)). JSON is the source of truth; the
+Markdown table is rendered deterministically from it
+([`render.py`](src/citation_verifier/render.py)). The same schema is the
+**gold-label format** for the benchmark (`src/chbench/`), so agent output and gold
 agree by construction. The canonical JSON Schema is committed at
-`spec/v0.1/record.schema.json` and CI checks it never drifts (`make schema`).
+`spec/v0.1/record.schema.json`; CI checks it never drifts (`make schema`).
+
+Depend only on `schema.py` (records + enums) and `interfaces.py` (the Protocols) —
+never another module's internals. Those seams are **frozen**: changing them needs
+team sign-off.
 
 ## Quickstart
 
 ```bash
-# 1. Install (core + dev tooling; offline floor needs no extras / no SDK / no network)
-uv pip install -e '.[dev]'        # or:  make install
+# 1. Install (core + dev tooling; the offline floor needs no extras / no SDK / no network)
+make install                      # uv pip install -e '.[dev]'
 
-# 2. Run the offline contract tests + smoke eval
+# 2. Offline contract tests + smoke eval
 make test                         # full pytest suite, offline
 make smoke                        # tests + run_eval on the in-repo smoke gold
 
-# 3. Verify a paper (needs the LLM backend + a key — see .env.example)
-cp .env.example .env              # then fill ANTHROPIC_API_KEY etc.
+# 3. Verify a paper (LLM backend; auth = your Claude Code subscription, or an API key)
 uv pip install -e '.[llm]'
-cverify 1706.03762 --backend agentic --out papers/1706.03762
-cverify https://arxiv.org/abs/2005.14165 --backend claude_code
+cverify 1706.03762 --out papers/1706.03762        # 'agentic' is the default backend
+cverify https://arxiv.org/abs/2005.14165 --format json
 
-# 4. Check a single reference against the grounding sources (no LLM)
+# 4. Check one reference against the grounding sources (no LLM, no key)
 python -m citation_verifier.grounding.paper_lookup "Vaswani et al. Attention Is All You Need 2017"
 
-# 5. Run the Discord bot (slash command /check <arxiv>) — see docs/DISCORD_BOT.md
+# 5. Discord bot (slash command /check <arxiv>) — see docs/DISCORD_BOT.md
 uv pip install -e '.[bot]'
 cverify-bot                       # reads DISCORD_BOT_TOKEN from .env
 ```
 
-The **keyless floor** — schema + render + eval + Crossref/arXiv grounding — runs
-with no API keys, no `claude-agent-sdk`, and degrades softly without network.
-Keyed sources (Semantic Scholar, OpenAlex) and the `claude_code` backend turn on
-only when their `.env` keys are present.
+The **keyless floor** — schema + render + eval + Crossref/arXiv grounding +
+open-access full-text — runs with no API keys, no `claude-agent-sdk`, and degrades
+softly offline. Keyed sources and the LLM backends turn on only when their keys are
+present.
 
-## Repository structure
+### Environment variables (keys & contacts)
+
+**Nothing here is required** — the keyless floor runs with no keys at all. Keys
+only *raise rate limits* or *unlock extra sources*. Every secret lives **only**
+in the process environment or a gitignored `.env` — **never in source, never
+committed** (e.g. your own OpenAlex key stays in your shell, not in the repo).
+
+Set them by copying `.env.example → .env`, **or** by `export`-ing in your shell
+(a shell `export` wins over `.env`):
+
+```bash
+export OPENALEX_API_KEY=…      # your OpenAlex key — polite pool + open-access full-text
+export ANTHROPIC_API_KEY=…     # only to use the API instead of the Claude Code subscription
+```
+
+| Variable | Enables (absent ⇒ skipped, fail-soft) |
+|---|---|
+| `ANTHROPIC_API_KEY` | LLM backends via the API instead of your Claude Code subscription. |
+| `S2_API_KEY` | The Semantic Scholar grounding source. |
+| `OPENALEX_API_KEY` | OpenAlex grounding **and** open-access full-text PDF lookup. Keyless works (rate-limited); a key adds the polite pool. |
+| `UNPAYWALL_EMAIL` | Unpaywall as an open-access full-text source (needs a contact email, no key). |
+| `CONTACT_EMAIL` | Polite `User-Agent` / OpenAlex `mailto` for full-text lookups. |
+| `CROSSREF_MAILTO` | Crossref's polite pool (higher rate limits, no key). |
+| `GOOGLE_API_KEY` + `GOOGLE_CSE_ID` | Keys the last-resort open-web search fallback (Google CSE; else keyless DuckDuckGo). The fallback itself is **off** unless `ENABLE_WEB_SEARCH=true` — arXiv/OpenAlex/Unpaywall/DOI lookups run regardless. |
+| `DISCORD_BOT_TOKEN` | Running the Discord bot (`cverify-bot` → `/check`). |
+
+The full template — incl. model routing (`MODEL_BULK`/`MODEL_JUDGE`), the cost
+ceiling, and bot options — is in [`.env.example`](.env.example).
+
+## Layout
+
+The full module map lives in [`docs/architecture.md`](docs/architecture.md). The
+**contract** files (frozen — team sign-off to change) are the ones to know:
 
 | Path | What |
 |---|---|
-| `src/citation_verifier/schema.py` | **[contract]** `CitationRecord` + enums + `derive_severity` + JSON-Schema export |
-| `src/citation_verifier/interfaces.py` | **[contract]** Protocols (Extractor/Resolver/VerificationBackend/StageFn) + result/usage dataclasses |
-| `src/citation_verifier/orchestrator.py` | `run_verification(source, backend=...)` — maps over `(claim, citation)` pairs, degrade-not-crash |
-| `src/citation_verifier/render.py` | records → the exact SKILL.md table + summary; `to_json`/`from_json` |
-| `src/citation_verifier/ingest.py` | arXiv id/url/PDF → `PaperSource` (fail-soft download) |
-| `src/citation_verifier/extract/` | LaTeX (primary) + PDF (fallback) extractors → record stubs |
-| `src/citation_verifier/grounding/` | multi-source resolver + `lookup_paper` + URL validation |
-| `src/citation_verifier/stages/` | `fill_correctness` / `fill_relevance` / `fill_comparison` |
-| `src/citation_verifier/backends/` | `claude_code` (grounded SKILL.md judge) and `agentic` (staged) + usage accounting |
-| `src/citation_verifier/bot/` | Discord front-end (`cverify-bot`): `/check`, `/help`, `/ping` → [`docs/DISCORD_BOT.md`](docs/DISCORD_BOT.md) |
-| `src/chbench/` | CitationHallucinationBench: harvest → parse → resolve → label → splits (built dataset → `/scratch/datasets/citation_verification_benchmark/`) |
-| `evals/` | scoring boundary (`run_eval.py`, `metrics.py`); `smoke/gold.jsonl` for CI |
-| `spec/v0.1/record.schema.json` | **[contract]** committed JSON Schema for one record |
-| `config/` | `sources.yaml` (per-source params + dimensions), `venues.yaml` (normalization + harvest scope) |
-| `.claude/skills/verify-citations/SKILL.md` | **[contract]** the method + frozen output table + enums |
-| `docs/` | [`architecture.md`](docs/architecture.md), [`DECISIONS.md`](docs/DECISIONS.md), [`DATASET.md`](docs/DATASET.md) |
-| `papers/` | per-paper artifact dirs (gitignored content) |
+| [`schema.py`](src/citation_verifier/schema.py) | `CitationRecord` + enums + `derive_severity` + JSON-Schema export |
+| [`interfaces.py`](src/citation_verifier/interfaces.py) | Protocols (Extractor / Resolver / VerificationBackend / StageFn) + result/usage dataclasses |
+| [`spec/v0.1/record.schema.json`](spec/v0.1/record.schema.json) | the committed JSON Schema for one record (drift-checked by `make schema`) |
+| [`SKILL.md`](.claude/skills/verify-citations/SKILL.md) | the verification method + frozen output table + enum vocabularies |
+
+Everything else hangs off those seams — `ingest` · `extract/` · `grounding/` ·
+`stages/` · `backends/` · `render` · `bot/` (Discord front-end, see
+[`docs/DISCORD_BOT.md`](docs/DISCORD_BOT.md)) · `chbench/` (dataset builder) ·
+`evals/` (scoring boundary). Per-paper artifacts land in `papers/<paper_id>/`
+(gitignored).
 
 ## For contributors / agents
 
-- Start here: **[`AGENTS.md`](AGENTS.md)** (run/test/conventions/off-limits) and
-  **[`CLAUDE.md`](CLAUDE.md)** (Claude Code session guide).
-- Design rationale: **[`docs/architecture.md`](docs/architecture.md)** and
-  **[`docs/DECISIONS.md`](docs/DECISIONS.md)**.
-- Four modules → four branches, communicating **only** via the frozen schema on
-  disk. Shared/contract files are frozen; changing them needs team sign-off.
-- **Benchmark dataset:** the gold set the agents are scored against
-  (CitationHallucinationBench) lives off-repo at the shared
+- **Start here:** [`AGENTS.md`](AGENTS.md) (run/test/conventions/off-limits) and
+  [`CLAUDE.md`](CLAUDE.md) (Claude Code session guide).
+- **Design rationale:** [`docs/architecture.md`](docs/architecture.md) and
+  [`docs/DECISIONS.md`](docs/DECISIONS.md).
+- **Benchmark dataset** (CitationHallucinationBench): the gold set the agents are
+  scored against lives off-repo at the shared
   `/scratch/datasets/citation_verification_benchmark/` (`$CHBENCH_DATA_DIR`
-  overrides). Built by `src/chbench/` — see [`docs/DATASET.md`](docs/DATASET.md).
-- Python 3.11+. Secrets only in a gitignored `.env`. PR to `main`.
+  overrides), built by `src/chbench/` — see [`docs/DATASET.md`](docs/DATASET.md).
+- **Team workflow:** work on your own branch and PR to `main` — never push directly
+  to `main`, it's the Discord bot's deployment branch and must stay green
+  (`make smoke`). Modules communicate **only** via the frozen schema on disk.
+- Python 3.11+. Secrets only in a gitignored `.env`.
