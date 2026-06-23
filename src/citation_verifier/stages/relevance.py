@@ -339,16 +339,19 @@ def _escalate_inconclusive(
     verdict.
     """
     from ..grounding.fulltext import (
-        fetch_full_text,
+        FullTextResult,
         fetch_full_text_from_url,
-        fetch_full_text_via_search,
+        fetch_full_text_via_search_with_source,
+        fetch_full_text_with_source,
         select_evidence_chunks,
         split_sections,
     )
+    from ..grounding.oa_fulltext import fulltext_by_doi_with_source
 
-    fulltext_cache: dict[str, str] = {}  # fetch each cited paper at most once per run
+    # fetch each cited paper at most once per run; value carries text + provenance
+    fulltext_cache: dict[str, FullTextResult] = {}
     esc_items: list[dict] = []
-    esc_meta: list[tuple[int, list[tuple[str, str]]]] = []
+    esc_meta: list[tuple[int, list[tuple[str, str]], str, str]] = []
     for pos, (rec, verdict) in enumerate(zip(records, verdicts, strict=False)):
         if verdict is None:
             continue
@@ -356,32 +359,40 @@ def _escalate_inconclusive(
         if sc != SupportsClaim.INCONCLUSIVE.value:
             continue
         # Full-text source, by precision/cost (each cited paper fetched once):
-        #   1. arXiv e-print/PDF by id;
+        #   1. arXiv e-print/HTML/PDF by id;
         #   2. an open-access PDF URL (S2's openAccessPdf, on resolved.url);
-        #   3. a web search for a free, title-verified PDF (key-gated) — the
+        #   3. the open-access cascade by DOI (OpenAlex / Unpaywall / landing page);
+        #   4. a web search for a free, title-verified PDF (key-gated) — the
         #      fallback for off-arXiv papers whose OA PDF (if any) wasn't fetchable.
         res = rec.resolved
         if not res:
             continue
         arxiv = res.arxiv_id
         cited_title = res.title or rec.cited_as.title or ""
-        key = arxiv or res.url or (f"search:{cited_title}" if cited_title else "")
+        key = (
+            arxiv
+            or res.url
+            or (f"doi:{res.doi}" if res.doi else "")
+            or (f"search:{cited_title}" if cited_title else "")
+        )
         if not key:
             continue
         if key not in fulltext_cache:
             if arxiv:
-                full = fetch_full_text(arxiv)
+                ftr = fetch_full_text_with_source(arxiv)
             elif res.url:
-                full = fetch_full_text_from_url(res.url)
+                ftr = FullTextResult(fetch_full_text_from_url(res.url), "resolved_url", res.url)
             else:
-                full = ""
-            if not full and cited_title:
-                full = fetch_full_text_via_search(cited_title, year=res.year)
-            fulltext_cache[key] = full
-        full = fulltext_cache[key]
-        if not full:
+                ftr = FullTextResult("")
+            if not ftr and res.doi:
+                ftr = fulltext_by_doi_with_source(res.doi)
+            if not ftr and cited_title:
+                ftr = fetch_full_text_via_search_with_source(cited_title, year=res.year)
+            fulltext_cache[key] = ftr
+        ftr = fulltext_cache[key]
+        if not ftr:
             continue
-        chunks = select_evidence_chunks(rec.claim.text, split_sections(full), k=_FULLTEXT_CHUNKS)
+        chunks = select_evidence_chunks(rec.claim.text, split_sections(ftr.text), k=_FULLTEXT_CHUNKS)
         if not chunks:
             continue
         evidence = "\n\n".join(f"[{h or 'body'}] {c}" for h, c in chunks)
@@ -394,7 +405,7 @@ def _escalate_inconclusive(
                 "resolved": rec.resolved,
             }
         )
-        esc_meta.append((pos, chunks))
+        esc_meta.append((pos, chunks, ftr.source, ftr.url))
 
     if not esc_items:
         return verdicts, set()
@@ -404,28 +415,35 @@ def _escalate_inconclusive(
         return verdicts, set()
 
     escalated: set[int] = set()
-    for (pos, chunks), v2 in zip(esc_meta, esc_verdicts, strict=False):
+    for (pos, chunks, source, url), v2 in zip(esc_meta, esc_verdicts, strict=False):
         if v2 is None:
             continue
         verdicts[pos] = v2
         escalated.add(pos)
         records[pos].evidence = _add_evidence(
-            records[pos].evidence, _fulltext_evidence(records[pos], chunks)
+            records[pos].evidence, _fulltext_evidence(records[pos], chunks, source=source, url=url)
         )
     return verdicts, escalated
 
 
-def _fulltext_evidence(record: CitationRecord, chunks: list[tuple[str, str]]) -> Evidence:
-    """Package retrieved full-text chunks as Evidence, tagged with their section."""
+def _fulltext_evidence(
+    record: CitationRecord, chunks: list[tuple[str, str]], *, source: str = "", url: str = ""
+) -> Evidence:
+    """Package retrieved full-text chunks as Evidence, tagged with channel + section.
+
+    ``source`` is the full-text channel (``arxiv_html``/``unpaywall``/… ); falls
+    back to the resolved id/url when a caller didn't supply one. The section heading
+    comes from the top-ranked chunk, so provenance reads e.g. ``unpaywall §Introduction``.
+    """
     heading = (chunks[0][0] if chunks else "") or "full text"
-    src = ""
-    if record.resolved:
-        src = record.resolved.arxiv_id or record.resolved.url or ""
+    channel = source
+    if not channel and record.resolved:
+        channel = record.resolved.arxiv_id or record.resolved.url or ""
     return Evidence(
         kind="full_text",
-        source=f"{src or 'arxiv'} §{heading}",
+        source=f"{channel or 'arxiv'} §{heading}",
         quote=_snippet("  ".join(c for _, c in chunks)),
-        url=record.resolved.url if record.resolved else None,
+        url=url or (record.resolved.url if record.resolved else None),
     )
 
 

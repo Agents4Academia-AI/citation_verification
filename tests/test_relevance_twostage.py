@@ -35,8 +35,12 @@ def test_inconclusive_abstract_escalates_to_full_text(monkeypatch):
     # Stage-2 full text: the Introduction (a default section) confirms the claim.
     monkeypatch.setattr(
         fulltext,
-        "fetch_full_text",
-        lambda *a, **k: r"\section{Introduction} The model is fine-tuned on the WebText corpus.",
+        "fetch_full_text_with_source",
+        lambda *a, **k: fulltext.FullTextResult(
+            r"\section{Introduction} The model is fine-tuned on the WebText corpus.",
+            "arxiv_eprint",
+            "https://arxiv.org/e-print/1706.03762",
+        ),
     )
     calls: list = []
 
@@ -56,12 +60,21 @@ def test_inconclusive_abstract_escalates_to_full_text(monkeypatch):
     assert len(calls) == 2  # stage 1 (abstract) + stage 2 (full text)
     assert rec.supports_claim == SupportsClaim.SUPPORTS  # upgraded after reading full text
     assert "based on full text" in (rec.notes or "")
-    assert any(e.kind == "full_text" for e in rec.evidence)
+    ft_ev = [e for e in rec.evidence if e.kind == "full_text"]
+    assert ft_ev  # full-text evidence recorded
+    # provenance: the evidence is tagged with its channel + section + source URL
+    assert ft_ev[0].source.startswith("arxiv_eprint §")
+    assert "Introduction" in ft_ev[0].source
+    assert ft_ev[0].url == "https://arxiv.org/e-print/1706.03762"
 
 
 def test_no_arxiv_id_keeps_stage1_verdict(monkeypatch):
     # No arXiv id -> no full text to fetch -> the stage-1 inconclusive verdict stands.
-    monkeypatch.setattr(fulltext, "fetch_full_text", lambda *a, **k: "SHOULD NOT BE USED")
+    monkeypatch.setattr(
+        fulltext,
+        "fetch_full_text_with_source",
+        lambda *a, **k: fulltext.FullTextResult("SHOULD NOT BE USED", "arxiv_html", "x"),
+    )
 
     def judge_batch(items):
         return [RelevanceVerdict(SupportsClaim.INCONCLUSIVE, justification="x") for _ in items]

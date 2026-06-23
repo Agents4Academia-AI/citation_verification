@@ -120,6 +120,7 @@ def test_via_search_rejects_namesake(monkeypatch):
 
 def test_default_search_falls_back_to_ddg_without_google_key(monkeypatch):
     # No Google key -> _google_cse_search returns [] -> DDG backend is used.
+    monkeypatch.setenv("ENABLE_WEB_SEARCH", "true")  # opt in to the open-web fallback
     monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
     monkeypatch.delenv("GOOGLE_CSE_ID", raising=False)
     monkeypatch.setattr(ft, "_ddg_search", lambda q, **k: ["http://x/p.pdf"])
@@ -130,11 +131,24 @@ def test_default_search_falls_back_to_ddg_without_google_key(monkeypatch):
 
 def test_via_search_no_hits_no_fetch(monkeypatch):
     # Both backends dry -> never fetch, return "".
+    monkeypatch.setenv("ENABLE_WEB_SEARCH", "true")  # opt in; both backends still dry
     monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
     monkeypatch.delenv("GOOGLE_CSE_ID", raising=False)
     monkeypatch.setattr(ft, "_ddg_search", lambda q, **k: [])
     monkeypatch.setattr(ft, "fetch_full_text_from_url", lambda u, **k: (_ for _ in ()).throw(
         AssertionError("must not fetch when search returns nothing")))
+    assert fetch_full_text_via_search(_GPT2_TITLE) == ""
+
+
+def test_default_search_gated_off_by_default(monkeypatch):
+    # ENABLE_WEB_SEARCH unset -> the open-web fallback never runs (no CSE, no DDG).
+    monkeypatch.delenv("ENABLE_WEB_SEARCH", raising=False)
+    monkeypatch.setattr(ft, "_google_cse_search", lambda q, **k: (_ for _ in ()).throw(
+        AssertionError("gated: must not hit Google CSE")))
+    monkeypatch.setattr(ft, "_ddg_search", lambda q, **k: (_ for _ in ()).throw(
+        AssertionError("gated: must not hit DuckDuckGo")))
+    assert ft._default_web_search("anything") == []
+    # and the public fetcher returns nothing without ever searching
     assert fetch_full_text_via_search(_GPT2_TITLE) == ""
 
 

@@ -570,3 +570,223 @@ def test_split_author_title_handles_spaced_hyphen_initial():
     )
     assert a == ["Xue, B.", "Zhu, Q.", "Wong, K.- F."]
     assert t == "Reliablemath: Benchmark of reliable mathematical reasoning on large language models"
+
+
+# ── given-name-first references (NeurIPS/arXiv style: "First Last, …, and First Last. Title") ──
+def test_given_name_first_and_terminator_splits_authors_and_colon_title():
+    # "…, and Jake M Hofman. Chatbench: …" must NOT read the surname "Hofman" as the
+    # title (the colon-prefix rewind used to land on it) and must drop the "and".
+    from citation_verifier.extract.pdf import _split_author_title
+
+    a, t = _split_author_title(
+        "Serina Chang, Ashton Anderson, and Jake M Hofman. Chatbench: From static "
+        "benchmarks to human-ai evaluation. arXiv preprint arXiv:2504.07114,2025."
+    )
+    assert a == ["Serina Chang", "Ashton Anderson", "Jake M Hofman"]
+    assert t == "Chatbench: From static benchmarks to human-ai evaluation"
+
+
+def test_given_name_first_etal_strips_lowercase_venue_from_title():
+    # "… et al. Mastering … knowledge. nature, 550(7676):354–359, 2017" — the venue
+    # opens lowercase ("nature"), so the sentence split misses it; the volume(issue):page
+    # cut must still trim it off the title.
+    from citation_verifier.extract.pdf import _parse_ref_entry
+
+    c = _parse_ref_entry(
+        "David Silver, Julian Schrittwieser, Karen Simonyan, et al. Mastering the game "
+        "of go without human knowledge. nature, 550(7676):354–359,2017"
+    )
+    assert c.title == "Mastering the game of go without human knowledge"
+    assert c.authors[:1] == ["David Silver"]
+
+
+def test_clean_ref_body_strips_trailing_backref_pages():
+    from citation_verifier.extract.pdf import _clean_ref_body
+
+    assert _clean_ref_body("… reasoning. arXiv preprint arXiv:2503.18892,2025.6") .endswith("2025")
+    assert _clean_ref_body("… go. nature, 550(7676):354–359,2017.2,17").endswith("2017")
+
+
+def test_ay_surnames_covers_person_org_and_vancouver():
+    from citation_verifier.extract.pdf import _ay_surnames
+
+    assert "brauner" in _ay_surnames("Philipp Brauner")  # given-name-first -> last token
+    assert "qwen" in _ay_surnames("Qwen Team")  # org -> first token kept too
+    assert _ay_surnames("Yang Z") == ["yang"]  # Vancouver -> first token (Z is initials)
+    assert _ay_surnames("Martin-Lof, P.") == ["martinlof", "martin"]  # comma form + hyphen left part
+    assert _ay_surnames("Jakub Konrád") == ["konrad", "jakub"]  # fold before strip: á kept as a
+    assert "zamfirescu" in _ay_surnames("J Diego Zamfirescu-Pereira")  # hyphen left part
+
+
+def test_bind_author_year_binds_ss_style_key_to_given_name_first_ref():
+    # SS-style bibkey "Brauner2023WhatDT" (surname at front) must bind to the
+    # given-name-first reference "Philipp Brauner" (surname last).
+    from citation_verifier.extract.pdf import _bind_author_year
+    from citation_verifier.schema import CitedAs
+
+    refs = {"ref-3": CitedAs(authors=["Philipp Brauner", "Alexander Hick"], title="What does the public think", year=2023)}
+    b = _bind_author_year("Brauner2023WhatDT", refs)
+    assert b is not None and b.title == "What does the public think"
+
+
+def test_bind_author_year_folds_diacritics_and_hyphen_surnames():
+    from citation_verifier.extract.pdf import _bind_author_year
+    from citation_verifier.schema import CitedAs
+
+    # diacritic: bibkey "konrad..." binds to "Jakub Konrád" (fold á->a, not strip->"konrd")
+    refs = {"ref-33": CitedAs(authors=["Jakub Konrád", "Jan Pichl"], title="Alquist 4.0", year=2021)}
+    assert _bind_author_year("konrad2021alquist", refs).title == "Alquist 4.0"
+    # hyphenated surname: bibkey "zamfirescu..." binds to "J Diego Zamfirescu-Pereira" (left part)
+    refs = {"ref-82": CitedAs(authors=["J Diego Zamfirescu-Pereira", "Richmond Y Wong"], title="Why johnny", year=2023)}
+    assert _bind_author_year("zamfirescu2023johnny", refs).title == "Why johnny"
+
+
+def test_apostrophe_split_surname_is_rejoined_and_binds():
+    # the glyph-spacer split "Murakhovs’ka" into "Murakhovs’ ka"; the stray space made
+    # "ka" look like the title start. Rejoin -> correct title + bindable left part.
+    from citation_verifier.extract.pdf import _ay_surnames, _clean_ref_body, _parse_ref_entry
+
+    assert "Murakhovs’ka" in _clean_ref_body("Lidiya Murakhovs’ ka, Caiming Xiong")
+    c = _parse_ref_entry(
+        _clean_ref_body(
+            "Philippe Laban, Lidiya Murakhovs’ ka, Caiming Xiong, and Chien-Sheng Wu. "
+            "Are you sure? challenging llms. arXiv preprint arXiv:2311.08596, 2023."
+        )
+    )
+    assert c.title == "Are you sure? challenging llms"
+    assert "Lidiya Murakhovs’ka" in c.authors
+    # the apostrophe left part is a binding candidate (key "murakhovs…" -> "Murakhovs’ka")
+    assert "murakhovs" in _ay_surnames("Lidiya Murakhovs’ka")
+
+
+def test_given_name_first_solo_author_is_parsed():
+    # a lone given-name-first author ("Harrison Chase. Langchain …") must yield the author.
+    from citation_verifier.extract.pdf import _split_author_title
+
+    a, t = _split_author_title("Harrison Chase. Langchain, October 2022. URL https://github.com/x")
+    assert a == ["Harrison Chase"]
+    assert t and t.startswith("Langchain")
+
+
+def test_given_name_first_handles_accents_particles_mononyms_quotes():
+    from citation_verifier.extract.pdf import _split_author_title
+
+    # accents (Jörg, Loáiciga) + "and" stripped
+    a, t = _split_author_title(
+        "Yves Scherrer, Jörg Tiedemann, and Sharid Loáiciga. Analysing concatenation. In Proceedings"
+    )
+    assert a == ["Yves Scherrer", "Jörg Tiedemann", "Sharid Loáiciga"]
+    assert t == "Analysing concatenation"
+    # hyphen-with-lowercase ("Wen-tau") must not break the run -> correct QuAC title
+    a, t = _split_author_title(
+        "Eunsol Choi, Wen-tau Yih, and Luke Zettlemoyer. Quac: Question answering in context. arXiv"
+    )
+    assert "Wen-tau Yih" in a and t == "Quac: Question answering in context"
+    # lowercase nobiliary particle ("van Berkel") + title opening with a quote
+    a, t = _split_author_title(
+        "Joel Wester, and Niels van Berkel. “as an ai language model”: Investigating denials. In Proc"
+    )
+    assert "Niels van Berkel" in a and t.startswith("“as an ai language model")
+    # mononym last author ("and Vinci.")
+    a, t = _split_author_title(
+        "Liang Chen, Yifan Song, and Vinci. R1-v: Reinforcing super generalization. https://x"
+    )
+    assert a == ["Liang Chen", "Yifan Song", "Vinci"] and t == "R1-v: Reinforcing super generalization"
+
+
+def test_bind_by_acronym_and_pool_title_word():
+    from citation_verifier.extract.pdf import _bind_author_year
+    from citation_verifier.schema import CitedAs
+
+    # keyless acronym key binds to the title whose initials spell it
+    refs = {"r1": CitedAs(authors=["Fanjia Yan"], title="Berkeley Function Calling Leaderboard", year=2024)}
+    assert _bind_author_year("2024bfcl", refs).title == "Berkeley Function Calling Leaderboard"
+    # same-surname pool disambiguated by the keyword as a unique whole title word
+    refs = {
+        "a": CitedAs(authors=["Philippe Laban"], title="Are you sure? challenging llms", year=2023),
+        "b": CitedAs(authors=["Philippe Laban"], title="Summary of a haystack", year=2024),
+    }
+    assert _bind_author_year("laban2023you", refs).title == "Are you sure? challenging llms"
+    # a too-common / too-short keyword stays unbound (never guess between same-surname refs)
+    refs = {
+        "a": CitedAs(authors=["Jiawei Liu"], title="We are afraid", year=2023),
+        "b": CitedAs(authors=["Jiawei Liu"], title="We propose a method", year=2023),
+    }
+    assert _bind_author_year("liu2023we", refs) is None
+
+
+def test_given_name_first_runs_before_vancouver_misfire():
+    # "Justin D. Weisz, …, and Werner Geyer. Title" must NOT be read by the Vancouver
+    # tier as author "Justin D" + title "Weisz, …"; GNF runs first.
+    from citation_verifier.extract.pdf import _split_author_title
+
+    a, t = _split_author_title(
+        "Justin D. Weisz, Jessica He, Michael Muller, and Werner Geyer. "
+        "Design principles for generative ai applications. Proceedings"
+    )
+    assert a[0] == "Justin D. Weisz" and "Werner Geyer" in a
+    assert t == "Design principles for generative ai applications"
+
+
+def test_is_two_column_distinguishes_single_from_two_column():
+    # PyMuPDF word tuple: (x0, y0, x1, y1, text, block, line, word_no). page_width=612.
+    from citation_verifier.extract.pdf_links import _is_two_column
+
+    def w(x0, x1, i):
+        return (x0, 10.0 * i, x1, 10.0 * i + 8, "w", 0, 0, 0)
+
+    # single column: 50 full-width lines straddling the page midline (306) -> not split
+    single = [w(60, 550, i) for i in range(50)]
+    assert _is_two_column(single, 612) is False
+    # two columns: clean left/right groups with an empty central gutter -> split
+    two = [w(60, 280, i) for i in range(25)] + [w(330, 552, i) for i in range(25)]
+    assert _is_two_column(two, 612) is True
+    # too little text to judge -> single (no split)
+    assert _is_two_column([w(60, 550, 0)], 612) is False
+
+
+def test_claim_scan_drops_venue_header_and_cjk_author_notes():
+    from citation_verifier.extract.pdf import _claim_scan_body
+
+    out = _claim_scan_body(
+        "We rely on annotations [4, 5].\n"
+        "sixth author Yang Yue (乐阳) share the same English name but different Chinese names.\n"
+        "39th Conference on Neural Information Processing Systems (NeurIPS 2025).\n"
+        "RL improves reasoning [6]."
+    )
+    assert "Neural Information Processing Systems" not in out  # venue header dropped
+    assert "乐阳" not in out and "Chinese names" not in out  # CJK name-gloss note dropped
+    assert "RL improves reasoning [6]." in out
+
+
+def test_claim_scan_keeps_multilingual_claim_with_cjk_example():
+    # a legitimate claim quoting a Chinese example/dataset must NOT be dropped just for
+    # containing CJK — only author-name-gloss / mostly-CJK boilerplate is removed.
+    from citation_verifier.extract.pdf import _claim_scan_body
+
+    claim = "The model translates 你好 to hello and scores 95% on the CMRC dataset [12]."
+    out = _claim_scan_body("Intro.\n" + claim + "\nNext sentence.")
+    assert claim in out
+
+
+def test_numeric_path_gating_distinguishes_math_interval_from_citations():
+    # A math interval in author-year prose is NOT a numbered-citation paper; a body
+    # whose [n] markers resolve to refs IS.
+    from citation_verifier.extract.pdf import _has_numbered_citations
+    from citation_verifier.schema import CitedAs
+
+    refs = {f"ref-{n}": CitedAs(raw=f"r{n}") for n in range(1, 20)}
+    assert _has_numbered_citations("a score Si ∈ [0, 100] from an evaluator", refs) is False
+    assert _has_numbered_citations("PPO [12, 13] and methods [4, 5], plus [7].", refs) is True
+
+
+def test_claim_scan_drops_section_headings_and_footnotes():
+    from citation_verifier.extract.pdf import _claim_scan_body
+
+    out = _claim_scan_body(
+        "We unlock this potential.\n1 Introduction\n∗ Equal Contribution. † Project Lead.\n"
+        "The development of reasoning LLMs is rapid."
+    )
+    assert "1 Introduction" not in out
+    assert "Equal Contribution" not in out
+    assert "The development of reasoning LLMs is rapid." in out

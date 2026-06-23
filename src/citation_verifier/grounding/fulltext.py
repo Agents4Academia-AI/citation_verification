@@ -19,14 +19,37 @@ import gzip
 import io
 import re
 import tarfile
+from dataclasses import dataclass
 
 __all__ = [
+    "FullTextResult",
     "split_sections",
     "select_evidence_chunks",
     "fetch_full_text",
+    "fetch_full_text_with_source",
     "fetch_full_text_from_url",
     "fetch_full_text_via_search",
+    "fetch_full_text_via_search_with_source",
 ]
+
+
+@dataclass(frozen=True)
+class FullTextResult:
+    """Retrieved full text plus its provenance — which channel and URL produced it.
+
+    ``source`` is a coarse channel label for debugging judge misfires
+    (``arxiv_html`` | ``arxiv_eprint`` | ``arxiv_pdf`` | ``resolved_url`` |
+    ``openalex_oa`` | ``unpaywall`` | ``meta_pdf`` | ``web_search``); ``url`` is the
+    document actually fetched. Truthy iff non-empty text — so callers keep using
+    ``if not result:`` / ``if result:`` exactly as with the bare-string fetchers.
+    """
+
+    text: str
+    source: str = ""
+    url: str = ""
+
+    def __bool__(self) -> bool:
+        return bool(self.text)
 
 # Sections a relevance judge consults by default; experimental ones are added
 # only when the claim itself is about methods/data/results (see _needs_experimental).
@@ -240,21 +263,39 @@ def _extract_tex_from_eprint(data: bytes) -> str:
         return ""
 
 
-def fetch_full_text(arxiv_id: str | None, *, timeout: int = 30, max_chars: int = 200_000) -> str:
-    """Best-effort full text of an arXiv paper: LaTeX source first, PDF fallback.
+def fetch_full_text_with_source(
+    arxiv_id: str | None, *, timeout: int = 30, max_chars: int = 200_000
+) -> FullTextResult:
+    """Best-effort arXiv full text **with provenance** (HTML → LaTeX e-print → PDF).
 
-    Network + fail-soft: returns ``""`` for a non-arXiv id or on ANY fetch/parse
-    failure (the relevance stage then keeps its abstract-only verdict). Capped at
-    ``max_chars`` so a huge paper can't blow up downstream chunking.
+    Network + fail-soft: returns an empty :class:`FullTextResult` for a non-arXiv id
+    or on ANY fetch/parse failure (the relevance stage then keeps its abstract-only
+    verdict). Capped at ``max_chars`` so a huge paper can't blow up chunking.
     """
     stem = _arxiv_stem(arxiv_id)
     if not stem:
-        return ""
+        return FullTextResult("")
+    # arXiv's HTML rendering first — clean text, no LaTeX/PDF parsing (adapted from
+    # Klara Kaleb's prior/fulltext.py); fall back to the LaTeX e-print, then PDF.
+    from .oa_fulltext import arxiv_html_text_with_url
+
+    html, html_url = arxiv_html_text_with_url(stem, timeout=timeout, max_chars=max_chars)
+    if html:
+        return FullTextResult(html, "arxiv_html", html_url)
     tex = _extract_tex_from_eprint(_http_get_bytes(_ARXIV_EPRINT_URL.format(stem=stem), timeout))
     if len(tex) >= _TEX_MIN_CHARS:
-        return tex[:max_chars]
+        return FullTextResult(tex[:max_chars], "arxiv_eprint", _ARXIV_EPRINT_URL.format(stem=stem))
     pdf_text = _fetch_arxiv_pdf_text(stem, timeout)
-    return (pdf_text or tex)[:max_chars]
+    if pdf_text:
+        return FullTextResult(pdf_text[:max_chars], "arxiv_pdf", f"https://arxiv.org/pdf/{stem}")
+    return FullTextResult(tex[:max_chars], "arxiv_eprint", _ARXIV_EPRINT_URL.format(stem=stem)) if tex else FullTextResult("")
+
+
+def fetch_full_text(arxiv_id: str | None, *, timeout: int = 30, max_chars: int = 200_000) -> str:
+    """Bare-text arXiv full text (HTML → LaTeX → PDF). See
+    :func:`fetch_full_text_with_source` for provenance; this is the back-compat
+    string wrapper. ``""`` for a non-arXiv id or on any failure."""
+    return fetch_full_text_with_source(arxiv_id, timeout=timeout, max_chars=max_chars).text
 
 
 def fetch_full_text_from_url(
@@ -409,11 +450,63 @@ def _ddg_search(query: str, *, max_results: int = 5, timeout: int = 20) -> list[
     return _parse_ddg_results(html, max_results)
 
 
+def _web_search_enabled() -> bool:
+    """Is the last-resort open-web search turned on? Off by default.
+
+    Gated on ``ENABLE_WEB_SEARCH`` (read env-direct, like ``GOOGLE_API_KEY`` here)
+    so the uncontrolled search-engine fallback never fires unless explicitly
+    opted in — arXiv / OpenAlex / Unpaywall / DOI-landing lookups are deterministic
+    id/DOI fetches and are NOT affected by this gate.
+    """
+    import os
+
+    return os.environ.get("ENABLE_WEB_SEARCH", "").strip().lower() in ("1", "true", "yes", "on")
+
+
 def _default_web_search(query: str, *, max_results: int = 5) -> list[str]:
-    """Default backend: Google Custom Search when keyed, else DuckDuckGo (keyless)."""
+    """Default backend: Google Custom Search when keyed, else DuckDuckGo (keyless).
+
+    Returns ``[]`` (no search) unless :func:`_web_search_enabled`. An explicitly
+    injected ``search=`` callback bypasses this gate (tests / alternate backends)."""
+    if not _web_search_enabled():
+        return []
     return _google_cse_search(query, max_results=max_results) or _ddg_search(
         query, max_results=max_results
     )
+
+
+def fetch_full_text_via_search_with_source(
+    title: str | None,
+    *,
+    year: int | None = None,
+    search=None,
+    timeout: int = 30,
+    max_chars: int = 200_000,
+    max_results: int = 5,
+) -> FullTextResult:
+    """Last-resort Stage-2 full text **with provenance**: web-search a free PDF,
+    fetch + title-verify it, and report the matched URL (``source="web_search"``).
+
+    For off-arXiv papers with no fetchable ``openAccessPdf`` (e.g. CEUR / OpenAI
+    tech reports), search the web for a downloadable PDF, fetch each hit, and return
+    the first whose text passes :func:`_text_matches_paper` — the title-namesake
+    gate. ``search`` is injectable (default: :func:`_default_web_search`, i.e.
+    Google Custom Search when keyed, else DuckDuckGo keyless) for tests and alternate
+    backends. Network + fail-soft: empty for a too-short title, no hit, or ANY error.
+    """
+    title = (title or "").strip()
+    if len(title) < 6:
+        return FullTextResult("")
+    search = search or _default_web_search
+    try:
+        urls = search(_search_query(title, year), max_results=max_results)
+    except Exception:  # noqa: BLE001 — fail soft
+        return FullTextResult("")
+    for url in (urls or [])[:max_results]:
+        text = fetch_full_text_from_url(url, timeout=timeout, max_chars=max_chars)
+        if text and _text_matches_paper(text, title):
+            return FullTextResult(text, "web_search", url)
+    return FullTextResult("")
 
 
 def fetch_full_text_via_search(
@@ -425,28 +518,11 @@ def fetch_full_text_via_search(
     max_chars: int = 200_000,
     max_results: int = 5,
 ) -> str:
-    """Last-resort Stage-2 full text: web-search for a free PDF, fetch + verify it.
-
-    For off-arXiv papers with no fetchable ``openAccessPdf`` (e.g. CEUR / OpenAI
-    tech reports), search the web for a downloadable PDF, fetch each hit, and return
-    the first whose text passes :func:`_text_matches_paper` — the title-namesake
-    gate. ``search`` is injectable (default: :func:`_default_web_search`, i.e.
-    Google Custom Search when keyed, else DuckDuckGo keyless) for tests and alternate
-    backends. Network + fail-soft: ``""`` for a too-short title, no hit, or ANY error.
-    """
-    title = (title or "").strip()
-    if len(title) < 6:
-        return ""
-    search = search or _default_web_search
-    try:
-        urls = search(_search_query(title, year), max_results=max_results)
-    except Exception:  # noqa: BLE001 — fail soft
-        return ""
-    for url in (urls or [])[:max_results]:
-        text = fetch_full_text_from_url(url, timeout=timeout, max_chars=max_chars)
-        if text and _text_matches_paper(text, title):
-            return text
-    return ""
+    """Bare-text web-search full text. See :func:`fetch_full_text_via_search_with_source`
+    for provenance; this is the back-compat string wrapper."""
+    return fetch_full_text_via_search_with_source(
+        title, year=year, search=search, timeout=timeout, max_chars=max_chars, max_results=max_results
+    ).text
 
 
 def _fetch_arxiv_pdf_text(stem: str, timeout: int) -> str:
