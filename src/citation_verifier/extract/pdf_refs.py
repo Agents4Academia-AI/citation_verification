@@ -27,6 +27,7 @@ Network-free; PyMuPDF is an optional import (absent -> ``[]``, caller degrades).
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 
 __all__ = ["extract_reference_entries", "extract_reference_strings"]
@@ -51,8 +52,28 @@ _NUM_MARKER_RE = re.compile(r"^\s*(?:\[(\d{1,3})\]|(\d{1,3})\.)\s+")
 _URL_CONT_RE = re.compile(r"^(?:https?://|doi:|URL\b|arXiv:)", re.IGNORECASE)
 
 
+# A combining mark (U+0300–U+036F) stranded after a space — a despacing artifact.
+_ORPHAN_COMBINING_RE = re.compile("\\s+[̀-ͯ]+")
+# Spacing/standalone diacritic glyphs a PDF emits where an accent belongs, plus a
+# mangled umlaut rendered as a straight/curly double-quote (U+0022/U+201C/U+201D).
+# Drop one when it sits *between two letters* — a clear name artifact, e.g.
+# "Vuli<acute>c" -> "Vulic", "Hakkani-T<dq>ur" -> "Hakkani-Tur",
+# "Yeti<cedilla>stiren" -> "Yetistiren", "Rozi<grave>ere" -> "Roziere".
+# Apostrophes (U+0027 / U+2019) are excluded so "O'Brien" survives.
+_STRAY_DIACRITIC_RE = re.compile(
+    "(?<=[A-Za-z])"
+    '[¨¯´¸`ˆ˘˙˚˛˜˝"“”̀-ͯ]+'
+    "(?=[A-Za-z])"
+)
+
+
 def _clean(s: str) -> str:
-    s = s.replace("­", "").replace("ﬁ", "fi").replace("ﬂ", "fl")
+    # NFKC folds ligatures (ﬁ->fi) and compatibility glyphs; then heal the
+    # diacritic artifacts that break author names + matching.
+    s = unicodedata.normalize("NFKC", s or "")
+    s = s.replace("­", "")  # soft hyphen
+    s = _ORPHAN_COMBINING_RE.sub("", s)
+    s = _STRAY_DIACRITIC_RE.sub("", s)
     return re.sub(r"\s+", " ", s).strip()
 
 

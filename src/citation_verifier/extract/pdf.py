@@ -499,6 +499,17 @@ _SENT_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Z])")
 # A claim that opens with a table caption ("Table 3 Comparison of …") is a table
 # cell/caption, not a prose claim — its relevance is not assessed (in_table).
 _TABLE_CAPTION_RE = re.compile(r"^\s*(?:Table|TABLE|Tab\.)\s*\d+\b")
+# A comparison-table *body* row dumped into one claim: several "[n]" markers each
+# followed by a year or a capitalized cell (table columns), e.g.
+# "ELIZA [19] 1966 Chatbot … SHRDLU [20] 1970 Task-Oriented …". In prose a marker
+# is followed by lowercase/punctuation ("[19] showed", "[19], which"), so this
+# does NOT fire on an ordinary multi-citation sentence ("works [1], [2], [3] …").
+_TABLE_ROW_RE = re.compile(r"\[\s*\d+\s*\]\s+(?:(?:19|20)\d{2}\b|[A-Z])")
+
+
+def _looks_like_table_dump(text: str) -> bool:
+    """True when a claim reads as a comparison-table row dump (skip its relevance)."""
+    return len(_TABLE_ROW_RE.findall(text or "")) >= 3
 _MAX_CLAIM_CHARS = 360
 _EMAIL_RE = re.compile(r"\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b")
 _AFFILIATION_START_RE = re.compile(
@@ -628,7 +639,7 @@ class PdfExtractor:
             if not cite_keys:
                 continue
             sentence, span = _sentence_around(claim_body, mm.start())
-            in_table = bool(_TABLE_CAPTION_RE.match(sentence))
+            in_table = bool(_TABLE_CAPTION_RE.match(sentence)) or _looks_like_table_dump(sentence)
             for cite_key in cite_keys:
                 claim_id = make_claim_id(source.paper_id, None, span, cite_key)
                 dedup = (source.paper_id, claim_id, cite_key)

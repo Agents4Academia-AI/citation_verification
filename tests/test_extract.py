@@ -438,3 +438,27 @@ def test_pdf_refs_line_text_reinserts_spaces_from_kerning_gaps():
         ch("3", 0.0, 4.0), ch(".", 4.0, 5.0), ch("5", 6.6, 10.6),
     ]}]}
     assert _line_text(decimal) == "3.5"
+
+
+# ── B1: heal mangled diacritics in the layout parser ─────────────────────────
+def test_pdf_refs_clean_heals_mangled_diacritics():
+    from citation_verifier.extract.pdf_refs import _clean
+
+    assert _clean("Vuli´c I") == "Vulic I"            # orphan acute between letters
+    assert _clean("Yeti¸stiren B") == "Yetistiren B"   # spacing cedilla
+    assert _clean('Hakkani-T"ur D') == "Hakkani-Tur D"  # mangled umlaut (straight quote)
+    assert _clean("Rozi`ere B") == "Roziere B"          # grave/backtick
+    assert _clean("O'Brien J") == "O'Brien J"           # apostrophe is NOT a diacritic
+    assert _clean("Özsoy I") == "Özsoy I"               # precomposed accent kept intact
+
+
+# ── A1: detect comparison-table body dumps (skip their relevance) ────────────
+def test_pdf_looks_like_table_dump_vs_prose():
+    from citation_verifier.extract.pdf import _looks_like_table_dump
+
+    # table body: markers each followed by a year or a capitalized cell
+    assert _looks_like_table_dump("ELIZA [19] 1966 Chatbot SHRDLU [20] 1970 Task PARRY [21] 1972 Bot")
+    assert _looks_like_table_dump("ELIZA [19] No N/A SHRDLU [20] No Specific PARRY [21] No Limited")
+    # ordinary multi-citation prose (markers followed by punctuation/lowercase) must NOT fire
+    assert not _looks_like_table_dump("Several works [1], [2], [3], and [4] proposed methods.")
+    assert not _looks_like_table_dump("Technologies like Watson [25], Siri [26], Alexa [27] exist.")
