@@ -321,7 +321,13 @@ def _escalate_inconclusive(
     record with no arXiv id / no fetchable text / a judge error keeps its Stage-1
     verdict.
     """
-    from ..grounding.fulltext import fetch_full_text, select_evidence_chunks, split_sections
+    from ..grounding.fulltext import (
+        fetch_full_text,
+        fetch_full_text_from_url,
+        fetch_full_text_via_search,
+        select_evidence_chunks,
+        split_sections,
+    )
 
     fulltext_cache: dict[str, str] = {}  # fetch each cited paper at most once per run
     esc_items: list[dict] = []
@@ -332,12 +338,30 @@ def _escalate_inconclusive(
         sc = getattr(verdict.supports_claim, "value", verdict.supports_claim)
         if sc != SupportsClaim.INCONCLUSIVE.value:
             continue
-        arxiv = rec.resolved.arxiv_id if rec.resolved else None
-        if not arxiv:
+        # Full-text source, by precision/cost (each cited paper fetched once):
+        #   1. arXiv e-print/PDF by id;
+        #   2. an open-access PDF URL (S2's openAccessPdf, on resolved.url);
+        #   3. a web search for a free, title-verified PDF (key-gated) — the
+        #      fallback for off-arXiv papers whose OA PDF (if any) wasn't fetchable.
+        res = rec.resolved
+        if not res:
             continue
-        if arxiv not in fulltext_cache:
-            fulltext_cache[arxiv] = fetch_full_text(arxiv)
-        full = fulltext_cache[arxiv]
+        arxiv = res.arxiv_id
+        cited_title = res.title or rec.cited_as.title or ""
+        key = arxiv or res.url or (f"search:{cited_title}" if cited_title else "")
+        if not key:
+            continue
+        if key not in fulltext_cache:
+            if arxiv:
+                full = fetch_full_text(arxiv)
+            elif res.url:
+                full = fetch_full_text_from_url(res.url)
+            else:
+                full = ""
+            if not full and cited_title:
+                full = fetch_full_text_via_search(cited_title, year=res.year)
+            fulltext_cache[key] = full
+        full = fulltext_cache[key]
         if not full:
             continue
         chunks = select_evidence_chunks(rec.claim.text, split_sections(full), k=_FULLTEXT_CHUNKS)

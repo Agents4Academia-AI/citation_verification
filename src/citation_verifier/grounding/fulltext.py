@@ -20,7 +20,13 @@ import io
 import re
 import tarfile
 
-__all__ = ["split_sections", "select_evidence_chunks", "fetch_full_text"]
+__all__ = [
+    "split_sections",
+    "select_evidence_chunks",
+    "fetch_full_text",
+    "fetch_full_text_from_url",
+    "fetch_full_text_via_search",
+]
 
 # Sections a relevance judge consults by default; experimental ones are added
 # only when the claim itself is about methods/data/results (see _needs_experimental).
@@ -115,15 +121,22 @@ def _needs_experimental(claim: str) -> bool:
 
 
 def _section_in_scope(heading: str, want_experimental: bool) -> bool:
-    """Is this section one the judge should read for this claim?"""
+    """Is this section one the judge should read for this claim?
+
+    Default (summary-ish) sections are always in scope; recognized experimental
+    sections only when the claim is about methods/data/results. An *unknown*
+    heading is kept in scope: flat PDF text often misparses author/affiliation
+    lines into bogus headings, so excluding the unknown would drop real body
+    prose (the relevant passage frequently lives there).
+    """
     key = _heading_key(heading)
     if not key:
         return True  # pre-heading / abstract-ish block: always in scope
     if any(s in key for s in _DEFAULT_SECTIONS):
         return True
-    if want_experimental and any(s in key for s in _EXPERIMENTAL_SECTIONS):
-        return True
-    return False
+    if any(s in key for s in _EXPERIMENTAL_SECTIONS):
+        return want_experimental  # gate recognized methods/results sections
+    return True  # unknown heading (e.g. misparsed PDF line) -> keep in scope
 
 
 def _chunks(body: str, max_chars: int) -> list[str]:
@@ -244,9 +257,209 @@ def fetch_full_text(arxiv_id: str | None, *, timeout: int = 30, max_chars: int =
     return (pdf_text or tex)[:max_chars]
 
 
+def fetch_full_text_from_url(
+    url: str | None, *, timeout: int = 30, max_chars: int = 200_000
+) -> str:
+    """Best-effort full text from a direct PDF URL (e.g. S2's ``openAccessPdf``).
+
+    Stage-2 source for **off-arXiv** papers: when the resolved record has no arXiv
+    id but carries an open-access PDF link, fetch it and extract the text. The
+    bytes are content-sniffed for the ``%PDF`` magic so a landing page / HTML
+    response (or a paywall interstitial) fails soft to ``""`` instead of feeding
+    the judge garbage. Network + fail-soft: ``""`` for an empty url or ANY error.
+
+    No title verification is needed here because the URL is the curated OA link for
+    an already-matched paper — it carries no namesake risk (contrast a title search).
+    """
+    if not (url or "").strip():
+        return ""
+    data = _http_get_bytes(url, timeout)
+    if data[:5] != b"%PDF-":  # not a PDF (HTML landing page, paywall, error) -> skip
+        return ""
+    return _pdf_bytes_to_text(data)[:max_chars]
+
+
+# Title-token overlap required between the cited title and a fetched PDF before we
+# trust it (the title-search namesake gate). Tuned so the GPT-2 cite
+# "… Unsupervised Multitask Learners" rejects the 2024 "… Supervised Multitask
+# Learners": every content token of the cited title must appear, with a 1-token
+# slack only for long (>=7-token) titles to tolerate PDF-extraction noise.
+def _text_matches_paper(text: str, title: str) -> bool:
+    """True when ``text`` (a fetched PDF) is plausibly the paper named by ``title``.
+
+    A title web-search can surface a same-title namesake, so a fetched PDF is only
+    trusted when (nearly) every content token of the cited title is present in its
+    head. This is the precision gate that makes a title-based fetch safe.
+    """
+    want = {t for t in _tokens(title) if len(t) > 3} or _tokens(title)
+    if not want:
+        return False
+    missing = want - _tokens((text or "")[:6000])
+    tol = 1 if len(want) >= 7 else 0  # extraction slack for long titles only
+    return len(missing) <= tol
+
+
+def _search_query(title: str, year: int | None) -> str:
+    """Build a web-search query biased toward a downloadable PDF of the paper."""
+    q = f'"{title}" filetype:pdf'
+    return f"{q} {year}" if year else q
+
+
+def _google_cse_search(query: str, *, max_results: int = 5, timeout: int = 20) -> list[str]:
+    """Google Programmable Search (Custom Search JSON API) -> result URLs.
+
+    OPTIONAL + fail-soft + key-gated, mirroring the S2/OpenAlex convention: returns
+    ``[]`` unless BOTH ``GOOGLE_API_KEY`` and ``GOOGLE_CSE_ID`` are set, and on any
+    error. This is the only ToS-clean way to query google.com from code; absent a
+    key the web-search tier is simply a no-op.
+    """
+    import json
+    import os
+    import urllib.parse
+    import urllib.request
+
+    key = os.environ.get("GOOGLE_API_KEY", "")
+    cx = os.environ.get("GOOGLE_CSE_ID", "")
+    if not (key and cx):
+        return []
+    params = urllib.parse.urlencode(
+        {"key": key, "cx": cx, "q": query, "num": min(max(max_results, 1), 10)}
+    )
+    req = urllib.request.Request(
+        f"https://www.googleapis.com/customsearch/v1?{params}",
+        headers={"User-Agent": "citation-verifier/0.1"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 — googleapis https
+            data = json.loads(resp.read())
+    except Exception:  # noqa: BLE001 — fail soft (offline / quota / bad key)
+        return []
+    return [it["link"] for it in (data.get("items") or []) if it.get("link")]
+
+
+# A browser-ish UA: DuckDuckGo's HTML endpoint serves empty/blocked pages to the
+# default library UA. Used ONLY for the search request, not the PDF fetch.
+_BROWSER_UA = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+)
+
+
+def _parse_ddg_results(html: str, max_results: int) -> list[str]:
+    """Pure: extract de-duplicated result URLs from a DuckDuckGo HTML page.
+
+    Robust to both DDG link shapes: the redirect wrapper
+    ``…/l/?uddg=<percent-encoded-url>`` and a direct ``href`` on the
+    ``result__a`` anchor. Order-preserving, http(s)-only, DDG-internal links
+    dropped, capped at ``max_results``.
+    """
+    import urllib.parse
+
+    def _add(url: str) -> None:
+        if url.startswith("//"):
+            url = "https:" + url
+        if "uddg=" in url:  # redirect wrapper -> decode the real target
+            m = re.search(r"uddg=([^\"'&]+)", url)
+            url = urllib.parse.unquote(m.group(1)) if m else ""
+        if url.startswith("http") and "duckduckgo.com" not in url and url not in seen:
+            seen.add(url)
+            out.append(url)
+
+    out: list[str] = []
+    seen: set[str] = set()
+    # 1) hrefs on result anchors (current format may be a direct external link).
+    for tag in re.findall(r"<a\b[^>]*class=\"[^\"]*result__a[^\"]*\"[^>]*>", html or ""):
+        m = re.search(r'href="([^"]+)"', tag)
+        if m:
+            _add(m.group(1))
+        if len(out) >= max_results:
+            return out
+    # 2) fallback: any uddg= wrapper anywhere (older/lite format).
+    for enc in re.findall(r"uddg=([^\"'&]+)", html or ""):
+        _add("uddg=" + enc)
+        if len(out) >= max_results:
+            break
+    return out
+
+
+def _ddg_search(query: str, *, max_results: int = 5, timeout: int = 20) -> list[str]:
+    """DuckDuckGo HTML search -> result URLs. Keyless, fail-soft.
+
+    The no-key fallback backend: it scrapes ``html.duckduckgo.com`` (no official
+    API), so it is best-effort and ToS-gray — fine for local runs, but a deployer
+    should set ``GOOGLE_API_KEY``/``GOOGLE_CSE_ID`` for the reliable path. ``[]`` on
+    any error / block.
+    """
+    import urllib.parse
+    import urllib.request
+
+    req = urllib.request.Request(
+        "https://html.duckduckgo.com/html/",
+        data=urllib.parse.urlencode({"q": query}).encode(),
+        headers={
+            "User-Agent": _BROWSER_UA,
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 — ddg https
+            html = resp.read().decode("utf-8", "replace")
+    except Exception:  # noqa: BLE001 — fail soft (offline / blocked / 429)
+        return []
+    return _parse_ddg_results(html, max_results)
+
+
+def _default_web_search(query: str, *, max_results: int = 5) -> list[str]:
+    """Default backend: Google Custom Search when keyed, else DuckDuckGo (keyless)."""
+    return _google_cse_search(query, max_results=max_results) or _ddg_search(
+        query, max_results=max_results
+    )
+
+
+def fetch_full_text_via_search(
+    title: str | None,
+    *,
+    year: int | None = None,
+    search=None,
+    timeout: int = 30,
+    max_chars: int = 200_000,
+    max_results: int = 5,
+) -> str:
+    """Last-resort Stage-2 full text: web-search for a free PDF, fetch + verify it.
+
+    For off-arXiv papers with no fetchable ``openAccessPdf`` (e.g. CEUR / OpenAI
+    tech reports), search the web for a downloadable PDF, fetch each hit, and return
+    the first whose text passes :func:`_text_matches_paper` — the title-namesake
+    gate. ``search`` is injectable (default: :func:`_default_web_search`, i.e.
+    Google Custom Search when keyed, else DuckDuckGo keyless) for tests and alternate
+    backends. Network + fail-soft: ``""`` for a too-short title, no hit, or ANY error.
+    """
+    title = (title or "").strip()
+    if len(title) < 6:
+        return ""
+    search = search or _default_web_search
+    try:
+        urls = search(_search_query(title, year), max_results=max_results)
+    except Exception:  # noqa: BLE001 — fail soft
+        return ""
+    for url in (urls or [])[:max_results]:
+        text = fetch_full_text_from_url(url, timeout=timeout, max_chars=max_chars)
+        if text and _text_matches_paper(text, title):
+            return text
+    return ""
+
+
 def _fetch_arxiv_pdf_text(stem: str, timeout: int) -> str:
-    """Download the arXiv PDF and extract its text (needs a PDF extractor). ``""`` on failure."""
-    data = _http_get_bytes(_ARXIV_PDF_URL.format(stem=stem), timeout)
+    """Download the arXiv PDF and extract its text. ``""`` on failure."""
+    return _pdf_bytes_to_text(_http_get_bytes(_ARXIV_PDF_URL.format(stem=stem), timeout))
+
+
+def _pdf_bytes_to_text(data: bytes) -> str:
+    """Pure-ish: extract text from in-memory PDF bytes (needs a PDF extractor).
+
+    Writes to a temp file (the extractor takes a path) and always cleans it up.
+    Returns ``""`` when the extractor is unavailable or the bytes don't parse.
+    """
     if not data:
         return ""
     import tempfile

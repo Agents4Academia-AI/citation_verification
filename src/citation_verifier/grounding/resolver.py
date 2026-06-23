@@ -678,9 +678,14 @@ class MultiSourceResolver:
         return None
 
     def _to_resolved(self, c: Candidate, method: MatchMethod, score: float) -> Resolved:
+        # Prefer S2's curated open-access PDF as the resolved URL: it points at the
+        # actual paper text (so Stage-2 relevance can fetch full text for off-arXiv
+        # papers, see stages/relevance.py) and is a strictly more useful "source"
+        # link than a landing page. Falls back to the candidate's own URL.
+        url = (c.extra or {}).get("oa_pdf") or c.url or None
         url_valid: bool | None = None
-        if self.validate_urls and c.url:
-            url_valid = paper_lookup.validate_url(c.url)
+        if self.validate_urls and url:
+            url_valid = paper_lookup.validate_url(url)
         abstract = c.abstract or self._abstract_top_up(c)
         return Resolved(
             source=c.source,
@@ -692,7 +697,7 @@ class MultiSourceResolver:
             venue=c.venue or None,
             doi=c.doi or None,
             arxiv_id=c.arxiv_id or None,
-            url=c.url or None,
+            url=url,
             url_valid=url_valid,
             abstract=abstract or None,
         )
@@ -755,7 +760,11 @@ def _dict_to_candidate(d: dict) -> Candidate:
         arxiv_id=str(d.get("arxiv_id", "") or ""),
         url=str(d.get("url", "") or ""),
         abstract=str(d.get("abstract", "") or ""),
-        extra={k: v for k, v in d.items() if k == "type" or (k == "tldr" and v)},
+        extra={
+            k: v
+            for k, v in d.items()
+            if k == "type" or (k in ("tldr", "oa_pdf") and v)
+        },
     )
 
 
