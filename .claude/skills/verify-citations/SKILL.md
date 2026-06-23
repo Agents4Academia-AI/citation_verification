@@ -28,8 +28,8 @@ exists is exactly the failure mode you are here to catch. Every statement about
 whether a paper is real, and about its authors / venue / year, MUST be grounded
 in a `lookup_paper` result (Crossref / arXiv / DBLP, optionally Semantic Scholar
 / OpenAlex) or a web result you actually retrieved. If you cannot verify
-something, label it `unverified` — never guess. A web hit alone never upgrades
-`unverified -> yes` without a corroborating structured record.
+something, label it `unresolved` — never guess. A web hit alone never upgrades
+`unresolved -> yes` without a corroborating structured record.
 
 ## Workflow
 
@@ -52,7 +52,7 @@ something, label it `unverified` — never guess. A web hit alone never upgrades
    actually supports that specific claim. Base this on evidence you retrieved:
    the abstract from `lookup_paper`, or `WebFetch` the paper's page for more.
    Quote the supporting (or contradicting) snippet. If you couldn't retrieve
-   enough, mark `unverified`.
+   enough, mark `inconclusive`.
 5. **Assign priority** — obligatory vs. helpful (rubric below).
 6. **(Optional) Comparison objectiveness** — for *obligatory* citations that are
    competing methods/baselines, check whether the draft actually compares against
@@ -62,7 +62,7 @@ something, label it `unverified` — never guess. A web hit alone never upgrades
 
 ## Correctness rubric
 
-For each reference decide **Exists?** = `yes` / `no` / `unverified`, then list
+For each reference decide **Exists?** = `yes` / `no` / `unresolved`, then list
 **metadata issues** by comparing claimed vs. canonical:
 
 - **Exists = no** — no strong title match in Crossref, arXiv, DBLP, or on the
@@ -89,7 +89,7 @@ For each reference decide **Exists?** = `yes` / `no` / `unverified`, then list
   "proven", paper only shows it empirically on one dataset).
 - `does not` — the paper does not support, or even contradicts, the claim.
   Serious. *(Machine token: `does_not`.)*
-- `unverified` — you could not retrieve enough of the cited paper to judge.
+- `inconclusive` — you could not retrieve enough of the cited paper to judge.
 
 ### Constructing the relevance justification (STEP 2)
 
@@ -147,8 +147,8 @@ high-severity items in priority order.
 
 | Column            | Machine tokens (schema)                         | Rendered strings (table)                    |
 |-------------------|-------------------------------------------------|---------------------------------------------|
-| Exists?           | `yes` / `no` / `unverified`                     | yes / no / unverified                       |
-| Supports claim?   | `supports` / `partial` / `does_not` / `unverified` | supports / partial / **does not** / unverified |
+| Exists?           | `yes` / `no` / `unresolved`                     | yes / no / unresolved                       |
+| Supports claim?   | `supports` / `partial` / `does_not` / `inconclusive` | supports / partial / **does not** / inconclusive |
 | Priority          | `obligatory` / `helpful`                        | obligatory / helpful                        |
 | Issue / Severity  | `high` / `medium` / `low` / `ok`                | high / medium / low / ok                    |
 

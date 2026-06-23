@@ -26,9 +26,9 @@ structural waste, on two axes the team asked for (accuracy floor + lower cost):
 
 Accuracy guards: the model never sets ``exists`` (it stays the grounded value, so
 existence is never asserted from memory); and a ``supports`` verdict is downgraded
-to ``unverified`` when no abstract/introduction was retrieved to ground it. When
+to ``unresolved/inconclusive`` when no abstract/introduction was retrieved to ground it. When
 the abstract(+intro) lacks the specific claimed evidence, the model is asked to
-abstain (``partial`` / ``unverified``) rather than guess.
+abstain (``partial`` / ``unresolved/inconclusive``) rather than guess.
 
 The SDK is a lazy import inside methods (:func:`_require_sdk`) so this module
 imports with the SDK absent; the grounding/stages siblings are imported lazily too.
@@ -264,7 +264,7 @@ class ClaudeCodeBackend(BaseBackend):
         try:
             from ..stages import fill_correctness  # public stage API
             from ..stages.relevance import _infer_priority
-        except Exception:  # noqa: BLE001 — siblings absent: degrade to unverified
+        except Exception:  # noqa: BLE001 — siblings absent: degrade to unresolved/inconclusive
             fill_correctness = None  # type: ignore[assignment]
             _infer_priority = None  # type: ignore[assignment]
 
@@ -274,7 +274,7 @@ class ClaudeCodeBackend(BaseBackend):
                 fill_correctness(rep, resolver=resolver)
             except Exception as exc:  # noqa: BLE001 — degrade-not-crash
                 rep.error = (rep.error + "; " if rep.error else "") + f"preground: {exc!r}"
-                rep.exists = Exists.UNVERIFIED.value
+                rep.exists = Exists.UNRESOLVED.value
         evidence = self._evidence_text(rep)
 
         for stub in group:
@@ -355,11 +355,11 @@ class ClaudeCodeBackend(BaseBackend):
             "Existence is already determined for you from retrieval — do not invent it. "
             "Per citation you may ADD metadata issues; per CLAIM you judge relevance + "
             "priority:\n"
-            "- supports_claim: supports | partial | does_not | unverified. Use ONLY the "
+            "- supports_claim: supports | partial | does_not | inconclusive. Use ONLY the "
             "citation's evidence text. If the specific claimed fact/result/method is not "
-            "present in it, use 'unverified' (or 'partial' if clearly related but not "
+            "present in it, use 'inconclusive' (or 'partial' if clearly related but not "
             "confirming). Do NOT guess 'supports'. If the evidence is empty, you MUST "
-            "use 'unverified'.\n"
+            "use 'inconclusive'.\n"
             "- priority: obligatory (the claim depends on this source — a method "
             "used/extended, a baseline, a dataset, a specific result/quote) or helpful "
             "(background / see-also).\n"
@@ -409,8 +409,8 @@ class ClaudeCodeBackend(BaseBackend):
         The model returns one object per citation
         (``{cite_key, metadata_issues, claims:[{claim_id, ...}]}``). Existence stays
         the grounded value (never model-set); a ``supports`` with no retrieved
-        evidence is downgraded to ``unverified``; a claim the model omitted degrades
-        to ``unverified`` (1:1 with the chunk's claim-sites).
+        evidence is downgraded to ``unresolved/inconclusive``; a claim the model omitted degrades
+        to ``unresolved/inconclusive`` (1:1 with the chunk's claim-sites).
         """
         by_key: dict[str, dict] = {}
         for row in _parse_rows(text):
@@ -473,7 +473,7 @@ class ClaudeCodeBackend(BaseBackend):
 
         # Accuracy guard: support requires retrieved text to rest on.
         if rec.supports_claim == SupportsClaim.SUPPORTS.value and not has_evidence:
-            rec.supports_claim = SupportsClaim.UNVERIFIED.value
+            rec.supports_claim = SupportsClaim.INCONCLUSIVE.value
             rec.notes = (rec.notes + "\n" if rec.notes else "") + (
                 "abstained: no abstract/introduction was retrieved to ground support"
             )
@@ -481,13 +481,13 @@ class ClaudeCodeBackend(BaseBackend):
     def _finalize_degraded(
         self, stub: CitationRecord, source: PaperSource, reason: str
     ) -> CitationRecord:
-        """Return a grounded stub as an unverified, error-stamped record."""
+        """Return a grounded stub as an unresolved/inconclusive, error-stamped record."""
         stub.paper_id = stub.paper_id or source.paper_id
-        stub.supports_claim = SupportsClaim.UNVERIFIED.value
+        stub.supports_claim = SupportsClaim.INCONCLUSIVE.value
         stub.model_tier = ModelTier.JUDGE.value
         stub.error = (stub.error + "; " if stub.error else "") + reason
         stub.severity = derive_severity(
-            Exists(stub.exists), SupportsClaim.UNVERIFIED, Priority(stub.priority)
+            Exists(stub.exists), SupportsClaim.INCONCLUSIVE, Priority(stub.priority)
         ).value
         return stub
 
@@ -600,9 +600,10 @@ def _dedupe_keep_order(items: list[str]) -> list[str]:
 _ENUM_ALIASES = {
     "does not": "does_not",
     "doesnt": "does_not",
-    "n/a": "unverified",
-    "na": "unverified",
-    "unknown": "unverified",
+    "n/a": "inconclusive",
+    "na": "inconclusive",
+    "unknown": "inconclusive",
+    "unverified": "inconclusive",  # accept the old token; map to the renamed value
 }
 
 

@@ -19,12 +19,12 @@
   (alongside JSON / eval / Discord). `[change]` `(mvp)`
 - **Unit of work = one `(citation, claim)` pair, not one paper.** Each pair is
   verified with bounded context; a stuck/failed pair degrades to a single
-  `unverified` row and the run continues (degrade-not-crash, resumable). `[change]` `(mvp)`
+  `unresolved/inconclusive` row and the run continues (degrade-not-crash, resumable). `[change]` `(mvp)`
 
 ## Output contract (freeze at init — this is the shared seam)
 - **One versioned `CitationRecord`, keyed by `(claim_id, cite_key)`, 1:1 with the
   SKILL.md columns.** Closed enums exactly as SKILL.md: `exists`
-  (yes/no/unverified), `supports_claim` (supports/partial/does-not/unverified),
+  (yes/no/unresolved/inconclusive), `supports_claim` (supports/partial/does-not/unresolved/inconclusive),
   `priority` (obligatory/helpful), `severity` (high/medium/low/ok); plus
   `claim_text`, `cited_as{authors,title,year,venue}`, `resolved_id`,
   `metadata_issues[]`, `evidence[]`, `confidence`, `model_tier`, `schema_version`.
@@ -50,10 +50,10 @@
   Semantic Scholar. Match cascade DOI > arXiv-id > fuzzy-title (gated by author
   overlap + year ±1); the LLM only adjudicates the fuzzy tier against *retrieved*
   fields. `[extend]` `(mvp)`
-- **Strengthen the abstain rule** (`unverified` beats guessing) and **demote
+- **Strengthen the abstain rule** (`unresolved/inconclusive` beats guessing) and **demote
   WebSearch/WebFetch to gated last-resort** — only after structured sources
   abstain, results quoted with a URL; a web hit alone never upgrades
-  `unverified -> yes` without a corroborating structured record. *Proposal to
+  `unresolved/inconclusive -> yes` without a corroborating structured record. *Proposal to
   narrow the baseline's broad web use — justification: kills hallucination-by-
   snippet + reproducibility.* `[change]` `(mvp)`
 
@@ -81,7 +81,7 @@
   versa. `run_eval.py` joins agent `report-*.json` to gold on `(claim_id,
   cite_key)` → correctness P/R/F1 (positive class = hallucination/wrong-metadata),
   relevance macro-F1, priority accuracy + obligatory-F1, plus abstention/
-  calibration (`unverified` is a first-class scored label). Headline =
+  calibration (`unresolved/inconclusive` is a first-class scored label). Headline =
   correctness-F1. `[new]` `(mvp)`
 - **Anti-circularity:** the gold oracle must NOT reuse `src/paper_lookup.py` or the
   agent's judge model — build gold from a *different* resolver / human
@@ -98,12 +98,12 @@
 
 ## MVP for the Fri Jun 19 demo
 On 2–3 fixed arXiv papers (≥1 with a deliberately fabricated / wrong-metadata
-reference so both `no` and `unverified` fire):
+reference so both `no` and `unresolved/inconclusive` fire):
 1. arXiv id/URL → download LaTeX source → extract record stubs with `(claim_id,
    cite_key)` + ≥1 claim site each (PDF fallback wired but LaTeX is the demo path).
 2. Per-pair verification fills **correctness** (Crossref+arXiv resolver, abstain
    rule on) and **relevance** (`supports_claim` + quoted evidence); a failed pair
-   degrades to `unverified` and the run continues.
+   degrades to `unresolved/inconclusive` and the run continues.
 3. Python deterministically renders the exact SKILL.md table + saves
    `report.json`/`run.json` under `papers/<id>/`.
 4. `evals/run_eval.py` joins that JSON against the in-repo smoke gold (oracle that
@@ -137,7 +137,7 @@ slot in by Jun 26 without touching siblings.
    key — register shared keys into `.env` before forking, or run the demo on the
    keyless Crossref+arXiv floor and treat S2/OpenAlex as a post-demo upgrade?
 5. **Eval scoring constants:** the abstention-aware reward/penalty for
-   `unverified`, confidence semantics (per-axis vs per-record), and whether
+   `unresolved/inconclusive`, confidence semantics (per-axis vs per-record), and whether
    correctness-F1 splits into fabrication vs perturbed-metadata sub-scores.
 6. **Relevance gold source** for the headline: human adjudication (small, trusted)
    vs a different-model LLM judge (scalable, weaker) — which do we trust / report?

@@ -55,8 +55,8 @@ def _degraded_stub(error: str) -> CitationRecord:
         cite_key="run",
         claim=Claim(claim_id="run", text=""),
         cited_as=CitedAs(),
-        exists=Exists.UNVERIFIED,
-        supports_claim=SupportsClaim.UNVERIFIED,
+        exists=Exists.UNRESOLVED,
+        supports_claim=SupportsClaim.INCONCLUSIVE,
         error=error,
     )
 

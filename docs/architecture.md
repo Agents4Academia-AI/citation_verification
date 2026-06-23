@@ -13,7 +13,7 @@ through it, how the two backends plug into the same seam, and where to extend.
    no network. The SDK is a lazy import; network calls fail soft.
 3. **JSON is the source of truth.** The model emits structured `CitationRecord`s;
    the human-readable SKILL.md table is *rendered* from them, never hand-authored.
-4. **Degrade, don't crash.** A stuck pair becomes one `unverified` row and the
+4. **Degrade, don't crash.** A stuck pair becomes one `unresolved/inconclusive` row and the
    run continues.
 
 ## Layers
@@ -64,12 +64,12 @@ becomes N records (it can be obligatory in one spot, background in another).
    each `\cite` call-site, anchoring the exact reference to the exact claim
    sentence/section, and minting a deterministic `claim_id`. PDF is the fallback.
    Output: **record stubs** (key + `claim` + `cited_as`, judged axes left
-   `unverified`). Extraction is its own checkpoint.
+   `unresolved/inconclusive`). Extraction is its own checkpoint.
 3. **Correctness** (`stages/correctness.py` over `grounding/`): resolve the
    reference against structured sources via the cascade **DOI > arXiv-id >
    fuzzy-title** (fuzzy gated by author overlap + year ±1), validate the cited
    URL, and fill `exists`, `resolved`, `metadata_issues`, `evidence`. Never from
-   memory; if nothing resolves and web is gated off, the verdict is `unverified`,
+   memory; if nothing resolves and web is gated off, the verdict is `unresolved/inconclusive`,
    not `no`.
 4. **Relevance** (`stages/relevance.py`): only when correctness holds — compare
    the retrieved abstract/snippet against the claim and fill `supports_claim`,

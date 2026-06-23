@@ -196,7 +196,7 @@
       "enum": [
         "yes",
         "no",
-        "unverified"
+        "unresolved"
       ],
       "title": "Exists",
       "type": "string"
@@ -541,7 +541,7 @@
         "supports",
         "partial",
         "does_not",
-        "unverified"
+        "inconclusive"
       ],
       "title": "SupportsClaim",
       "type": "string"
@@ -587,7 +587,7 @@
     },
     "exists": {
       "$ref": "#/$defs/Exists",
-      "default": "unverified"
+      "default": "unresolved"
     },
     "resolved": {
       "anyOf": [
@@ -609,7 +609,7 @@
     },
     "supports_claim": {
       "$ref": "#/$defs/SupportsClaim",
-      "default": "unverified"
+      "default": "inconclusive"
     },
     "priority": {
       "$ref": "#/$defs/Priority",

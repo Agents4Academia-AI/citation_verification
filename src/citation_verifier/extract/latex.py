@@ -7,7 +7,7 @@ extracted arXiv LaTeX e-print (``tex_dir`` + ``bbl_path`` / ``bib_path``), build
 ``(claim_site, cite_key)`` pair, with the join key, the surrounding claim
 sentence/section, and the ``cited_as`` metadata filled in. The judged axes
 (``exists`` / ``supports_claim`` / ``priority`` / ``severity``) are deliberately
-left at their schema defaults (``unverified`` / ``helpful`` / ``ok``) — they are
+left at their schema defaults (``unresolved`` / ``helpful`` / ``ok``) — they are
 filled later by the grounding/relevance stages or a backend.
 
 Why LaTeX is preferred over PDF (see docs/decisions-phy.md):

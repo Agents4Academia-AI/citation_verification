@@ -22,7 +22,7 @@ SUPPORTS_TABLE_STRINGS = {
     "supports": "supports",
     "partial": "partial",
     "does_not": "does not",
-    "unverified": "unverified",
+    "inconclusive": "inconclusive",
 }
 
 

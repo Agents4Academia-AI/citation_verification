@@ -61,7 +61,7 @@ def test_parse_verdict_fenced_and_pross():
 
 def test_parse_verdict_garbage_abstains():
     v = _parse_verdict("no json at all")
-    assert v.supports_claim is SupportsClaim.UNVERIFIED
+    assert v.supports_claim is SupportsClaim.INCONCLUSIVE
     assert v.priority is None
 
 
@@ -82,7 +82,7 @@ def test_judge_abstains_without_evidence():
     judge = LLMRelevanceJudge(settings=None)
     assert judge.model == "claude-opus-4-6"
     verdict = judge(claim="X improves Y.", abstract="", resolved=None)
-    assert verdict.supports_claim is SupportsClaim.UNVERIFIED
+    assert verdict.supports_claim is SupportsClaim.INCONCLUSIVE
 
 
 # ── the seam: fill_relevance applies an injected judge ────────────────
@@ -103,7 +103,7 @@ def test_fill_relevance_applies_injected_judge():
 def test_fill_relevance_without_judge_abstains():
     rec = _stub()
     out = fill_relevance(rec, resolver=_NullResolver(), judge=None)
-    assert SupportsClaim(out.supports_claim) is SupportsClaim.UNVERIFIED
+    assert SupportsClaim(out.supports_claim) is SupportsClaim.INCONCLUSIVE
 
 
 # ── batched judging ──────────────────────────────────────────────────
@@ -123,7 +123,7 @@ def test_judge_batch_abstains_without_evidence():
         {"claim": "Z does W.", "abstract": "", "resolved": None},
     ])
     assert len(out) == 2
-    assert all(v.supports_claim is SupportsClaim.UNVERIFIED for v in out)
+    assert all(v.supports_claim is SupportsClaim.INCONCLUSIVE for v in out)
     assert judge.calls == 0  # no model call when there is no evidence
 
 

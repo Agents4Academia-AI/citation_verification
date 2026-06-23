@@ -121,7 +121,7 @@ class Extractor(Protocol):
     """Turn a PaperSource into record stubs (key + claim + cited_as filled).
 
     Stubs carry ``paper_id``, ``claim_id``, ``cite_key``, ``claim``, ``cited_as``
-    and leave the judged axes at their `unverified`/default values.
+    and leave the judged axes at their `unresolved/inconclusive`/default values.
     """
 
     def extract(self, source: PaperSource) -> list[CitationRecord]: ...
@@ -158,7 +158,7 @@ class StageFn(Protocol):
     """One pipeline stage: take a record, return it with more axes filled.
 
     Stages are pure-ish (degrade-not-crash): on failure they set ``record.error``
-    and leave axes at `unverified` rather than raising. Concrete stages:
+    and leave axes at `unresolved/inconclusive` rather than raising. Concrete stages:
       - fill_correctness(record, *, resolver) -> record   (exists, resolved, metadata_issues, evidence)
       - fill_relevance(record, *, resolver)   -> record   (supports_claim, priority, evidence, confidence)
       - fill_comparison(record, ...)          -> record   (compared_against)  [reserved]

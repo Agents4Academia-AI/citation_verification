@@ -427,6 +427,23 @@ def _parse_ref_entry(body: str) -> CitedAs:
 # silently dropped (it was missing ~half the citations on real two-column PDFs).
 _INTEXT_NUM_RE = re.compile(r"\[\s*(\d{1,3}(?:\s*[-–,]\s*\d{1,3})*)\s*\]")
 _SENT_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Z])")
+_MAX_CLAIM_CHARS = 360
+_EMAIL_RE = re.compile(r"\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b")
+_AFFILIATION_START_RE = re.compile(
+    r"^\s*\d+\s+(?:Department|School|Faculty|Institute|College|University|"
+    r"APPCAIR|Mohamed\s+Bin\s+Zayed)\b",
+    re.IGNORECASE,
+)
+_AFFILIATION_HINT_RE = re.compile(
+    r"\b(?:Department|School|Faculty|Institute|College|University|Campus|"
+    r"Singapore|Scotland|United Arab Emirates|BITS-Pilani|Nanyang|Napier|MBZUAI)\b",
+    re.IGNORECASE,
+)
+_FOOTER_RE = re.compile(
+    r"^(?:\d{1,4}|©.*|.*Springer.*|.*Cognitive Computation.*\d{4}.*|"
+    r"The Author\(s\).*|under exclusive licence.*)$",
+    re.IGNORECASE,
+)
 
 
 def _expand_num_marker(group: str) -> list[str]:
@@ -443,6 +460,36 @@ def _expand_num_marker(group: str) -> list[str]:
     return keys
 
 
+def _claim_scan_body(text: str) -> str:
+    """Drop PDF header/footer/contact/affiliation lines before claim windowing."""
+    lines = text.splitlines()
+    keep: list[str] = []
+    in_affiliation = False
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if not stripped:
+            in_affiliation = False
+            keep.append(line)
+            continue
+
+        next_line = lines[i + 1].strip() if i + 1 < len(lines) else ""
+        if _EMAIL_RE.search(stripped) or _EMAIL_RE.search(next_line):
+            continue
+        if _FOOTER_RE.match(stripped):
+            continue
+        if _AFFILIATION_START_RE.match(stripped):
+            in_affiliation = True
+            continue
+        if in_affiliation:
+            if _AFFILIATION_HINT_RE.search(stripped) or re.fullmatch(r"[A-Z][A-Za-z .,&()-]+", stripped):
+                continue
+            in_affiliation = False
+        if _AFFILIATION_HINT_RE.search(stripped) and len(stripped) < 90:
+            continue
+        keep.append(line)
+    return "\n".join(keep)
+
+
 def _sentence_around(text: str, pos: int, window: int = 500) -> tuple[str, tuple[int, int]]:
     """Sentence containing offset ``pos`` plus its ``(start, end)`` span."""
     lo = max(0, pos - window)
@@ -456,7 +503,22 @@ def _sentence_around(text: str, pos: int, window: int = 500) -> tuple[str, tuple
         if st <= rel <= en:
             s_start, s_end = st, en
             break
-    sentence = re.sub(r"\s+", " ", chunk[s_start:s_end]).strip()
+    raw = chunk[s_start:s_end]
+    rel_in_sentence = max(0, rel - s_start)
+    if len(raw) > _MAX_CLAIM_CHARS:
+        half = _MAX_CLAIM_CHARS // 2
+        cut_start = max(0, rel_in_sentence - half)
+        cut_end = min(len(raw), rel_in_sentence + half)
+        if cut_start:
+            ws = raw.find(" ", cut_start)
+            cut_start = ws + 1 if ws != -1 and ws < cut_end else cut_start
+        if cut_end < len(raw):
+            ws = raw.rfind(" ", cut_start, cut_end)
+            cut_end = ws if ws != -1 and ws > cut_start else cut_end
+        raw = raw[cut_start:cut_end]
+        s_start += cut_start
+        s_end = s_start + len(raw)
+    sentence = re.sub(r"\s+", " ", raw).strip()
     return sentence, (lo + s_start, lo + s_end)
 
 
@@ -481,16 +543,17 @@ class PdfExtractor:
             return []
 
         body, ref_block = split_body_and_references(text)
+        claim_body = _claim_scan_body(body)
         references = parse_reference_block(ref_block)
         paper = self._build_paper(source)
         records: list[CitationRecord] = []
         seen: set[tuple[str, str, str]] = set()
 
-        for mm in _INTEXT_NUM_RE.finditer(body):
+        for mm in _INTEXT_NUM_RE.finditer(claim_body):
             cite_keys = _expand_num_marker(mm.group(1))
             if not cite_keys:
                 continue
-            sentence, span = _sentence_around(body, mm.start())
+            sentence, span = _sentence_around(claim_body, mm.start())
             for cite_key in cite_keys:
                 claim_id = make_claim_id(source.paper_id, None, span, cite_key)
                 dedup = (source.paper_id, claim_id, cite_key)

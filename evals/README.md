@@ -13,14 +13,14 @@ gold, joins on that key, and reports per-axis metrics:
 | Axis | Metric | Positive / labels |
 | --- | --- | --- |
 | **Correctness** | precision / recall / **F1** (headline) | hallucination = `exists == no` **or** wrong metadata; de-duped per resolved paper |
-| **Relevance** | macro-F1 (+ accuracy, per-label) | `supports` / `partial` / `does_not` / `unverified` |
+| **Relevance** | macro-F1 (+ accuracy, per-label) | `supports` / `partial` / `does_not` / `unresolved/inconclusive` |
 | **Priority** | accuracy + **obligatory-F1** | `obligatory` / `helpful` |
-| **Abstention / calibration** | abstain rate, abstain P/R/F1, calibration gap | `unverified` is a **first-class** label, not a silent gap |
+| **Abstention / calibration** | abstain rate, abstain P/R/F1, calibration gap | `unresolved/inconclusive` is a **first-class** label, not a silent gap |
 
 The headline number is **correctness-F1** (`metrics["headline"]`), per
 `docs/DECISIONS.md`.
 
-`unverified` is scored, not ignored: abstaining when gold is genuinely
+`unresolved/inconclusive` is scored, not ignored: abstaining when gold is genuinely
 unverifiable is *rewarded* (abstention recall), abstaining when the answer was
 knowable is *penalised* (abstention precision drops, correctness recall drops). A
 missing prediction for a gold pair is treated as a full abstention.
@@ -61,7 +61,7 @@ agent's output and the gold in lock-step with the frozen contract.
 * **≥3 fabricated** references (`exists == "no"`, `is_hallucinated == true`);
 * **≥5 wrong-metadata** references (non-empty `metadata_issues`: year, venue,
   author, and wrong-paper errors);
-* `supports` / `partial` / `does_not` / `unverified` relevance cases;
+* `supports` / `partial` / `does_not` / `unresolved/inconclusive` relevance cases;
 * `obligatory` and `helpful` priorities at every severity.
 
 It is small on purpose: green smoke means *schema-valid + non-trivial

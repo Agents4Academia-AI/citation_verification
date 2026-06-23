@@ -13,9 +13,11 @@ from citation_verifier.extract.latex import (
 )
 from citation_verifier.extract.pdf import (
     _INTEXT_NUM_RE,
+    _claim_scan_body,
     _expand_num_marker,
     _normalize_pdf_text,
     _reference_parse_score,
+    _sentence_around,
     _split_author_title,
 )
 
@@ -142,6 +144,46 @@ def test_pdf_intext_markers_tolerate_pypdf_spacing():
     assert keys("approaches [13, 14] and [ 40, 41]") == [
         "ref-13", "ref-14", "ref-40", "ref-41",
     ]
+
+
+def test_pdf_claim_scan_strips_contact_and_affiliation_noise():
+    body = (
+        "Today researchers are working on creating AI systems known as Conversational AI "
+        "that can comprehend and\n"
+        "B Gaurang Bansal\n"
+        "gaurang@u.nus.edu\n"
+        "Vinay Chamola\n"
+        "vinay.chamola@pilani.bits-pilani.ac.in\n"
+        "1 Department of Electrical and Computer Engineering, National\n"
+        "University of Singapore, Singapore 119077, Singapore\n"
+        "respond to human language in a manner that resembles\n"
+        "human-to-human conversation [1]."
+    )
+    clean = _claim_scan_body(body)
+    sent, _ = _sentence_around(clean, clean.index("[1]"))
+    assert "@" not in sent and "Department" not in sent and "University of Singapore" not in sent
+    assert "comprehend and respond to human language" in sent
+
+
+def test_pdf_claim_scan_strips_page_footer_before_claim_sentence():
+    body = (
+        "© The Author(s), under exclusive licence to Springer Science+Business Media, LLC\n"
+        "2488 Cognitive Computation (2024) 16:2487-2510\n"
+        "systems, typically chatbots, virtual assistants, or voice assistants, that can "
+        "understand and respond to human language in a way that simulates real conversations [ 3]."
+    )
+    clean = _claim_scan_body(body)
+    sent, _ = _sentence_around(clean, clean.index("[ 3]"))
+    assert "Springer" not in sent and "Cognitive Computation" not in sent
+    assert sent.startswith("systems, typically chatbots")
+
+
+def test_sentence_around_caps_table_sized_claims():
+    table = " ".join(f"Column{i} value" for i in range(80)) + " Important cell [25]."
+    sent, _ = _sentence_around(table, table.index("[25]"))
+    assert "[25]" in sent
+    assert len(sent) <= 360
+
 
 _SAMPLE = r"""
 \begin{thebibliography}{99}

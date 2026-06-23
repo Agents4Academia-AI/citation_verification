@@ -70,7 +70,7 @@ def inject_fabrication(record: CitationRecord) -> CitationRecord:
     labels.is_hallucinated = True
     labels.severity = derive_severity(
         Exists.NO,
-        labels.supports_claim or SupportsClaim.UNVERIFIED,
+        labels.supports_claim or SupportsClaim.INCONCLUSIVE,
         labels.priority or rec.priority,
     )
     labels.provenance = "synthetic:fabrication"
@@ -130,7 +130,7 @@ def perturb_metadata(record: CitationRecord, field: str, *, seed: int = 0) -> Ci
     labels.is_hallucinated = True
     labels.severity = derive_severity(
         Exists.YES,
-        labels.supports_claim or SupportsClaim.UNVERIFIED,
+        labels.supports_claim or SupportsClaim.INCONCLUSIVE,
         labels.priority or rec.priority,
     )
     labels.provenance = f"synthetic:perturb:{field}"

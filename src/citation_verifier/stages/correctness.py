@@ -4,7 +4,7 @@ correctness — STEP 1 (Reality & Accuracy).
 :func:`fill_correctness` resolves a citation's reference against the grounding
 layer and fills the *correctness* axes of a :class:`CitationRecord`:
 
-    record.exists           : yes | no | unverified
+    record.exists           : yes | no | unresolved
     record.resolved         : the canonical match (or None)
     record.metadata_issues  : [] of human-readable mismatches (authors/title/year/venue/url)
     record.evidence         : the retrieved metadata record backing the verdict
@@ -13,18 +13,21 @@ It satisfies :class:`citation_verifier.interfaces.StageFn` and follows two rules
 from docs/decisions-phy.md:
 
   - **Abstain beats guessing.** If the resolver returns nothing, ``exists`` is
-    ``unverified`` (a red flag for the LLM to escalate via gated web search),
+    ``unresolved`` (a red flag for the LLM to escalate via gated web search),
     NOT ``no``. Only a *strong* contradiction would justify ``no`` — and a
     bare absence is not strong, so this stage never sets ``no`` on its own. A
     fabrication verdict (``no``) is left to a downstream judge with web evidence.
   - **Degrade, never crash.** Any resolver/network error sets ``record.error``
-    and leaves the axes at their ``unverified`` default; the run continues.
+    and leaves the axes at their ``unresolved`` default; the run continues.
 
 This stage mutates ONLY the correctness fields (+ ``error``). LLM/network access
 is entirely inside the injected ``resolver`` and is lazy + fail-soft there.
 """
 
 from __future__ import annotations
+
+import re
+import unicodedata
 
 from ..interfaces import Resolver
 from ..schema import CitationRecord, Evidence, Exists, MatchMethod, Resolved
@@ -44,11 +47,11 @@ def fill_correctness(record: CitationRecord, *, resolver: Resolver) -> CitationR
     Returns:
         The same record, mutated in place (and also returned for chaining).
         On resolver failure the record is returned with ``error`` set and
-        ``exists`` left at ``unverified``.
+        ``exists`` left at ``unresolved``.
     """
     reference = _reference_string(record)
     if not reference.strip():
-        record.exists = Exists.UNVERIFIED
+        record.exists = Exists.UNRESOLVED
         record.metadata_issues = ["no reference string available to resolve"]
         return record
 
@@ -56,12 +59,12 @@ def fill_correctness(record: CitationRecord, *, resolver: Resolver) -> CitationR
         resolved = resolver.resolve(record.cite_key, reference)
     except Exception as exc:  # noqa: BLE001 — degrade-not-crash
         record.error = f"correctness: resolver failed: {exc!r}"
-        record.exists = Exists.UNVERIFIED
+        record.exists = Exists.UNRESOLVED
         return record
 
     if resolved is None or resolved.match_method is MatchMethod.NONE:
         # Absence is a red flag, not proof of fabrication: abstain.
-        record.exists = Exists.UNVERIFIED
+        record.exists = Exists.UNRESOLVED
         record.resolved = resolved
         record.metadata_issues = ["no confident match in structured sources"]
         return record
@@ -106,14 +109,18 @@ def _diff_metadata(record: CitationRecord, resolved: Resolved) -> list[str]:
 
 
 def _author_issue(claimed: list[str], canonical: list[str]) -> str | None:
-    """Flag a wrong first author or a low author overlap."""
+    """Flag a wrong first author or a list that genuinely differs.
+
+    Authors are matched by surname + given-name initial across the whole list, so
+    an abbreviated cited name (``Yang Z``) matches its canonical full form
+    (``Zhengyuan Yang``) — only a different surname or initial is reported.
+    """
     if not claimed or not canonical:
         return None
-    if not _strings_match(_surname(claimed[0]), _surname(canonical[0]), thresh=92.0):
+    if not _same_author(claimed[0], canonical[0]):
         return f"first-author mismatch: cited '{claimed[0]}' vs '{canonical[0]}'"
-    claimed_s = {_surname(a) for a in claimed if a}
-    canon_s = {_surname(a) for a in canonical if a}
-    if claimed_s and (len(claimed_s & canon_s) / len(claimed_s)) < 0.5:
+    matched = sum(1 for c in claimed if any(_same_author(c, k) for k in canonical))
+    if matched / len(claimed) < 0.5:
         return "author list differs substantially from the canonical record"
     return None
 
@@ -190,11 +197,53 @@ def _strings_match(a: str, b: str, thresh: float = _SAME_THRESHOLD) -> bool:
     return fuzz.token_sort_ratio(a2, b2) >= thresh
 
 
-def _surname(author: str) -> str:
-    author = (author or "").strip()
-    if "," in author:
-        return author.split(",", 1)[0].strip()
-    return author.split()[-1] if author.split() else ""
+_INITIALS_TOKEN_RE = re.compile(r"^[A-Z](?:[.\-]?[A-Z]){0,3}\.?$")
+
+
+def _fold(s: str) -> str:
+    """Lowercase + strip diacritics, for robust surname/initial comparison."""
+    s = unicodedata.normalize("NFKD", s or "")
+    return "".join(c for c in s if not unicodedata.combining(c)).lower()
+
+
+def _name_key(author: str) -> tuple[str, str]:
+    """Reduce an author to ``(surname, given-initial)``.
+
+    Cited references are ``Surname Initials`` (Vancouver); canonical records are
+    ``First Last`` or ``Last, First``. All forms collapse to the same key, so an
+    abbreviated given name (``Firat M``) matches its full form (``Mehmet Firat``).
+    """
+    a = (author or "").strip()
+    if not a:
+        return ("", "")
+    if "," in a:  # "Last, First M"
+        last, rest = (p.strip() for p in a.split(",", 1))
+        return (_fold(last.split()[-1]) if last.split() else "", _fold(rest[:1]))
+    toks = a.split()
+    if len(toks) == 1:  # single token, possibly glued ("YangZ" -> Yang, Z)
+        m = re.match(r"^(.*[a-z])([A-Z]{1,3})$", toks[0])
+        return (_fold(m.group(1)), _fold(m.group(2)[:1])) if m else (_fold(toks[0]), "")
+    words = [t for t in toks if not _INITIALS_TOKEN_RE.match(t)]
+    initials = [t for t in toks if _INITIALS_TOKEN_RE.match(t)]
+    if len(words) == 1:  # "Surname I[I]" — surname-first (Vancouver)
+        return (_fold(words[0]), _fold(initials[0][:1]) if initials else "")
+    return (_fold(words[-1]), _fold(words[0][:1]))  # "First [M] Last" — given-first
+
+
+def _surname_close(a: str, b: str) -> bool:
+    """Surnames equal, or one a prefix of the other (PDF glue / abbreviation)."""
+    if not a or not b:
+        return False
+    return a == b or (min(len(a), len(b)) >= 4 and (a.startswith(b) or b.startswith(a)))
+
+
+def _same_author(cited: str, canonical: str) -> bool:
+    """Same person: surnames match and any given-name initials agree."""
+    cs, ci = _name_key(cited)
+    ks, ki = _name_key(canonical)
+    if not _surname_close(cs, ks):
+        return False
+    return ci == ki if (ci and ki) else True
 
 
 def _norm(s: str) -> str:
