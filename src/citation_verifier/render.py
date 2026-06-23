@@ -78,7 +78,7 @@ _COLUMNS = [
     "Exists?",
     "Match notes",
     "Supports claim?",
-    "explanation",
+    "Explanation",
 ]
 TABLE_HEADER = "| " + " | ".join(_COLUMNS) + " |"
 _TABLE_DIVIDER = "| " + " | ".join(["---"] * len(_COLUMNS)) + " |"
@@ -148,7 +148,7 @@ def _metadata_cell(record: CitationRecord) -> str:
 
 
 def _explanation_cell(record: CitationRecord) -> str:
-    """Render the final ``explanation`` column: the note/justification + any links.
+    """Render the final ``Explanation`` column: the note/justification + any links.
 
     No severity word (``ok`` / ``low`` / …) — severity now lives only in the
     Summary. A clean row with nothing to explain renders empty.

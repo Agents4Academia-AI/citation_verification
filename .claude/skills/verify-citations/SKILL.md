@@ -127,7 +127,7 @@ silently cap; say what you sampled).
 
 Then the table — exactly these columns:
 
-| # | Citation (authors, short title, year) | Cited where (the claim) | Exists? | Match notes | Supports claim? | explanation |
+| # | Citation (authors, short title, year) | Cited where (the claim) | Exists? | Match notes | Supports claim? | Explanation |
 |---|---|---|---|---|---|---|
 
 - Keep each cell short; put detail (quoted evidence, the canonical record) in
@@ -135,7 +135,7 @@ Then the table — exactly these columns:
 - **Cited where (the claim)**: when one claim cites several references (e.g.
   `… and more [6, 7]`), prefix each such row with its own marker (`[6]` / `[7]`)
   so the (claim, citation) pair the row refers to is unambiguous.
-- **explanation**: a short free-text justification for the row — the relevance
+- **Explanation**: a short free-text justification for the row — the relevance
   finding, the resolved source link, or why a citation is unresolved / skipped.
   No severity word here; it carries only the explanation and any link.
 
