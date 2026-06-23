@@ -432,3 +432,9 @@ def test_pdf_refs_line_text_reinserts_spaces_from_kerning_gaps():
         ch("A", 0.0, 4.0), ch(" ", 4.0, 6.0), ch("B", 6.0, 10.0),
     ]}]}
     assert _line_text(spaced) == "A B"
+    # a decimal/version number must NOT be split, even though the '.' glyph leaves
+    # a wide gap before the next digit ("GPT-3.5" must stay "3.5", not "3. 5")
+    decimal = {"spans": [{"size": size, "chars": [
+        ch("3", 0.0, 4.0), ch(".", 4.0, 5.0), ch("5", 6.6, 10.6),
+    ]}]}
+    assert _line_text(decimal) == "3.5"

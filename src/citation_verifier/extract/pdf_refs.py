@@ -83,7 +83,10 @@ def _line_text(line: dict) -> str:
                 out.append(" ")
             out.append(c)
             prev_x1 = x1
-    return _clean("".join(out))
+    text = _clean("".join(out))
+    # A '.'/',' glyph carries inflated trailing space, so the gap rule over-splits
+    # numbers ("GPT-3.5" -> "GPT-3. 5", "1,000" -> "1, 000"). Re-join digit groups.
+    return re.sub(r"(?<=\d[.,])\s+(?=\d)", "", text)
 
 
 def extract_reference_entries(pdf_path) -> list[tuple[str, str]]:
