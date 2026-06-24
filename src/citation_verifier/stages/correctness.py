@@ -250,6 +250,8 @@ def _name_key(author: str) -> tuple[str, str]:
         return (_fold(m.group(1)), _fold(m.group(2)[:1])) if m else (_fold(toks[0]), "")
     words = [t for t in toks if not _INITIALS_TOKEN_RE.match(t)]
     initials = [t for t in toks if _INITIALS_TOKEN_RE.match(t)]
+    if not words:  # an all-initials fragment ("S. R.") — no surname to key on
+        return ("", _fold(initials[0][:1]) if initials else "")
     if len(words) == 1:  # "Surname I[I]" — surname-first (Vancouver)
         return (_fold(words[0]), _fold(initials[0][:1]) if initials else "")
     return (_fold(words[-1]), _fold(words[0][:1]))  # "First [M] Last" — given-first
