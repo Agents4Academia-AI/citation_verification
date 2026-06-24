@@ -56,7 +56,7 @@ class AgenticBackend(BaseBackend):
     def __init__(self, *, settings: Any | None = None) -> None:
         self.settings = settings
         self.bulk_model = _setting(settings, "model_bulk", "claude-haiku-4-5-20251001")
-        self.judge_model = _setting(settings, "model_judge", "claude-opus-4-6")
+        self.judge_model = _setting(settings, "model_judge", "claude-opus-4-8")
         self.cost_ceiling = float(_setting(settings, "cost_ceiling_usd", 0.0) or 0.0)
         self.pricing = _setting(settings, "pricing", None)
         # The relevance seam. The deterministic baseline runs WITHOUT a judge and

@@ -80,7 +80,7 @@ def test_slice_intro_absent_returns_empty():
 # ── honest abstain without evidence (no SDK/network) ─────────────────
 def test_judge_abstains_without_evidence():
     judge = LLMRelevanceJudge(settings=None)
-    assert judge.model == "claude-opus-4-6"
+    assert judge.model == "claude-opus-4-8"
     verdict = judge(claim="X improves Y.", abstract="", resolved=None)
     assert verdict.supports_claim is SupportsClaim.INCONCLUSIVE
 
