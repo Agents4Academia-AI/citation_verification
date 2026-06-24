@@ -1,0 +1,31 @@
+{
+  "paper_id": "13781_LLMs_Get_Lost_In_Multi_T",
+  "backend": "agentic",
+  "usage": {
+    "backend": "agentic",
+    "model": "bulk=claude-haiku-4-5-20251001;judge=claude-opus-4-8",
+    "input_tokens": 16421,
+    "output_tokens": 41042,
+    "total_tokens": 57463,
+    "cache_read_tokens": 16113,
+    "cache_creation_tokens": 92284,
+    "cost_usd": 2.0090825000000003,
+    "num_turns": 4,
+    "tool_calls": 110,
+    "wall_seconds": 703.5861694330815,
+    "by_tier": {
+      "bulk": {
+        "input_tokens": 6101,
+        "output_tokens": 1760,
+        "cost_usd": 0.014900999999999996
+      },
+      "judge": {
+        "input_tokens": 10320,
+        "output_tokens": 39282,
+        "cost_usd": 1.9941815000000003
+      }
+    }
+  },
+  "num_records": 110,
+  "num_errors": 0
+}

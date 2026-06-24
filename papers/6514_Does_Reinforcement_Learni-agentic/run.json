@@ -1,0 +1,31 @@
+{
+  "paper_id": "6514_Does_Reinforcement_Learni",
+  "backend": "agentic",
+  "usage": {
+    "backend": "agentic",
+    "model": "bulk=claude-haiku-4-5-20251001;judge=claude-opus-4-8",
+    "input_tokens": 8851,
+    "output_tokens": 24343,
+    "total_tokens": 33194,
+    "cache_read_tokens": 32226,
+    "cache_creation_tokens": 25265,
+    "cost_usd": 0.901714,
+    "num_turns": 2,
+    "tool_calls": 69,
+    "wall_seconds": 466.8823960649315,
+    "by_tier": {
+      "bulk": {
+        "input_tokens": 3691,
+        "output_tokens": 1104,
+        "cost_usd": 0.009210999999999997
+      },
+      "judge": {
+        "input_tokens": 5160,
+        "output_tokens": 23239,
+        "cost_usd": 0.892503
+      }
+    }
+  },
+  "num_records": 69,
+  "num_errors": 0
+}
