@@ -69,11 +69,74 @@ def fill_correctness(record: CitationRecord, *, resolver: Resolver) -> CitationR
         record.metadata_issues = [_unresolved_note(resolver)]
         return record
 
+    issues = _diff_metadata(record, resolved)
+
+    # A FUZZY_TITLE match contradicted on BOTH author and year is most likely the
+    # wrong paper (a generic/partial-title collision, e.g. "…A systematic review"
+    # colliding with a paper titled "Systematic Review"). Abstain to `unresolved`
+    # rather than claim a false `yes`, and drop the candidate so its abstract can't
+    # feed the relevance judge. Identifier (DOI/arXiv) matches are NOT downgraded —
+    # the id is authoritative and already title-gated by the resolver.
+    # ``match_method`` is stored as its string value (use_enum_values), so compare
+    # with ``==`` (str-enum equality), not ``is``.
+    if resolved.match_method == MatchMethod.FUZZY_TITLE and _fuzzy_match_is_weak(record, resolved):
+        record.exists = Exists.UNRESOLVED
+        record.resolved = None
+        record.metadata_issues = [
+            "abstained from a weak fuzzy-title match — both author and year contradict the "
+            f"cited reference (closest candidate: '{_short(resolved.title or '')}')"
+        ]
+        return record
+
     record.resolved = resolved
     record.exists = Exists.YES
-    record.metadata_issues = _diff_metadata(record, resolved)
+    record.metadata_issues = issues
     record.evidence = _dedupe_evidence(record.evidence + [_metadata_evidence(resolved)])
     return record
+
+
+def _fuzzy_match_is_weak(record: CitationRecord, resolved: Resolved) -> bool:
+    """True when a fuzzy-title match is most likely the WRONG paper.
+
+    Anchored on a wrong first author (so an author-confirmed match is always
+    trusted, keeping false-negatives low), and confirmed by a second failing axis:
+    the year is off by >1, OR the resolved title drops the cited title's distinctive
+    content — a generic-substring collision like the cited "AI-powered chatbots for
+    healthcare: A systematic review" resolving to a paper merely titled "Systematic
+    review" (which ``_strings_match`` accepts as a substring, so it is NOT otherwise
+    flagged). A single failing axis stays ``yes`` + a metadata flag; this is a
+    narrow, high-precision abstain (docs/decisions: abstain beats guessing).
+    """
+    cited = record.cited_as
+    if not (cited.authors and resolved.authors):
+        return False
+    if _same_author(cited.authors[0], resolved.authors[0]):
+        return False  # author-confirmed -> trust the match
+    year_wrong = bool(cited.year and resolved.year and abs(cited.year - resolved.year) > 1)
+    return year_wrong or _title_poorly_covered(cited.title, resolved.title)
+
+
+# Tiny stopword set for title-coverage (the function words a generic match shares).
+_TITLE_STOP = {"the", "a", "an", "and", "or", "of", "to", "in", "for", "on", "with", "by", "as"}
+
+
+def _content_tokens(title: str | None) -> set[str]:
+    """Distinctive content tokens of a title (lowercased, >3 chars, stopwords out)."""
+    return {t for t in _norm(title or "").split() if len(t) > 3 and t not in _TITLE_STOP}
+
+
+def _title_poorly_covered(cited_title: str | None, resolved_title: str | None, thresh: float = 0.6) -> bool:
+    """True when the resolved title omits MOST of the cited title's content tokens.
+
+    Catches a short/generic match that dropped the cited title's specific topic
+    (the failure ``_strings_match``'s substring rule lets through). Abstains from
+    judging when there is too little title to compare.
+    """
+    ct = _content_tokens(cited_title)
+    rt = _content_tokens(resolved_title)
+    if len(ct) < 3 or not rt:
+        return False
+    return len(ct & rt) / len(ct) < thresh
 
 
 # Human-readable names for the grounding sources, for the unresolved note.
