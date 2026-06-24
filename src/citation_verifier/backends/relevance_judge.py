@@ -114,7 +114,7 @@ class LLMRelevanceJudge:
     def __init__(self, *, settings: Any | None = None, mode: str = "query") -> None:
         self.settings = settings
         self.mode = mode
-        self.model = _setting(settings, "model_judge", "claude-opus-4-6")
+        self.model = _setting(settings, "model_judge", "claude-opus-4-8")
         self.batch_size = int(_setting(settings, "relevance_batch_size", _BATCH_SIZE) or _BATCH_SIZE)
         self.chunk_concurrency = int(
             _setting(settings, "judge_concurrency", _CHUNK_CONCURRENCY) or _CHUNK_CONCURRENCY
@@ -333,7 +333,11 @@ _GROUP_SYSTEM = (
     "using ONLY that citation's evidence (never prior knowledge), whether the cited "
     "work supports THAT specific claim. If the specific claimed fact/result/method "
     "is not present in the evidence, use 'inconclusive' (or 'partial' if clearly "
-    "related but not confirming); do NOT guess 'supports'. Classify each claim's "
+    "related but not confirming); do NOT guess 'supports'. Reserve 'does_not' for "
+    "evidence that explicitly CONTRADICTS the claim or is plainly about a different "
+    "topic — NEVER for mere absence: an abstract that simply doesn't mention the "
+    "claimed method/result/dataset is 'inconclusive' (the body may still support it), "
+    "not 'does_not'. Classify each claim's "
     "priority: 'obligatory' (the claim depends on this source — a method "
     "used/extended, a baseline, a dataset, a specific result/quote) or 'helpful' "
     "(background / see-also). Do NOT judge existence or metadata — only relevance. "
