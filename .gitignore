@@ -70,6 +70,13 @@ papers/*/
 # Second tracked demo: an author-year PDF (citation sites recovered via hyperlinks).
 !papers/For_testing-agentic/
 !papers/For_testing-agentic/*
+# Two more tracked example reports, verified end-to-end on the latest pipeline
+# (PDF parsing fixes + opus-4-8 relevance): a hyperlinked author-year paper and a
+# numbered-citation paper.
+!papers/13781_LLMs_Get_Lost_In_Multi_T-agentic/
+!papers/13781_LLMs_Get_Lost_In_Multi_T-agentic/*
+!papers/6514_Does_Reinforcement_Learni-agentic/
+!papers/6514_Does_Reinforcement_Learni-agentic/*
 
 # Generated reports written to the repo root (e.g. report-<id>.md/json).
 report-*.md

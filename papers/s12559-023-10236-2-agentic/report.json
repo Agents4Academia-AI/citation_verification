@@ -65,7 +65,7 @@
         "abstract": "It is demonstrated that language models begin to learn these tasks without any explicit supervision when trained on a new dataset of millions of webpages called WebText, suggesting a promising path towards building language processing systems which learn to perform tasks from their naturally occurring demonstrations."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -83,9 +83,9 @@
           "url": "https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.4,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is about language models learning tasks on WebText, not about conversational AI systems. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
+      "notes": "(based on abstract only) GPT-2 abstract concerns unsupervised task learning, not the definition of conversational AI. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
       "error": null,
       "labels": null
     },
@@ -168,9 +168,9 @@
           "url": "https://www.semanticscholar.org/paper/75333105dd9df11502f0918e0fe3c08eb7c5ca6c"
         }
       ],
-      "confidence": 0.9,
+      "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence defines conversational AI as AI simulating/automating speech- or text-based conversations. · source: https://www.semanticscholar.org/paper/75333105dd9df11502f0918e0fe3c08eb7c5ca6c",
+      "notes": "(based on abstract only) Evidence defines conversational AI as AI agents simulating/automating human conversations, directly backing the claim. · source: https://www.semanticscholar.org/paper/75333105dd9df11502f0918e0fe3c08eb7c5ca6c",
       "error": null,
       "labels": null
     },
@@ -253,9 +253,9 @@
           "url": "https://doi.org/10.1016/j.aiopen.2022.02.001"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence reviews open-domain dialogue models but does not explicitly enumerate chatbots/virtual/voice assistants simulating real conversations. · source: https://doi.org/10.1016/j.aiopen.2022.02.001",
+      "notes": "(based on abstract only) Evidence covers dialogue models for conversation but does not enumerate chatbots/virtual/voice assistants. · source: https://doi.org/10.1016/j.aiopen.2022.02.001",
       "error": null,
       "labels": null
     },
@@ -312,7 +312,7 @@
         "abstract": "Chat GPT, powered by the advanced GPT-3 language model from OpenAI, has reached 1 million users only in 5 days. Facebook, Netflix, Instagram, and Twitter could reach this number in 300, 1200, 75, and 720 days. With 175 billion parameters, GPT-3 can generate writing that closely resembles human language. Chat GPT can engage in multiple ongoing conversations, understand and respond to natural language input, and offer customized and interactive assistance. This makes Chat GPT a promising tool for open education, as it can improve the independence and autonomy of autodidactic learners, while also…"
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "partial",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -324,21 +324,15 @@
           "url": "https://doi.org/10.31219/osf.io/9ge8m"
         },
         {
-          "kind": "full_text",
-          "source": "openalex_oa §How Chat GPT Can Transform Autodidactic Experiences?",
-          "quote": "The GPT-3 language model is used by ChatGPT, a chatbot, to produce replies in response to user input (OpenAI, 2023). Generative Pre-trained Transformer 3, or GPT-3, is a large-scale language model created by OpenAI that can produce text with 175 billion parameters. It has been trained on a vast quantity of data (Brown et al., 2020). Chat GPT makes advantage of GPT-3's capabilities to provide replies to user input in a conversational and natural way (OpenAI, 2023). Understanding and responding to input in natural language is one of Chat GPT's primary characteristics. Natural language processing…",
-          "url": "https://osf.io/9ge8m/download"
-        },
-        {
           "kind": "abstract",
           "source": "10.31219/osf.io/9ge8m",
           "quote": "Chat GPT, powered by the advanced GPT-3 language model from OpenAI, has reached 1 million users only in 5 days. Facebook, Netflix, Instagram, and Twitter could reach this number in 300, 1200, 75, and 720 days. With 175 billion parameters, GPT-3 can generate writing that closely resembles human language. Chat GPT can engage in multiple ongoing conversations, understand and respond to natural language input, and offer customized and interactive assistance. This makes Chat GPT a promising tool for open education, as it can improve the independence and autonomy of autodidactic learners, while also…",
           "url": "https://doi.org/10.31219/osf.io/9ge8m"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.4,
       "model_tier": "judge",
-      "notes": "(based on full text §How Chat GPT Can Transform Autodidactic Experiences?) Evidence describes ChatGPT/GPT-3 using NLP but does not enumerate the listed disciplines (NLU, NLG, ASR, synthetic voice) defining conversational AI. · source: https://doi.org/10.31219/osf.io/9ge8m",
+      "notes": "(based on abstract only) Evidence mentions understanding/responding to natural language but not the listed disciplines like ASR or synthetic voice. · source: https://doi.org/10.31219/osf.io/9ge8m",
       "error": null,
       "labels": null
     },
@@ -380,7 +374,7 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "s2",
+        "source": "arxiv",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "Perspectives for Evaluating Conversational AI",
@@ -389,10 +383,10 @@
           "Neelanshi Varia"
         ],
         "year": 2017,
-        "venue": "arXiv.org",
+        "venue": "arXiv (preprint)",
         "doi": null,
-        "arxiv_id": "1709.04734",
-        "url": "https://www.semanticscholar.org/paper/5ebde6580941d9e0d16ad8cc6ec78aae16912510",
+        "arxiv_id": "1709.04734v1",
+        "url": "http://arxiv.org/abs/1709.04734v1",
         "url_valid": true,
         "abstract": "Conversational AI systems are becoming famous in day to day lives. In this paper, we are trying to address the following key question: To identify whether design, as well as development efforts for search oriented conversational AI are successful or not.It is tricky to define 'success' in the case of conversational AI and equally tricky part is to use appropriate metrics for the evaluation of conversational AI. We propose four different perspectives namely user experience, information retrieval, linguistic and artificial intelligence for the evaluation of conversational AI systems. Additionall…"
       },
@@ -404,20 +398,20 @@
       "evidence": [
         {
           "kind": "metadata",
-          "source": "1709.04734",
+          "source": "1709.04734v1",
           "quote": "Perspectives for Evaluating Conversational AI — Mahipal Jadeja, Neelanshi Varia — 2017",
-          "url": "https://www.semanticscholar.org/paper/5ebde6580941d9e0d16ad8cc6ec78aae16912510"
+          "url": "http://arxiv.org/abs/1709.04734v1"
         },
         {
           "kind": "abstract",
-          "source": "1709.04734",
+          "source": "1709.04734v1",
           "quote": "Conversational AI systems are becoming famous in day to day lives. In this paper, we are trying to address the following key question: To identify whether design, as well as development efforts for search oriented conversational AI are successful or not.It is tricky to define 'success' in the case of conversational AI and equally tricky part is to use appropriate metrics for the evaluation of conversational AI. We propose four different perspectives namely user experience, information retrieval, linguistic and artificial intelligence for the evaluation of conversational AI systems. Additionall…",
-          "url": "https://www.semanticscholar.org/paper/5ebde6580941d9e0d16ad8cc6ec78aae16912510"
+          "url": "http://arxiv.org/abs/1709.04734v1"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.4,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence on evaluating conversational AI touches user experience but does not state the goal of intuitive/efficient/personalized interaction. · source: https://www.semanticscholar.org/paper/5ebde6580941d9e0d16ad8cc6ec78aae16912510",
+      "notes": "(based on abstract only) Evidence is about evaluating conversational AI, not explicitly stating its goal as intuitive/efficient/personalized. · source: http://arxiv.org/abs/1709.04734v1",
       "error": null,
       "labels": null
     },
@@ -478,7 +472,7 @@
         "abstract": "This paper highlights some emerging ethical issues of Conversational Agents and suggests ways for agent designers, developers, and owners to approach them with the goal of responsible development of Conversational Agents."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -496,9 +490,9 @@
           "url": "https://www.semanticscholar.org/paper/02246dd3867dbbd8b2c19b9ace4c6168787dd04e"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.45,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence focuses on ethical issues, not the enumerated application domains. · source: https://www.semanticscholar.org/paper/02246dd3867dbbd8b2c19b9ace4c6168787dd04e",
+      "notes": "(based on abstract only) Evidence concerns ethical issues of conversational agents, not application domains. · source: https://www.semanticscholar.org/paper/02246dd3867dbbd8b2c19b9ace4c6168787dd04e",
       "error": null,
       "labels": null
     },
@@ -577,9 +571,9 @@
           "url": "http://arxiv.org/pdf/1809.08267"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.4,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence categorizes conversational systems (QA, task-oriented, social bots) but does not list the specific application domains claimed. · source: http://arxiv.org/pdf/1809.08267",
+      "notes": "(based on abstract only) Evidence categorizes conversational systems (QA, task-oriented, social bots), tangentially related to application domains. · source: http://arxiv.org/pdf/1809.08267",
       "error": null,
       "labels": null
     },
@@ -621,7 +615,7 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "arxiv",
+        "source": "s2",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "Commonsense Reasoning for Conversational AI: A Survey of the State of the Art",
@@ -630,24 +624,24 @@
           "Larry Heck"
         ],
         "year": 2023,
-        "venue": "arXiv (preprint)",
-        "doi": null,
-        "arxiv_id": "2302.07926v1",
-        "url": "http://arxiv.org/abs/2302.07926v1",
+        "venue": "arXiv.org",
+        "doi": "10.48550/arxiv.2302.07926",
+        "arxiv_id": "2302.07926",
+        "url": "http://arxiv.org/pdf/2302.07926",
         "url_valid": true,
         "abstract": "Large, transformer-based pretrained language models like BERT, GPT, and T5 have demonstrated a deep understanding of contextual semantics and language syntax. Their success has enabled significant advances in conversational AI, including the development of open-dialogue systems capable of coherent, salient conversations which can answer questions, chat casually, and complete tasks. However, state-of-the-art models still struggle with tasks that involve higher levels of reasoning - including commonsense reasoning that humans find trivial. This paper presents a survey of recent conversational AI…"
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
       "evidence": [
         {
           "kind": "metadata",
-          "source": "2302.07926v1",
+          "source": "10.48550/arxiv.2302.07926",
           "quote": "Commonsense Reasoning for Conversational AI: A Survey of the State of the Art — Christopher Richardson, Larry Heck — 2023",
-          "url": "http://arxiv.org/abs/2302.07926v1"
+          "url": "http://arxiv.org/pdf/2302.07926"
         },
         {
           "kind": "full_text",
@@ -657,14 +651,14 @@
         },
         {
           "kind": "abstract",
-          "source": "2302.07926v1",
+          "source": "10.48550/arxiv.2302.07926",
           "quote": "Large, transformer-based pretrained language models like BERT, GPT, and T5 have demonstrated a deep understanding of contextual semantics and language syntax. Their success has enabled significant advances in conversational AI, including the development of open-dialogue systems capable of coherent, salient conversations which can answer questions, chat casually, and complete tasks. However, state-of-the-art models still struggle with tasks that involve higher levels of reasoning - including commonsense reasoning that humans find trivial. This paper presents a survey of recent conversational AI…",
-          "url": "http://arxiv.org/abs/2302.07926v1"
+          "url": "http://arxiv.org/pdf/2302.07926"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.78,
       "model_tier": "judge",
-      "notes": "(based on full text §Abstract) Evidence covers transformer LMs and commonsense reasoning, not rule-based conversational AI with predefined rules/patterns. · source: http://arxiv.org/abs/2302.07926v1",
+      "notes": "(based on full text §Abstract) Evidence concerns transformer LLMs and commonsense reasoning/KG grounding, not rule-based conversational AI using predefined rules and patterns. · source: http://arxiv.org/pdf/2302.07926",
       "error": null,
       "labels": null
     },
@@ -751,7 +745,7 @@
       ],
       "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on full text §Related Work) Evidence discusses rule-based chatbots and task-based purposes but does not specifically cite simple chatbots or customer support systems. · source: http://arxiv.org/pdf/2205.00965",
+      "notes": "(based on full text §Related Work) Evidence discusses conversational AI/chatbots and rule-based components for tasks, but does not specifically tie rule-based systems to simple chatbots or customer support. · source: http://arxiv.org/pdf/2205.00965",
       "error": null,
       "labels": null
     },
@@ -793,7 +787,7 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "s2",
+        "source": "arxiv",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "a survey on GPT-3",
@@ -802,24 +796,24 @@
           "Bhaskar Krishnamachari"
         ],
         "year": 2022,
-        "venue": "arXiv.org",
-        "doi": "10.48550/arxiv.2212.00857",
-        "arxiv_id": "2212.00857",
-        "url": "https://arxiv.org/pdf/2212.00857",
+        "venue": "arXiv (preprint)",
+        "doi": null,
+        "arxiv_id": "2212.00857v1",
+        "url": "http://arxiv.org/abs/2212.00857v1",
         "url_valid": true,
         "abstract": "This paper provides an introductory survey to GPT-3. We cover some of the historical development behind this technology, some of the key features of GPT-3, and discuss the machine learning model and the datasets used. We survey both academic and commercial efforts applying GPT-3 in diverse domains such as developing conversational AI chatbots, software development, creative work, domain knowledge, and business productivity. We discuss some of the challenges that GPT-3 faces such as the problems of training complexity, bias, and hallucination/incorrect answers. We also discuss the future resear…"
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
       "evidence": [
         {
           "kind": "metadata",
-          "source": "10.48550/arxiv.2212.00857",
+          "source": "2212.00857v1",
           "quote": "a survey on GPT-3 — Mingyu Zong, Bhaskar Krishnamachari — 2022",
-          "url": "https://arxiv.org/pdf/2212.00857"
+          "url": "http://arxiv.org/abs/2212.00857v1"
         },
         {
           "kind": "full_text",
@@ -829,14 +823,14 @@
         },
         {
           "kind": "abstract",
-          "source": "10.48550/arxiv.2212.00857",
+          "source": "2212.00857v1",
           "quote": "This paper provides an introductory survey to GPT-3. We cover some of the historical development behind this technology, some of the key features of GPT-3, and discuss the machine learning model and the datasets used. We survey both academic and commercial efforts applying GPT-3 in diverse domains such as developing conversational AI chatbots, software development, creative work, domain knowledge, and business productivity. We discuss some of the challenges that GPT-3 faces such as the problems of training complexity, bias, and hallucination/incorrect answers. We also discuss the future resear…",
-          "url": "https://arxiv.org/pdf/2212.00857"
+          "url": "http://arxiv.org/abs/2212.00857v1"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.75,
       "model_tier": "judge",
-      "notes": "(based on full text §What is GPT-3?) Evidence is about GPT-3 applications (code, games, language learning) and does not mention voice assistants like Siri/Alexa. · source: https://arxiv.org/pdf/2212.00857",
+      "notes": "(based on full text §What is GPT-3?) Evidence is about GPT-3 applications (code generation, games, language learning), not voice assistants like Siri, Alexa, or Google Assistant designed for voice interaction. · source: http://arxiv.org/abs/2212.00857v1",
       "error": null,
       "labels": null
     },
@@ -905,7 +899,7 @@
         "abstract": "Knowledge-based visual question answering (VQA) involves answering questions that require external knowledge not present in the image. Existing methods first retrieve knowledge from external resources, then reason over the selected knowledge, the input image, and question for answer prediction. However, this two-step approach could lead to mismatches that potentially limit the VQA performance. For example, the retrieved knowledge might be noisy and irrelevant to the question, and the re-embedded knowledge features during reasoning might deviate from their original meanings in the knowledge bas…"
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -929,9 +923,9 @@
           "url": "https://ojs.aaai.org/index.php/AAAI/article/download/20215/19974"
         }
       ],
-      "confidence": 0.55,
+      "confidence": 0.82,
       "model_tier": "judge",
-      "notes": "(based on full text) Evidence is about GPT-3 for knowledge-based VQA, not voice assistants mixing rule-based and generative techniques. · source: https://ojs.aaai.org/index.php/AAAI/article/download/20215/19974",
+      "notes": "(based on full text) Evidence is about GPT-3 for knowledge-based VQA, unrelated to voice assistants mixing rule-based and generative techniques. · source: https://ojs.aaai.org/index.php/AAAI/article/download/20215/19974",
       "error": null,
       "labels": null
     },
@@ -999,8 +993,8 @@
       },
       "metadata_issues": [],
       "supports_claim": "partial",
-      "priority": "helpful",
-      "severity": "low",
+      "priority": "obligatory",
+      "severity": "medium",
       "compared_against": null,
       "evidence": [
         {
@@ -1016,9 +1010,9 @@
           "url": "https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence concerns a webtext-trained language model but does not mention transformers revolutionizing conversational AI. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
+      "notes": "(based on abstract only) GPT-2 is a transformer-based generative model but the abstract does not claim it revolutionized conversational AI. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
       "error": null,
       "labels": null
     },
@@ -1080,8 +1074,8 @@
       },
       "metadata_issues": [],
       "supports_claim": "partial",
-      "priority": "helpful",
-      "severity": "low",
+      "priority": "obligatory",
+      "severity": "medium",
       "compared_against": null,
       "evidence": [
         {
@@ -1097,9 +1091,9 @@
           "url": "https://www.semanticscholar.org/paper/8cd4054b41936ba0889edc26be8969c3dc8491d8"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence concerns Transformer architectures for language modeling but not their revolutionizing conversational AI. · source: https://www.semanticscholar.org/paper/8cd4054b41936ba0889edc26be8969c3dc8491d8",
+      "notes": "(based on abstract only) Evidence concerns Transformer architectures for language modeling but not their impact on conversational AI specifically. · source: https://www.semanticscholar.org/paper/8cd4054b41936ba0889edc26be8969c3dc8491d8",
       "error": null,
       "labels": null
     },
@@ -1144,7 +1138,7 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "arxiv",
+        "source": "s2",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "Instruction Tuning with GPT-4",
@@ -1156,24 +1150,24 @@
           "Jianfeng Gao"
         ],
         "year": 2023,
-        "venue": "arXiv (preprint)",
+        "venue": "arXiv.org",
         "doi": null,
-        "arxiv_id": "2304.03277v1",
-        "url": "http://arxiv.org/abs/2304.03277v1",
+        "arxiv_id": "2304.03277",
+        "url": "https://www.semanticscholar.org/paper/9e8cb8c91a0acb6e661b58ad724aa758490f2bea",
         "url_valid": true,
         "abstract": "Prior work has shown that finetuning large language models (LLMs) using machine-generated instruction-following data enables such models to achieve remarkable zero-shot capabilities on new tasks, and no human-written instructions are needed. In this paper, we present the first attempt to use GPT-4 to generate instruction-following data for LLM finetuning. Our early experiments on instruction-tuned LLaMA models show that the 52K English and Chinese instruction-following data generated by GPT-4 leads to superior zero-shot performance on new tasks to the instruction-following data generated by pr…"
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
       "evidence": [
         {
           "kind": "metadata",
-          "source": "2304.03277v1",
+          "source": "2304.03277",
           "quote": "Instruction Tuning with GPT-4 — Baolin Peng, Chunyuan Li, Pengcheng He, Michel Galley, Jianfeng Gao — 2023",
-          "url": "http://arxiv.org/abs/2304.03277v1"
+          "url": "https://www.semanticscholar.org/paper/9e8cb8c91a0acb6e661b58ad724aa758490f2bea"
         },
         {
           "kind": "full_text",
@@ -1183,14 +1177,14 @@
         },
         {
           "kind": "abstract",
-          "source": "2304.03277v1",
+          "source": "2304.03277",
           "quote": "Prior work has shown that finetuning large language models (LLMs) using machine-generated instruction-following data enables such models to achieve remarkable zero-shot capabilities on new tasks, and no human-written instructions are needed. In this paper, we present the first attempt to use GPT-4 to generate instruction-following data for LLM finetuning. Our early experiments on instruction-tuned LLaMA models show that the 52K English and Chinese instruction-following data generated by GPT-4 leads to superior zero-shot performance on new tasks to the instruction-following data generated by pr…",
-          "url": "http://arxiv.org/abs/2304.03277v1"
+          "url": "https://www.semanticscholar.org/paper/9e8cb8c91a0acb6e661b58ad724aa758490f2bea"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.7,
       "model_tier": "judge",
-      "notes": "(based on full text §Abstract) Evidence concerns GPT-4 generating instruction-following data, not capturing long-range dependencies for coherent responses. · source: http://arxiv.org/abs/2304.03277v1",
+      "notes": "(based on full text §Abstract) Evidence is about GPT-4-generated instruction-following data for finetuning, not about capturing long-range dependencies for coherent responses. · source: https://www.semanticscholar.org/paper/9e8cb8c91a0acb6e661b58ad724aa758490f2bea",
       "error": null,
       "labels": null
     },
@@ -1267,9 +1261,9 @@
           "url": "http://arxiv.org/abs/1907.05774v2"
         }
       ],
-      "confidence": 0.5,
+      "confidence": 0.4,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence on task-oriented dialogue via LM pretraining relates to but does not state capturing long-range dependencies for coherence. · source: http://arxiv.org/abs/1907.05774v2",
+      "notes": "(based on abstract only) Evidence on task-oriented dialogue with pretraining relates to coherent generation but not the long-range dependency claim. · source: http://arxiv.org/abs/1907.05774v2",
       "error": null,
       "labels": null
     },
@@ -1332,9 +1326,9 @@
       "metadata_issues": [
         "year mismatch: cited 2023 vs 2020"
       ],
-      "supports_claim": "inconclusive",
-      "priority": "helpful",
-      "severity": "low",
+      "supports_claim": "does_not",
+      "priority": "obligatory",
+      "severity": "high",
       "compared_against": null,
       "evidence": [
         {
@@ -1358,7 +1352,7 @@
       ],
       "confidence": 0.55,
       "model_tier": "judge",
-      "notes": "(based on full text §Conclusion and Future Work) Evidence praises transformers/RoBERTa for command classification but does not single out the GPT series as a prominent player. · source: https://link.springer.com/content/pdf/10.1007/s12652-021-03439-8.pdf",
+      "notes": "(based on full text §Conclusion and Future Work) Evidence benchmarks transformer classifiers (RoBERTa best) for text-to-task commands, not the GPT series pushing language understanding/generation boundaries. · source: https://link.springer.com/content/pdf/10.1007/s12652-021-03439-8.pdf",
       "error": null,
       "labels": null
     },
@@ -1400,19 +1394,19 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "s2",
+        "source": "arxiv",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "Learning to Answer by Learning to Ask: Getting the Best of GPT-2 and BERT Worlds",
         "authors": [
-          "T. Klein",
+          "Tassilo Klein",
           "Moin Nabi"
         ],
         "year": 2019,
-        "venue": "arXiv.org",
+        "venue": "arXiv (preprint)",
         "doi": null,
-        "arxiv_id": "1911.02365",
-        "url": "https://www.semanticscholar.org/paper/c1ac3fbf530bf2eb207aa1a20dd14c8ed9f6766b",
+        "arxiv_id": "1911.02365v1",
+        "url": "http://arxiv.org/abs/1911.02365v1",
         "url_valid": true,
         "abstract": "Automatic question generation aims at the generation of questions from a context, with the corresponding answers being sub-spans of the given passage. Whereas, most of the methods mostly rely on heuristic rules to generate questions, more recently also neural network approaches have been proposed. In this work, we propose a variant of the self-attention Transformer network architectures model to generate meaningful and diverse questions. To this end, we propose an easy to use model consisting of the conjunction of the Transformer decoder GPT-2 model with Transformer encoder BERT for the downst…"
       },
@@ -1424,9 +1418,9 @@
       "evidence": [
         {
           "kind": "metadata",
-          "source": "1911.02365",
-          "quote": "Learning to Answer by Learning to Ask: Getting the Best of GPT-2 and BERT Worlds — T. Klein, Moin Nabi — 2019",
-          "url": "https://www.semanticscholar.org/paper/c1ac3fbf530bf2eb207aa1a20dd14c8ed9f6766b"
+          "source": "1911.02365v1",
+          "quote": "Learning to Answer by Learning to Ask: Getting the Best of GPT-2 and BERT Worlds — Tassilo Klein, Moin Nabi — 2019",
+          "url": "http://arxiv.org/abs/1911.02365v1"
         },
         {
           "kind": "full_text",
@@ -1436,14 +1430,14 @@
         },
         {
           "kind": "abstract",
-          "source": "1911.02365",
+          "source": "1911.02365v1",
           "quote": "Automatic question generation aims at the generation of questions from a context, with the corresponding answers being sub-spans of the given passage. Whereas, most of the methods mostly rely on heuristic rules to generate questions, more recently also neural network approaches have been proposed. In this work, we propose a variant of the self-attention Transformer network architectures model to generate meaningful and diverse questions. To this end, we propose an easy to use model consisting of the conjunction of the Transformer decoder GPT-2 model with Transformer encoder BERT for the downst…",
-          "url": "https://www.semanticscholar.org/paper/c1ac3fbf530bf2eb207aa1a20dd14c8ed9f6766b"
+          "url": "http://arxiv.org/abs/1911.02365v1"
         }
       ],
-      "confidence": 0.5,
+      "confidence": 0.45,
       "model_tier": "judge",
-      "notes": "(based on full text §Our Proposed Method) Evidence applies GPT-2 to question generation but does not state GPT models yield far superior results. · source: https://www.semanticscholar.org/paper/c1ac3fbf530bf2eb207aa1a20dd14c8ed9f6766b",
+      "notes": "(based on full text §Our Proposed Method) Evidence uses a GPT-2 Transformer variant for question generation but does not assert GPT models have far superior results. · source: http://arxiv.org/abs/1911.02365v1",
       "error": null,
       "labels": null
     },
@@ -1502,9 +1496,9 @@
         "abstract": "In this work, we focus on fine-tuning an OpenAI GPT-2 pre-trained model for generating patent claims. GPT-2 has demonstrated impressive efficacy of pre-trained language models on various tasks, particularly coherent text generation. Patent claim language itself has rarely been explored in the past and poses a unique challenge. We are motivated to generate coherent patent claims automatically so that augmented inventing might be viable someday. In our implementation, we identified a unique language structure in patent claims and leveraged its implicit human annotations. We investigated the fine…"
       },
       "metadata_issues": [],
-      "supports_claim": "partial",
-      "priority": "helpful",
-      "severity": "low",
+      "supports_claim": "supports",
+      "priority": "obligatory",
+      "severity": "ok",
       "compared_against": null,
       "evidence": [
         {
@@ -1514,21 +1508,15 @@
           "url": "https://arxiv.org/pdf/1907.02052"
         },
         {
-          "kind": "full_text",
-          "source": "arxiv_html §View PDF",
-          "quote": "Abstract: In this work, we focus on fine-tuning an OpenAI GPT-2 pre-trained model for generating patent claims. GPT-2 has demonstrated impressive efficacy of pre-trained language models on various tasks, particularly coherent text generation. Patent claim language itself has rarely been explored in the past and poses a unique challenge. We are motivated to generate coherent patent claims automatically so that augmented inventing might be viable someday. In our implementation, we identified a unique language structure in patent claims and leveraged its implicit human annotations. Our contributi…",
-          "url": "https://ar5iv.org/abs/1907.02052"
-        },
-        {
           "kind": "abstract",
           "source": "10.1016/j.wpi.2020.101983",
           "quote": "In this work, we focus on fine-tuning an OpenAI GPT-2 pre-trained model for generating patent claims. GPT-2 has demonstrated impressive efficacy of pre-trained language models on various tasks, particularly coherent text generation. Patent claim language itself has rarely been explored in the past and poses a unique challenge. We are motivated to generate coherent patent claims automatically so that augmented inventing might be viable someday. In our implementation, we identified a unique language structure in patent claims and leveraged its implicit human annotations. We investigated the fine…",
           "url": "https://arxiv.org/pdf/1907.02052"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.55,
       "model_tier": "judge",
-      "notes": "(based on full text §View PDF) Evidence reports GPT-2 demonstrated impressive efficacy and coherent generation, partially supporting GPT superiority but not a comparative claim. · source: https://arxiv.org/pdf/1907.02052",
+      "notes": "(based on abstract only) Evidence states GPT-2 demonstrated impressive efficacy and coherent text generation. · source: https://arxiv.org/pdf/1907.02052",
       "error": null,
       "labels": null
     },
@@ -1574,37 +1562,37 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "arxiv",
+        "source": "s2",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "ConveRT: Efficient and Accurate Conversational Representations from Transformers",
         "authors": [
           "Matthew Henderson",
-          "Iñigo Casanueva",
-          "Nikola Mrkšić",
-          "Pei-Hao Su",
-          "Tsung-Hsien Wen",
-          "Ivan Vulić"
+          "I. Casanueva",
+          "Nikola Mrkvsi'c",
+          "Pei-hao Su",
+          "Tsung-Hsien",
+          "Ivan Vulic"
         ],
         "year": 2019,
-        "venue": "arXiv (preprint)",
-        "doi": null,
-        "arxiv_id": "1911.03688v2",
-        "url": "http://arxiv.org/abs/1911.03688v2",
+        "venue": "Findings",
+        "doi": "10.18653/v1/2020.findings-emnlp.196",
+        "arxiv_id": "1911.03688",
+        "url": "https://www.aclweb.org/anthology/2020.findings-emnlp.196.pdf",
         "url_valid": true,
         "abstract": "General-purpose pretrained sentence encoders such as BERT are not ideal for real-world conversational AI applications; they are computationally heavy, slow, and expensive to train. We propose ConveRT (Conversational Representations from Transformers), a pretraining framework for conversational tasks satisfying all the following requirements: it is effective, affordable, and quick to train. We pretrain using a retrieval-based response selection task, effectively leveraging quantization and subword-level parameterization in the dual encoder to build a lightweight memory- and energy-efficient mod…"
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
       "evidence": [
         {
           "kind": "metadata",
-          "source": "1911.03688v2",
-          "quote": "ConveRT: Efficient and Accurate Conversational Representations from Transformers — Matthew Henderson, Iñigo Casanueva, Nikola Mrkšić, Pei-Hao Su, Tsung-Hsien Wen, Ivan Vulić — 2019",
-          "url": "http://arxiv.org/abs/1911.03688v2"
+          "source": "10.18653/v1/2020.findings-emnlp.196",
+          "quote": "ConveRT: Efficient and Accurate Conversational Representations from Transformers — Matthew Henderson, I. Casanueva, Nikola Mrkvsi'c, Pei-hao Su, Tsung-Hsien, Ivan Vulic — 2019",
+          "url": "https://www.aclweb.org/anthology/2020.findings-emnlp.196.pdf"
         },
         {
           "kind": "full_text",
@@ -1614,14 +1602,14 @@
         },
         {
           "kind": "abstract",
-          "source": "1911.03688v2",
+          "source": "10.18653/v1/2020.findings-emnlp.196",
           "quote": "General-purpose pretrained sentence encoders such as BERT are not ideal for real-world conversational AI applications; they are computationally heavy, slow, and expensive to train. We propose ConveRT (Conversational Representations from Transformers), a pretraining framework for conversational tasks satisfying all the following requirements: it is effective, affordable, and quick to train. We pretrain using a retrieval-based response selection task, effectively leveraging quantization and subword-level parameterization in the dual encoder to build a lightweight memory- and energy-efficient mod…",
-          "url": "http://arxiv.org/abs/1911.03688v2"
+          "url": "https://www.aclweb.org/anthology/2020.findings-emnlp.196.pdf"
         }
       ],
       "confidence": 0.6,
       "model_tier": "judge",
-      "notes": "(based on full text §Introduction) Evidence is about ConveRT for conversational AI, not GPT models or their superior results. · source: http://arxiv.org/abs/1911.03688v2",
+      "notes": "(based on full text §Introduction) Evidence promotes ConveRT, a compact dual encoder for conversational AI, not the superiority of GPT models. · source: https://www.aclweb.org/anthology/2020.findings-emnlp.196.pdf",
       "error": null,
       "labels": null
     },
@@ -1682,8 +1670,8 @@
         "abstract": "With the recent advancements in conversational artificial intelligence (AI), the practical applications of chatbots have risen significantly in diverse domains such as healthcare, education, e-government, customer support systems, social platforms, and entertainment. The chatbot converses with humans in natural language and responds to their queries with precise and relevant answers. The relevant literature presents several methods for intent classification and slot mapping for chatbot question answering. However, the existing chatbot architectures still suffer from few-shot learning problem (…"
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
-      "priority": "obligatory",
+      "supports_claim": "does_not",
+      "priority": "helpful",
       "severity": "low",
       "compared_against": null,
       "evidence": [
@@ -1700,9 +1688,9 @@
           "url": "https://www.semanticscholar.org/paper/743282f9f1955a05b45f0871041487c899d709b0"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.4,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence on chatbot intent classification/few-shot does not present a comprehensive analysis of GPT architecture and training. · source: https://www.semanticscholar.org/paper/743282f9f1955a05b45f0871041487c899d709b0",
+      "notes": "(based on abstract only) Evidence concerns chatbot intent classification and few-shot problems, not a comprehensive GPT architecture analysis. · source: https://www.semanticscholar.org/paper/743282f9f1955a05b45f0871041487c899d709b0",
       "error": null,
       "labels": null
     },
@@ -1763,9 +1751,9 @@
         "abstract": "De novo drug design refers to the process of designing new drug molecules from scratch using computational methods. In contrast to other computational methods that primarily focus on modifying existing molecules, designing from scratch enables the exploration of new chemical space and the potential discovery of novel molecules with enhanced properties. In this research, we proposed a model that utilizes Generative Pre-trained Transformer (GPT) architecture and relative attention for de novo drug design. GPT is a language model that utilizes transformer architecture to predict the next word or …"
       },
       "metadata_issues": [],
-      "supports_claim": "partial",
-      "priority": "obligatory",
-      "severity": "medium",
+      "supports_claim": "does_not",
+      "priority": "helpful",
+      "severity": "low",
       "compared_against": null,
       "evidence": [
         {
@@ -1783,7 +1771,7 @@
       ],
       "confidence": 0.6,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence uses GPT architecture for drug design, not conversational-AI analysis, so only partially matches. · source: https://www.semanticscholar.org/paper/4fac904a7f23d69db347441036cb9d5e44a233ab",
+      "notes": "(based on abstract only) Evidence applies GPT to de novo drug design, not conversational AI analysis. · source: https://www.semanticscholar.org/paper/4fac904a7f23d69db347441036cb9d5e44a233ab",
       "error": null,
       "labels": null
     },
@@ -1864,7 +1852,7 @@
           "url": "http://arxiv.org/abs/2304.10778v2"
         }
       ],
-      "confidence": 0.85,
+      "confidence": 0.6,
       "model_tier": "judge",
       "notes": "(based on abstract only) Evidence compares code generation tools including Amazon CodeWhisperer and ChatGPT. · source: http://arxiv.org/abs/2304.10778v2",
       "error": null,
@@ -2012,9 +2000,9 @@
         "abstract": "Artificial intelligence and large-language model chatbots have generated significant attention in higher education, and in research practice. Whether ChatGPT, Bard, Jasper Chat, Socratic, Bing AI, DialoGPT, or something else, these are all shaping how education and research occur. In this Editorial, we offer five editorial principles to guide decision-making for editors, which will also become policy for the Journal of University Teaching and Learning Practice. First, we articulate that non-human authorship does not constitute authorship. Second, artificial intelligence should be leveraged to …"
       },
       "metadata_issues": [],
-      "supports_claim": "supports",
+      "supports_claim": "partial",
       "priority": "obligatory",
-      "severity": "ok",
+      "severity": "medium",
       "compared_against": null,
       "evidence": [
         {
@@ -2030,9 +2018,9 @@
           "url": "https://doi.org/10.53761/1.20.5.01"
         }
       ],
-      "confidence": 0.8,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence mentions Bing AI among the chatbots discussed. · source: https://doi.org/10.53761/1.20.5.01",
+      "notes": "(based on abstract only) Evidence lists Bing AI among chatbots but as editorial discussion, not a model comparison. · source: https://doi.org/10.53761/1.20.5.01",
       "error": null,
       "labels": null
     },
@@ -2091,9 +2079,9 @@
         "abstract": "While we applaud the promise and value of generative artificial intelligence and Chat Generative Pretrained Transformer–like tools, leveraging their potential and values heavily depends on what we use them for and how, while also acknowledging and addressing their limits, limitations, and concerns."
       },
       "metadata_issues": [],
-      "supports_claim": "partial",
-      "priority": "helpful",
-      "severity": "low",
+      "supports_claim": "does_not",
+      "priority": "obligatory",
+      "severity": "high",
       "compared_against": null,
       "evidence": [
         {
@@ -2115,9 +2103,9 @@
           "url": "https://ieeexplore.ieee.org/ielx7/2/10109259/10109305.pdf"
         }
       ],
-      "confidence": 0.5,
+      "confidence": 0.55,
       "model_tier": "judge",
-      "notes": "(based on full text §Google’s LaMDA, released in May) Evidence describes LaMDA/Bard and ChatGPT but does not confirm DeepMind Sparrow or the full comparative set. · source: https://ieeexplore.ieee.org/ielx7/2/10109259/10109305.pdf",
+      "notes": "(based on full text §Google’s LaMDA, released in May) Cited as the source for DeepMind Sparrow, but evidence describes LaMDA/Bard and ChatGPT, not Sparrow. · source: https://ieeexplore.ieee.org/ielx7/2/10109259/10109305.pdf",
       "error": null,
       "labels": null
     },
@@ -2178,8 +2166,8 @@
         "abstract": "Open Artificial Intelligence (AI) published an AI chatbot tool called ChatGPT at the end of November 2022. Generative Pre-trained Transformer (GPT) architecture is the foundation of ChatGPT. On the internet, ChatGPT has been rapidly growing. This chatbot enables users to discuss with the AI by inputting prompts, and it is based on OpenAI’s language model. Although ChatGPT is fantastic and produces exciting results for writing tales, poetry, songs, essays, and other things, it has certain restrictions. Users may ask the bot questions, and it will reply with pertinent, convincing subjects and re…"
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
-      "priority": "obligatory",
+      "supports_claim": "does_not",
+      "priority": "helpful",
       "severity": "low",
       "compared_against": null,
       "evidence": [
@@ -2196,9 +2184,9 @@
           "url": "https://www.semanticscholar.org/paper/ac9100f6e152c6560fd47305eeca83c701398be4"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is about ChatGPT and does not mention Character AI. · source: https://www.semanticscholar.org/paper/ac9100f6e152c6560fd47305eeca83c701398be4",
+      "notes": "(based on abstract only) Evidence is about ChatGPT, not Character AI. · source: https://www.semanticscholar.org/paper/ac9100f6e152c6560fd47305eeca83c701398be4",
       "error": null,
       "labels": null
     },
@@ -2261,7 +2249,7 @@
         "abstract": "Dialogue emotion detection is always challenging due to human subjectivity and the randomness of dialogue content. In a conversation, the emotion of each person often develops via a cumulative process, which can be influenced by many elements of uncertainty. Much commonsense knowledge influences people's emotions imperceptibly, such as experiential or habitual knowledge. In the process of conversation, this commonsense knowledge information can be used to enrich the semantic information of each utterance and improve the accuracy of emotion recognition. In this paper, we propose a growing graph…"
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -2279,9 +2267,9 @@
           "url": "https://www.semanticscholar.org/paper/4adfe45dd1e1bfd223eb3edb0baafdb407493954"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.4,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence on dialogue emotion detection does not address the evolution of conversational AI models. · source: https://www.semanticscholar.org/paper/4adfe45dd1e1bfd223eb3edb0baafdb407493954",
+      "notes": "(based on abstract only) Evidence is about dialogue emotion detection, not the evolution of conversational AI models. · source: https://www.semanticscholar.org/paper/4adfe45dd1e1bfd223eb3edb0baafdb407493954",
       "error": null,
       "labels": null
     },
@@ -2358,9 +2346,9 @@
           "url": "https://www.semanticscholar.org/paper/e0bf22c930e47e2b4caaca2afd9c4991f1e7369f"
         }
       ],
-      "confidence": 0.8,
+      "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is about a feature pyramid for object detection, a plainly different topic. · source: https://www.semanticscholar.org/paper/e0bf22c930e47e2b4caaca2afd9c4991f1e7369f",
+      "notes": "(based on abstract only) Evidence concerns object detection feature pyramids, unrelated to conversational AI evolution. · source: https://www.semanticscholar.org/paper/e0bf22c930e47e2b4caaca2afd9c4991f1e7369f",
       "error": null,
       "labels": null
     },
@@ -2443,7 +2431,7 @@
       ],
       "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is about rendezvous control of underwater vehicles, unrelated to conversational AI. · source: https://www.semanticscholar.org/paper/10fca8041d8163f82b77ef46b36e720947131613",
+      "notes": "(based on abstract only) Evidence is about AUV rendezvous control, unrelated to conversational AI. · source: https://www.semanticscholar.org/paper/10fca8041d8163f82b77ef46b36e720947131613",
       "error": null,
       "labels": null
     },
@@ -2522,7 +2510,7 @@
       ],
       "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is about predefined-time stabilization control, unrelated to conversational AI. · source: https://www.semanticscholar.org/paper/4785321ddb8143e31c65698849da40e428ca84f6",
+      "notes": "(based on abstract only) Evidence is about predefined-time stabilization of integrator systems, off-topic. · source: https://www.semanticscholar.org/paper/4785321ddb8143e31c65698849da40e428ca84f6",
       "error": null,
       "labels": null
     },
@@ -2597,9 +2585,9 @@
           "url": "https://dl.acm.org/doi/pdf/10.1145/357980.357991"
         }
       ],
-      "confidence": 0.85,
+      "confidence": 0.6,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is the ELIZA paper on early natural language man-machine communication. · source: https://dl.acm.org/doi/pdf/10.1145/357980.357991",
+      "notes": "(based on abstract only) Evidence is the ELIZA paper, confirming it as an early natural-language man-machine program. · source: https://dl.acm.org/doi/pdf/10.1145/357980.357991",
       "error": null,
       "labels": null
     },
@@ -2848,9 +2836,9 @@
           "url": "https://ojs.aaai.org/index.php/aimagazine/article/download/2303/2165"
         }
       ],
-      "confidence": 0.8,
+      "confidence": 0.7,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence describes IBM Watson using NLP and information retrieval to answer questions. · source: https://ojs.aaai.org/index.php/aimagazine/article/download/2303/2165",
+      "notes": "(based on abstract only) Evidence describes IBM Watson's DeepQA using NLP and information retrieval. · source: https://ojs.aaai.org/index.php/aimagazine/article/download/2303/2165",
       "error": null,
       "labels": null
     },
@@ -3014,55 +3002,19 @@
         "url": null
       },
       "in_table": false,
-      "exists": "yes",
-      "resolved": {
-        "source": "crossref",
-        "match_method": "fuzzy_title",
-        "match_score": 1.0,
-        "title": "Project progress report",
-        "authors": [
-          "A. I. Isakov"
-        ],
-        "year": 1997,
-        "venue": null,
-        "doi": "10.2172/305837",
-        "arxiv_id": null,
-        "url": "https://doi.org/10.2172/305837",
-        "url_valid": true,
-        "abstract": "Works of two variety have been fulfilled: first, research of polystyrene shells formation conditions in drop tower furnace and ballistic furnace; second, creation of computer codes for simulation of shells formation processes, including numerous nucleation. Besides that polystyrene shells with diameter up to 2 mm transmitted to LLNL in parcel."
-      },
+      "exists": "unresolved",
+      "resolved": null,
       "metadata_issues": [
-        "title mismatch: cited 'Conversational understanding as an AI-hard problem: A progr…' vs 'Project progress report'",
-        "year mismatch: cited 2013 vs 1997",
-        "first-author mismatch: cited 'Bahl L' vs 'A. I. Isakov'"
+        "abstained from a weak fuzzy-title match — both author and year contradict the cited reference (closest candidate: 'Project progress report')"
       ],
-      "supports_claim": "does_not",
-      "priority": "obligatory",
-      "severity": "high",
+      "supports_claim": "inconclusive",
+      "priority": "helpful",
+      "severity": "low",
       "compared_against": null,
-      "evidence": [
-        {
-          "kind": "metadata",
-          "source": "10.2172/305837",
-          "quote": "Project progress report — A. I. Isakov — 1997",
-          "url": "https://doi.org/10.2172/305837"
-        },
-        {
-          "kind": "full_text",
-          "source": "resolved_url §DISCLAIMER",
-          "quote": "This document was prepared as an account of work sponsored by an agency of the United States Government. Neither the United States Government nor the University of California nor any of their employees, makes any warranty, express or implied, or assumes any legal liability or responsibility for the accuracy, completeness, or usefulness of any information, apparatus, product, or process disclosed, or represents that its use would not infringe privately owned rights. One can see on fig. 3 two kinds of granules. Some of them (see fig. 4) have many shallow cracks on their surface. The surface of s…",
-          "url": "https://doi.org/10.2172/305837"
-        },
-        {
-          "kind": "abstract",
-          "source": "10.2172/305837",
-          "quote": "Works of two variety have been fulfilled: first, research of polystyrene shells formation conditions in drop tower furnace and ballistic furnace; second, creation of computer codes for simulation of shells formation processes, including numerous nucleation. Besides that polystyrene shells with diameter up to 2 mm transmitted to LLNL in parcel.",
-          "url": "https://doi.org/10.2172/305837"
-        }
-      ],
-      "confidence": 0.9,
-      "model_tier": "judge",
-      "notes": "(based on full text §DISCLAIMER) Evidence is a government disclaimer about polymer foam microspheres, entirely unrelated to Cortana or NLP voice assistants. · source: https://doi.org/10.2172/305837",
+      "evidence": [],
+      "confidence": null,
+      "model_tier": "bulk",
+      "notes": null,
       "error": null,
       "labels": null
     },
@@ -3187,9 +3139,9 @@
           "url": "https://www.semanticscholar.org/paper/361c00b22e29d0816ca896513d2c165e26399821"
         }
       ],
-      "confidence": 0.85,
+      "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is about AlphaStar for StarCraft II, unrelated to Google Assistant. · source: https://www.semanticscholar.org/paper/361c00b22e29d0816ca896513d2c165e26399821",
+      "notes": "(based on abstract only) Evidence is about AlphaStar StarCraft, not Google Assistant techniques. · source: https://www.semanticscholar.org/paper/361c00b22e29d0816ca896513d2c165e26399821",
       "error": null,
       "labels": null
     },
@@ -3250,9 +3202,9 @@
         "abstract": "The general task-agnostic model outperforms discriminatively trained models that use architectures speciﬁcally crafted for each task, improving upon the state of the art in 9 out of the 12 tasks studied."
       },
       "metadata_issues": [],
-      "supports_claim": "partial",
+      "supports_claim": "supports",
       "priority": "obligatory",
-      "severity": "medium",
+      "severity": "ok",
       "compared_against": null,
       "evidence": [
         {
@@ -3270,7 +3222,7 @@
       ],
       "confidence": 0.6,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence (GPT paper) shows a task-agnostic model advancing the state of the art but does not state transformer-based contextually relevant responses explicitly. · source: https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035",
+      "notes": "(based on abstract only) Evidence shows the generative pre-trained model improves state of the art across tasks. · source: https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035",
       "error": null,
       "labels": null
     },
@@ -3349,9 +3301,9 @@
           "url": "https://arxiv.org/pdf/2103.14899"
         }
       ],
-      "confidence": 0.55,
+      "confidence": 0.4,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence concerns vision transformers for image classification, related to self-attention but not response generation. · source: https://arxiv.org/pdf/2103.14899",
+      "notes": "(based on abstract only) Evidence is a vision transformer using self-attention, relevant to the mechanism but in an image, not language, context. · source: https://arxiv.org/pdf/2103.14899",
       "error": null,
       "labels": null
     },
@@ -3434,9 +3386,9 @@
           "url": "https://www.mdpi.com/2072-4292/15/3/842/pdf?version=1675852575"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.6,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is about remote sensing change detection, a plainly different topic from model training-data dependency in conversational AI. · source: https://www.mdpi.com/2072-4292/15/3/842/pdf?version=1675852575",
+      "notes": "(based on abstract only) Evidence is about remote-sensing change detection, unrelated to training-data dependency of conversational AI. · source: https://www.mdpi.com/2072-4292/15/3/842/pdf?version=1675852575",
       "error": null,
       "labels": null
     },
@@ -4038,43 +3990,19 @@
         "url": null
       },
       "in_table": true,
-      "exists": "yes",
-      "resolved": {
-        "source": "crossref",
-        "match_method": "fuzzy_title",
-        "match_score": 1.0,
-        "title": "Project progress report",
-        "authors": [
-          "A. I. Isakov"
-        ],
-        "year": 1997,
-        "venue": null,
-        "doi": "10.2172/305837",
-        "arxiv_id": null,
-        "url": "https://doi.org/10.2172/305837",
-        "url_valid": true,
-        "abstract": "Works of two variety have been fulfilled: first, research of polystyrene shells formation conditions in drop tower furnace and ballistic furnace; second, creation of computer codes for simulation of shells formation processes, including numerous nucleation. Besides that polystyrene shells with diameter up to 2 mm transmitted to LLNL in parcel."
-      },
+      "exists": "unresolved",
+      "resolved": null,
       "metadata_issues": [
-        "title mismatch: cited 'Conversational understanding as an AI-hard problem: A progr…' vs 'Project progress report'",
-        "year mismatch: cited 2013 vs 1997",
-        "first-author mismatch: cited 'Bahl L' vs 'A. I. Isakov'"
+        "abstained from a weak fuzzy-title match — both author and year contradict the cited reference (closest candidate: 'Project progress report')"
       ],
       "supports_claim": "inconclusive",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
-      "evidence": [
-        {
-          "kind": "metadata",
-          "source": "10.2172/305837",
-          "quote": "Project progress report — A. I. Isakov — 1997",
-          "url": "https://doi.org/10.2172/305837"
-        }
-      ],
+      "evidence": [],
       "confidence": null,
       "model_tier": "bulk",
-      "notes": "cited inside a table — relevance not assessed · source: https://doi.org/10.2172/305837",
+      "notes": "cited inside a table — relevance not assessed",
       "error": null,
       "labels": null
     },
@@ -4712,9 +4640,9 @@
           "url": "https://ojs.aaai.org/index.php/aimagazine/article/download/2303/2165"
         }
       ],
-      "confidence": 0.75,
+      "confidence": 0.65,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence confirms Watson processes/analyzes unstructured data at expert level. · source: https://ojs.aaai.org/index.php/aimagazine/article/download/2303/2165",
+      "notes": "(based on abstract only) Evidence confirms Watson processes/analyzes unstructured data via DeepQA. · source: https://ojs.aaai.org/index.php/aimagazine/article/download/2303/2165",
       "error": null,
       "labels": null
     },
@@ -4878,55 +4806,19 @@
         "url": null
       },
       "in_table": false,
-      "exists": "yes",
-      "resolved": {
-        "source": "crossref",
-        "match_method": "fuzzy_title",
-        "match_score": 1.0,
-        "title": "Project progress report",
-        "authors": [
-          "A. I. Isakov"
-        ],
-        "year": 1997,
-        "venue": null,
-        "doi": "10.2172/305837",
-        "arxiv_id": null,
-        "url": "https://doi.org/10.2172/305837",
-        "url_valid": true,
-        "abstract": "Works of two variety have been fulfilled: first, research of polystyrene shells formation conditions in drop tower furnace and ballistic furnace; second, creation of computer codes for simulation of shells formation processes, including numerous nucleation. Besides that polystyrene shells with diameter up to 2 mm transmitted to LLNL in parcel."
-      },
+      "exists": "unresolved",
+      "resolved": null,
       "metadata_issues": [
-        "title mismatch: cited 'Conversational understanding as an AI-hard problem: A progr…' vs 'Project progress report'",
-        "year mismatch: cited 2013 vs 1997",
-        "first-author mismatch: cited 'Bahl L' vs 'A. I. Isakov'"
+        "abstained from a weak fuzzy-title match — both author and year contradict the cited reference (closest candidate: 'Project progress report')"
       ],
-      "supports_claim": "does_not",
-      "priority": "obligatory",
-      "severity": "high",
+      "supports_claim": "inconclusive",
+      "priority": "helpful",
+      "severity": "low",
       "compared_against": null,
-      "evidence": [
-        {
-          "kind": "metadata",
-          "source": "10.2172/305837",
-          "quote": "Project progress report — A. I. Isakov — 1997",
-          "url": "https://doi.org/10.2172/305837"
-        },
-        {
-          "kind": "full_text",
-          "source": "resolved_url §Working with saturated fractions",
-          "quote": "of 0.5mm, 0.63mm, 0.7mm, and 0.8mm showed that the yield of thin shells depends on thermal profile on the input of hot zone. The surface quality of the shells formed is dependant on temperature profile near the output of the hot zone. We have three controlled sections of the furnace, so the range of experiments can be wide. All the experiments were conducted with spherical polystyrene particles saturated with ethyl acetate (mass concentration of 6 O/o). The pressure in the furnace was 0.1 atm, atmosphere composition - 50% Ar and 50% He. The diameters of polystyrene granules were 0.7 and 0.8mm.…",
-          "url": "https://doi.org/10.2172/305837"
-        },
-        {
-          "kind": "abstract",
-          "source": "10.2172/305837",
-          "quote": "Works of two variety have been fulfilled: first, research of polystyrene shells formation conditions in drop tower furnace and ballistic furnace; second, creation of computer codes for simulation of shells formation processes, including numerous nucleation. Besides that polystyrene shells with diameter up to 2 mm transmitted to LLNL in parcel.",
-          "url": "https://doi.org/10.2172/305837"
-        }
-      ],
-      "confidence": 0.9,
-      "model_tier": "judge",
-      "notes": "(based on full text §Working with saturated fractions) Evidence about polymer foam granule research has nothing to do with Microsoft Cortana's features. · source: https://doi.org/10.2172/305837",
+      "evidence": [],
+      "confidence": null,
+      "model_tier": "bulk",
+      "notes": null,
       "error": null,
       "labels": null
     },
@@ -5051,9 +4943,9 @@
           "url": "https://www.semanticscholar.org/paper/361c00b22e29d0816ca896513d2c165e26399821"
         }
       ],
-      "confidence": 0.85,
+      "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence on AlphaStar does not describe Google Assistant's cross-platform features. · source: https://www.semanticscholar.org/paper/361c00b22e29d0816ca896513d2c165e26399821",
+      "notes": "(based on abstract only) Evidence on AlphaStar does not support Google Assistant table entry. · source: https://www.semanticscholar.org/paper/361c00b22e29d0816ca896513d2c165e26399821",
       "error": null,
       "labels": null
     },
@@ -5132,9 +5024,9 @@
           "url": "https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035"
         }
       ],
-      "confidence": 0.55,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence supports GPT as a significant advance but the tabulated architecture/training details are not stated. · source: https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035",
+      "notes": "(based on abstract only) Evidence supports the task-agnostic generative model but not the full table fields. · source: https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035",
       "error": null,
       "labels": null
     },
@@ -5736,43 +5628,19 @@
         "url": null
       },
       "in_table": true,
-      "exists": "yes",
-      "resolved": {
-        "source": "crossref",
-        "match_method": "fuzzy_title",
-        "match_score": 1.0,
-        "title": "Project progress report",
-        "authors": [
-          "A. I. Isakov"
-        ],
-        "year": 1997,
-        "venue": null,
-        "doi": "10.2172/305837",
-        "arxiv_id": null,
-        "url": "https://doi.org/10.2172/305837",
-        "url_valid": true,
-        "abstract": "Works of two variety have been fulfilled: first, research of polystyrene shells formation conditions in drop tower furnace and ballistic furnace; second, creation of computer codes for simulation of shells formation processes, including numerous nucleation. Besides that polystyrene shells with diameter up to 2 mm transmitted to LLNL in parcel."
-      },
+      "exists": "unresolved",
+      "resolved": null,
       "metadata_issues": [
-        "title mismatch: cited 'Conversational understanding as an AI-hard problem: A progr…' vs 'Project progress report'",
-        "year mismatch: cited 2013 vs 1997",
-        "first-author mismatch: cited 'Bahl L' vs 'A. I. Isakov'"
+        "abstained from a weak fuzzy-title match — both author and year contradict the cited reference (closest candidate: 'Project progress report')"
       ],
       "supports_claim": "inconclusive",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
-      "evidence": [
-        {
-          "kind": "metadata",
-          "source": "10.2172/305837",
-          "quote": "Project progress report — A. I. Isakov — 1997",
-          "url": "https://doi.org/10.2172/305837"
-        }
-      ],
+      "evidence": [],
       "confidence": null,
       "model_tier": "bulk",
-      "notes": "cited inside a table — relevance not assessed · source: https://doi.org/10.2172/305837",
+      "notes": "cited inside a table — relevance not assessed",
       "error": null,
       "labels": null
     },
@@ -6049,7 +5917,7 @@
       ],
       "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is about fixed-time stabilization of nonlinear systems, unrelated to conversational AI. · source: https://www.semanticscholar.org/paper/f83af7cfcb5e2b74b9b7059ddbe5dbbf95edb632",
+      "notes": "(based on abstract only) Evidence is about fixed-time stabilization control, off-topic for conversational AI research. · source: https://www.semanticscholar.org/paper/f83af7cfcb5e2b74b9b7059ddbe5dbbf95edb632",
       "error": null,
       "labels": null
     },
@@ -6110,7 +5978,7 @@
         "abstract": "Existing visual question answering methods often suffer from cross-modal spurious correlations and oversimplified event-level reasoning processes that fail to capture event temporality, causality, and dynamics spanning over the video. In this work, to address the task of event-level visual question answering, we propose a framework for cross-modal causal relational reasoning. In particular, a set of causal intervention operations is introduced to discover the underlying causal structures across visual and linguistic modalities. Our framework, named Cross-Modal Causal RelatIonal Reasoning (CMCI…"
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -6134,9 +6002,9 @@
           "url": "https://arxiv.org/pdf/2207.12647"
         }
       ],
-      "confidence": 0.55,
+      "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on full text §Introduction) Evidence concerns event-level visual question answering and causal reasoning, not conversational AI research directions. · source: https://arxiv.org/pdf/2207.12647",
+      "notes": "(based on full text §Introduction) Evidence is about event-level visual question answering and causal reasoning over video, not R&D directions for conversational AI. · source: https://arxiv.org/pdf/2207.12647",
       "error": null,
       "labels": null
     },
@@ -6197,9 +6065,9 @@
         "abstract": "The general task-agnostic model outperforms discriminatively trained models that use architectures speciﬁcally crafted for each task, improving upon the state of the art in 9 out of the 12 tasks studied."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "partial",
       "priority": "obligatory",
-      "severity": "low",
+      "severity": "medium",
       "compared_against": null,
       "evidence": [
         {
@@ -6215,9 +6083,9 @@
           "url": "https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence does not spell out the 'Generative Pre-trained Transformer' acronym. · source: https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035",
+      "notes": "(based on abstract only) Source is the GPT paper but the shown evidence does not spell out the acronym. · source: https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035",
       "error": null,
       "labels": null
     },
@@ -6306,9 +6174,9 @@
           "url": "https://www.semanticscholar.org/paper/204e3073870fae3d05bcbc2f6a8e263d9b72e776"
         }
       ],
-      "confidence": 0.85,
+      "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is the Transformer paper proposing an attention-based architecture for sequence processing. · source: https://www.semanticscholar.org/paper/204e3073870fae3d05bcbc2f6a8e263d9b72e776",
+      "notes": "(based on abstract only) Evidence is the Transformer paper proposing an attention-based architecture for sequential data. · source: https://www.semanticscholar.org/paper/204e3073870fae3d05bcbc2f6a8e263d9b72e776",
       "error": null,
       "labels": null
     },
@@ -6375,9 +6243,9 @@
         "abstract": "It is demonstrated that language models begin to learn these tasks without any explicit supervision when trained on a new dataset of millions of webpages called WebText, suggesting a promising path towards building language processing systems which learn to perform tasks from their naturally occurring demonstrations."
       },
       "metadata_issues": [],
-      "supports_claim": "partial",
+      "supports_claim": "supports",
       "priority": "obligatory",
-      "severity": "medium",
+      "severity": "ok",
       "compared_against": null,
       "evidence": [
         {
@@ -6393,9 +6261,9 @@
           "url": "https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.55,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence says the model learns to perform tasks without supervision but does not enumerate completion/summarization/translation/dialogue. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
+      "notes": "(based on abstract only) Abstract states language models learn various tasks without supervision, broadly backing diverse language-task results. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
       "error": null,
       "labels": null
     },
@@ -6456,9 +6324,9 @@
         "abstract": "The general task-agnostic model outperforms discriminatively trained models that use architectures speciﬁcally crafted for each task, improving upon the state of the art in 9 out of the 12 tasks studied."
       },
       "metadata_issues": [],
-      "supports_claim": "partial",
+      "supports_claim": "supports",
       "priority": "obligatory",
-      "severity": "medium",
+      "severity": "ok",
       "compared_against": null,
       "evidence": [
         {
@@ -6474,9 +6342,9 @@
           "url": "https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.55,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence describes a generative pre-trained task-agnostic model but does not explicitly mention unsupervised learning on large corpora for coherent responses. · source: https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035",
+      "notes": "(based on abstract only) Evidence reflects GPT-1's task-agnostic generative pre-training foundation. · source: https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035",
       "error": null,
       "labels": null
     },
@@ -6537,7 +6405,7 @@
         "abstract": "The general task-agnostic model outperforms discriminatively trained models that use architectures speciﬁcally crafted for each task, improving upon the state of the art in 9 out of the 12 tasks studied."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -6555,9 +6423,9 @@
           "url": "https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence does not mention early chatbots answering customer inquiries. · source: https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035",
+      "notes": "(based on abstract only) Evidence does not address early customer-service chatbots. · source: https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035",
       "error": null,
       "labels": null
     },
@@ -6636,9 +6504,9 @@
           "url": "https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.4,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence highlights performance gains, not generic/nonsensical response limitations. · source: https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035",
+      "notes": "(based on abstract only) On-topic for GPT but the shown evidence is positive and does not mention these limitations. · source: https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035",
       "error": null,
       "labels": null
     },
@@ -6705,9 +6573,9 @@
         "abstract": "It is demonstrated that language models begin to learn these tasks without any explicit supervision when trained on a new dataset of millions of webpages called WebText, suggesting a promising path towards building language processing systems which learn to perform tasks from their naturally occurring demonstrations."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
-      "priority": "helpful",
-      "severity": "low",
+      "supports_claim": "partial",
+      "priority": "obligatory",
+      "severity": "medium",
       "compared_against": null,
       "evidence": [
         {
@@ -6723,9 +6591,9 @@
           "url": "https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.45,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Abstract does not mention generating news articles, blog posts, or creative writing. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
+      "notes": "(based on abstract only) GPT-2 is the relevant generative model but the abstract does not mention news/blog/creative content generation. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
       "error": null,
       "labels": null
     },
@@ -6839,9 +6707,9 @@
           "url": "https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0"
         }
       ],
-      "confidence": 0.75,
+      "confidence": 0.7,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is the GPT-3 few-shot scaling paper describing strong context-aware generation. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
+      "notes": "(based on abstract only) Evidence is the GPT-3 scaling/few-shot paper backing 175B-parameter capable generation. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
       "error": null,
       "labels": null
     },
@@ -6957,7 +6825,7 @@
       ],
       "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence shows GPT-3 excels at few-shot learning from minimal prompts. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
+      "notes": "(based on abstract only) Evidence directly shows GPT-3 excels at few-shot learning from minimal prompts. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
       "error": null,
       "labels": null
     },
@@ -7071,9 +6939,9 @@
           "url": "https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence emphasizes few-shot performance but does not explicitly address conversation-history context understanding. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
+      "notes": "(based on abstract only) In-context few-shot learning relates to context use but conversation history is not specifically stated. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
       "error": null,
       "labels": null
     },
@@ -7246,9 +7114,9 @@
         "abstract": "It is demonstrated that language models begin to learn these tasks without any explicit supervision when trained on a new dataset of millions of webpages called WebText, suggesting a promising path towards building language processing systems which learn to perform tasks from their naturally occurring demonstrations."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "partial",
       "priority": "obligatory",
-      "severity": "low",
+      "severity": "medium",
       "compared_against": null,
       "evidence": [
         {
@@ -7264,9 +7132,9 @@
           "url": "https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.45,
       "model_tier": "judge",
-      "notes": "(based on abstract only) The specific parameter/model-size table values are not present in the evidence. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
+      "notes": "(based on abstract only) Evidence confirms WebText training but not the full parameter table. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
       "error": null,
       "labels": null
     },
@@ -7327,8 +7195,8 @@
         "abstract": "The general task-agnostic model outperforms discriminatively trained models that use architectures speciﬁcally crafted for each task, improving upon the state of the art in 9 out of the 12 tasks studied."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
-      "priority": "obligatory",
+      "supports_claim": "partial",
+      "priority": "helpful",
       "severity": "low",
       "compared_against": null,
       "evidence": [
@@ -7345,9 +7213,9 @@
           "url": "https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.35,
       "model_tier": "judge",
-      "notes": "(based on abstract only) The GPT-1/2/3/ChatGPT parameter table values are not present in the evidence. · source: https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035",
+      "notes": "(based on abstract only) Evidence supports GPT-1 generally but not the specific table values. · source: https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035",
       "error": null,
       "labels": null
     },
@@ -7432,9 +7300,9 @@
           "url": "https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.45,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence mentions WebText training data but not the other tabulated specifics. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
+      "notes": "(based on abstract only) Evidence confirms WebText as training data but not the other table fields. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
       "error": null,
       "labels": null
     },
@@ -7554,9 +7422,9 @@
           "url": "https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.6,
       "model_tier": "judge",
-      "notes": "(based on full text §GPT-3 175B or “GPT-3”) Evidence confirms GPT-3's 175B parameters and model size table, supporting the parameter figures. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
+      "notes": "(based on full text §GPT-3 175B or “GPT-3”) Evidence is the GPT-3 paper stating model sizes/architectures including the 175B-parameter model, backing the parameter figures in the table. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
       "error": null,
       "labels": null
     },
@@ -7617,8 +7485,8 @@
         "abstract": "The general task-agnostic model outperforms discriminatively trained models that use architectures speciﬁcally crafted for each task, improving upon the state of the art in 9 out of the 12 tasks studied."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
-      "priority": "obligatory",
+      "supports_claim": "partial",
+      "priority": "helpful",
       "severity": "low",
       "compared_against": null,
       "evidence": [
@@ -7635,9 +7503,9 @@
           "url": "https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.3,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Training data and context window specifics not in evidence. · source: https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035",
+      "notes": "(based on abstract only) Training-data and context-window specifics are not in the evidence. · source: https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035",
       "error": null,
       "labels": null
     },
@@ -7773,8 +7641,8 @@
         "abstract": "The general task-agnostic model outperforms discriminatively trained models that use architectures speciﬁcally crafted for each task, improving upon the state of the art in 9 out of the 12 tasks studied."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
-      "priority": "obligatory",
+      "supports_claim": "partial",
+      "priority": "helpful",
       "severity": "low",
       "compared_against": null,
       "evidence": [
@@ -7791,9 +7659,9 @@
           "url": "https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.35,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Fine-tuning and few-shot table values not in evidence. · source: https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035",
+      "notes": "(based on abstract only) GPT-1 paper involves fine-tuning but the shown evidence does not detail it. · source: https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035",
       "error": null,
       "labels": null
     },
@@ -7860,8 +7728,8 @@
         "abstract": "It is demonstrated that language models begin to learn these tasks without any explicit supervision when trained on a new dataset of millions of webpages called WebText, suggesting a promising path towards building language processing systems which learn to perform tasks from their naturally occurring demonstrations."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
-      "priority": "obligatory",
+      "supports_claim": "partial",
+      "priority": "helpful",
       "severity": "low",
       "compared_against": null,
       "evidence": [
@@ -7878,9 +7746,9 @@
           "url": "https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.3,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Few-shot/multilingual table claims are not addressed in the evidence. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
+      "notes": "(based on abstract only) Abstract does not address fine-tuning, few-shot, or multilingual capabilities listed in the table. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
       "error": null,
       "labels": null
     },
@@ -7976,9 +7844,9 @@
         "abstract": "Recent work has demonstrated substantial gains on many NLP tasks and benchmarks by pre-training on a large corpus of text followed by fine-tuning on a specific task. While typically task-agnostic in architecture, this method still requires task-specific fine-tuning datasets of thousands or tens of thousands of examples. By contrast, humans can generally perform a new language task from only a few examples or from simple instructions - something which current NLP systems still largely struggle to do. Here we show that scaling up language models greatly improves task-agnostic, few-shot performan…"
       },
       "metadata_issues": [],
-      "supports_claim": "supports",
+      "supports_claim": "partial",
       "priority": "obligatory",
-      "severity": "ok",
+      "severity": "medium",
       "compared_against": null,
       "evidence": [
         {
@@ -8000,9 +7868,9 @@
           "url": "https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0"
         }
       ],
-      "confidence": 0.65,
+      "confidence": 0.55,
       "model_tier": "judge",
-      "notes": "(based on full text §Related Work) Evidence explicitly discusses GPT-3 few-shot learning, supporting the few-shot generalization capability claim. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
+      "notes": "(based on full text §Related Work) Source is the GPT-3 paper (few-shot learning), but the retrieved excerpts do not explicitly state few-shot/multilingual capabilities. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
       "error": null,
       "labels": null
     },
@@ -8069,8 +7937,8 @@
         "abstract": "It is demonstrated that language models begin to learn these tasks without any explicit supervision when trained on a new dataset of millions of webpages called WebText, suggesting a promising path towards building language processing systems which learn to perform tasks from their naturally occurring demonstrations."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
-      "priority": "obligatory",
+      "supports_claim": "partial",
+      "priority": "helpful",
       "severity": "low",
       "compared_against": null,
       "evidence": [
@@ -8087,9 +7955,9 @@
           "url": "https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.3,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Multilingual/prompt-engineering table specifics absent from evidence. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
+      "notes": "(based on abstract only) Multilingual/prompt-engineering details are not in the GPT-2 abstract. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
       "error": null,
       "labels": null
     },
@@ -8186,8 +8054,8 @@
       },
       "metadata_issues": [],
       "supports_claim": "partial",
-      "priority": "obligatory",
-      "severity": "medium",
+      "priority": "helpful",
+      "severity": "low",
       "compared_against": null,
       "evidence": [
         {
@@ -8203,9 +8071,9 @@
           "url": "https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0"
         }
       ],
-      "confidence": 0.55,
+      "confidence": 0.3,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Few-shot is supported but multilingual/prompt-engineering specifics are not in evidence. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
+      "notes": "(based on abstract only) Multilingual/prompt-engineering table details not in the evidence. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
       "error": null,
       "labels": null
     },
@@ -8272,8 +8140,8 @@
         "abstract": "It is demonstrated that language models begin to learn these tasks without any explicit supervision when trained on a new dataset of millions of webpages called WebText, suggesting a promising path towards building language processing systems which learn to perform tasks from their naturally occurring demonstrations."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
-      "priority": "obligatory",
+      "supports_claim": "does_not",
+      "priority": "helpful",
       "severity": "low",
       "compared_against": null,
       "evidence": [
@@ -8290,9 +8158,9 @@
           "url": "https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.35,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Prompt engineering and API access details not in evidence. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
+      "notes": "(based on abstract only) Prompt engineering and API access details are absent from the evidence. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
       "error": null,
       "labels": null
     },
@@ -8388,7 +8256,7 @@
         "abstract": "Recent work has demonstrated substantial gains on many NLP tasks and benchmarks by pre-training on a large corpus of text followed by fine-tuning on a specific task. While typically task-agnostic in architecture, this method still requires task-specific fine-tuning datasets of thousands or tens of thousands of examples. By contrast, humans can generally perform a new language task from only a few examples or from simple instructions - something which current NLP systems still largely struggle to do. Here we show that scaling up language models greatly improves task-agnostic, few-shot performan…"
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "partial",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -8400,21 +8268,15 @@
           "url": "https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0"
         },
         {
-          "kind": "full_text",
-          "source": "arxiv_html §News Article Generation",
-          "quote": "Previous work on generative language models qualitatively tested their ability to generate synthetic “news articles” by conditional sampling from the model given a human-written prompt consisting of a plausible first sentence for a news story [ 117 ] . Relative to [ 117 ] , the dataset used to train GPT-3 is much less weighted towards news articles, so trying to generate news articles via raw unconditional samples is less effective – for example GPT-3 often interprets the proposed first sentence of a “news article” as a tweet and then posts synthetic responses or follow-up tweets. We also perf…",
-          "url": "https://ar5iv.org/abs/2005.14165"
-        },
-        {
           "kind": "abstract",
           "source": "2005.14165",
           "quote": "Recent work has demonstrated substantial gains on many NLP tasks and benchmarks by pre-training on a large corpus of text followed by fine-tuning on a specific task. While typically task-agnostic in architecture, this method still requires task-specific fine-tuning datasets of thousands or tens of thousands of examples. By contrast, humans can generally perform a new language task from only a few examples or from simple instructions - something which current NLP systems still largely struggle to do. Here we show that scaling up language models greatly improves task-agnostic, few-shot performan…",
           "url": "https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.3,
       "model_tier": "judge",
-      "notes": "(based on full text §News Article Generation) Evidence does not mention prompt engineering or OpenAI API access. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
+      "notes": "(based on abstract only) Prompt engineering and API access not addressed in the abstract. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
       "error": null,
       "labels": null
     },
@@ -8481,8 +8343,8 @@
         "abstract": "It is demonstrated that language models begin to learn these tasks without any explicit supervision when trained on a new dataset of millions of webpages called WebText, suggesting a promising path towards building language processing systems which learn to perform tasks from their naturally occurring demonstrations."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
-      "priority": "obligatory",
+      "supports_claim": "partial",
+      "priority": "helpful",
       "severity": "low",
       "compared_against": null,
       "evidence": [
@@ -8499,9 +8361,9 @@
           "url": "https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.3,
       "model_tier": "judge",
-      "notes": "(based on abstract only) API access/availability table values not in evidence. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
+      "notes": "(based on abstract only) API/availability table fields not supported by the abstract. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
       "error": null,
       "labels": null
     },
@@ -8597,7 +8459,7 @@
         "abstract": "Recent work has demonstrated substantial gains on many NLP tasks and benchmarks by pre-training on a large corpus of text followed by fine-tuning on a specific task. While typically task-agnostic in architecture, this method still requires task-specific fine-tuning datasets of thousands or tens of thousands of examples. By contrast, humans can generally perform a new language task from only a few examples or from simple instructions - something which current NLP systems still largely struggle to do. Here we show that scaling up language models greatly improves task-agnostic, few-shot performan…"
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "partial",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -8609,21 +8471,15 @@
           "url": "https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0"
         },
         {
-          "kind": "full_text",
-          "source": "arxiv_html §Conclusion",
-          "quote": "We presented a 175 billion parameter language model which shows strong performance on many NLP tasks and benchmarks in the zero-shot, one-shot, and few-shot settings, in some cases nearly matching the performance of state-of-the-art fine-tuned systems, as well as generating high-quality samples and strong qualitative performance at tasks defined on-the-fly. We documented roughly predictable trends of scaling in performance without using fine-tuning. We also discussed the social impacts of this class of model. Here we show that scaling up language models greatly improves task-agnostic, few-shot…",
-          "url": "https://ar5iv.org/abs/2005.14165"
-        },
-        {
           "kind": "abstract",
           "source": "2005.14165",
           "quote": "Recent work has demonstrated substantial gains on many NLP tasks and benchmarks by pre-training on a large corpus of text followed by fine-tuning on a specific task. While typically task-agnostic in architecture, this method still requires task-specific fine-tuning datasets of thousands or tens of thousands of examples. By contrast, humans can generally perform a new language task from only a few examples or from simple instructions - something which current NLP systems still largely struggle to do. Here we show that scaling up language models greatly improves task-agnostic, few-shot performan…",
           "url": "https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.3,
       "model_tier": "judge",
-      "notes": "(based on full text §Conclusion) Evidence does not address API access or public availability status. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
+      "notes": "(based on abstract only) API access/availability table fields not in the evidence. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
       "error": null,
       "labels": null
     },
@@ -8684,8 +8540,8 @@
         "abstract": "The general task-agnostic model outperforms discriminatively trained models that use architectures speciﬁcally crafted for each task, improving upon the state of the art in 9 out of the 12 tasks studied."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
-      "priority": "obligatory",
+      "supports_claim": "partial",
+      "priority": "helpful",
       "severity": "low",
       "compared_against": null,
       "evidence": [
@@ -8702,9 +8558,9 @@
           "url": "https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.3,
       "model_tier": "judge",
-      "notes": "(based on abstract only) API access and availability comparisons not in evidence. · source: https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035",
+      "notes": "(based on abstract only) API/availability fields not present in the evidence. · source: https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035",
       "error": null,
       "labels": null
     },
@@ -8990,8 +8846,8 @@
         "abstract": "The general task-agnostic model outperforms discriminatively trained models that use architectures speciﬁcally crafted for each task, improving upon the state of the art in 9 out of the 12 tasks studied."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
-      "priority": "obligatory",
+      "supports_claim": "partial",
+      "priority": "helpful",
       "severity": "low",
       "compared_against": null,
       "evidence": [
@@ -9008,9 +8864,9 @@
           "url": "https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.3,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Training time and generation speed values not in evidence. · source: https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035",
+      "notes": "(based on abstract only) Training time and generation speed not addressed in the evidence. · source: https://www.semanticscholar.org/paper/cd18800a0fe0b668a1cc19f2ec95b5003d0a5035",
       "error": null,
       "labels": null
     },
@@ -9077,8 +8933,8 @@
         "abstract": "It is demonstrated that language models begin to learn these tasks without any explicit supervision when trained on a new dataset of millions of webpages called WebText, suggesting a promising path towards building language processing systems which learn to perform tasks from their naturally occurring demonstrations."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
-      "priority": "obligatory",
+      "supports_claim": "does_not",
+      "priority": "helpful",
       "severity": "low",
       "compared_against": null,
       "evidence": [
@@ -9095,9 +8951,9 @@
           "url": "https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.35,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Generation speed and domain-specific training comparisons not in evidence. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
+      "notes": "(based on abstract only) Generation speed and domain-specific training are not in the evidence. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
       "error": null,
       "labels": null
     },
@@ -9217,9 +9073,9 @@
           "url": "https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0"
         }
       ],
-      "confidence": 0.5,
+      "confidence": 0.45,
       "model_tier": "judge",
-      "notes": "(based on full text §Abstract) Evidence describes GPT-3 architecture/model sizes but not inference speed or domain-specific training capabilities. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
+      "notes": "(based on full text §Abstract) Evidence covers GPT-3 architecture/training but does not clearly establish the domain-specific training comparison across GPT versions. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
       "error": null,
       "labels": null
     },
@@ -9287,7 +9143,7 @@
         "abstract": "Identifying the epistemic emotions of learner-generated reviews in massive open online courses (MOOCs) can help instructors provide adaptive guidance and interventions for learners. The epistemic emotion identification task is a fine-grained identification task that contains multiple categories of emotions arising during the learning process. Previous studies only consider emotional or semantic information within the review texts alone, which leads to insufficient feature representation. In addition, some categories of epistemic emotions are ambiguously distributed in feature space, making the…"
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -9307,7 +9163,7 @@
       ],
       "confidence": 0.6,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is about epistemic emotion identification in MOOC reviews, not transformers revolutionizing NLP. · source: https://www.semanticscholar.org/paper/9025b81299bfe1ee192316aba728900c6c3a1c88",
+      "notes": "(based on abstract only) Evidence is about epistemic emotion identification in MOOCs, not transformers revolutionizing NLP. · source: https://www.semanticscholar.org/paper/9025b81299bfe1ee192316aba728900c6c3a1c88",
       "error": null,
       "labels": null
     },
@@ -9388,9 +9244,9 @@
           "url": "https://doi.org/10.1145/3230644"
         }
       ],
-      "confidence": 0.96,
+      "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is about device-free RFID indoor navigation, not transformers or NLP. · source: https://doi.org/10.1145/3230644",
+      "notes": "(based on abstract only) Evidence is about RFID device-free human tracking, unrelated to transformer NLP. · source: https://doi.org/10.1145/3230644",
       "error": null,
       "labels": null
     },
@@ -9485,9 +9341,9 @@
           "url": "https://www.semanticscholar.org/paper/204e3073870fae3d05bcbc2f6a8e263d9b72e776"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.82,
       "model_tier": "judge",
-      "notes": "(based on full text §Abstract) Evidence is the Transformer architecture paper, supporting the attribution of ChatGPT's transformer components/architecture. · source: https://www.semanticscholar.org/paper/204e3073870fae3d05bcbc2f6a8e263d9b72e776",
+      "notes": "(based on full text §Abstract) Evidence is the Transformer architecture paper (attention, encoder-decoder), directly backing the description of transformer model components. · source: https://www.semanticscholar.org/paper/204e3073870fae3d05bcbc2f6a8e263d9b72e776",
       "error": null,
       "labels": null
     },
@@ -9574,7 +9430,7 @@
       ],
       "confidence": 0.6,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence discusses dot-product self-attention in Transformers but does not define scaled dot product attention as stated. · source: https://www.semanticscholar.org/paper/e3794413679237f7a9a2f7e03eb7ea2ccac0ae93",
+      "notes": "(based on abstract only) Paper investigates dot product self-attention in Transformers but questions its importance rather than defining scaled dot product attention as the claim does. · source: https://www.semanticscholar.org/paper/e3794413679237f7a9a2f7e03eb7ea2ccac0ae93",
       "error": null,
       "labels": null
     },
@@ -9655,7 +9511,7 @@
       ],
       "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence concerns relevancy of Transformer attention maps, related but not confirming the scaled dot product attention definition. · source: http://arxiv.org/pdf/2012.09838",
+      "notes": "(based on abstract only) Evidence is about computing relevancy/visualizing Transformer attention, only tangentially related to the definitional claim about scaled dot product attention. · source: http://arxiv.org/pdf/2012.09838",
       "error": null,
       "labels": null
     },
@@ -9734,7 +9590,7 @@
       ],
       "confidence": 0.55,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence analyzes attention structure in a Transformer LM but is not the source defining multi-head attention. · source: http://arxiv.org/abs/1906.04284v2",
+      "notes": "(based on abstract only) Analyzes multi-head attention structure in GPT-2 and finds heads target different things at different layers, related to but not stating the rationale for using multi-head attention. · source: http://arxiv.org/abs/1906.04284v2",
       "error": null,
       "labels": null
     },
@@ -9809,9 +9665,9 @@
           "url": "http://arxiv.org/abs/1906.05714v1"
         }
       ],
-      "confidence": 0.55,
+      "confidence": 0.6,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence mentions the multi-head attention mechanism in Transformers but focuses on visualization, not parallel-head attending. · source: http://arxiv.org/abs/1906.05714v1",
+      "notes": "(based on abstract only) Describes a tool visualizing the multi-layer multi-head attention mechanism, on-topic but does not assert heads attend to different parts in parallel as the claim states. · source: http://arxiv.org/abs/1906.05714v1",
       "error": null,
       "labels": null
     },
@@ -9894,9 +9750,9 @@
           "url": "https://www.semanticscholar.org/paper/463c3ac95393211793262b4b3e0dd1752876088e"
         }
       ],
-      "confidence": 0.95,
+      "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is about IoT tensor-completion data recovery, unrelated to positional information in models. · source: https://www.semanticscholar.org/paper/463c3ac95393211793262b4b3e0dd1752876088e",
+      "notes": "(based on abstract only) Evidence concerns IoT tensor-completion data recovery, unrelated to positional information in sequence models. · source: https://www.semanticscholar.org/paper/463c3ac95393211793262b4b3e0dd1752876088e",
       "error": null,
       "labels": null
     },
@@ -9980,9 +9836,9 @@
           "url": "https://www.semanticscholar.org/paper/f25e8f93be549b629c88f0e7af9815150e60a357"
         }
       ],
-      "confidence": 0.95,
+      "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence concerns leader-follower cooperation dynamics, unrelated to positional encoding. · source: https://www.semanticscholar.org/paper/f25e8f93be549b629c88f0e7af9815150e60a357",
+      "notes": "(based on abstract only) Evidence is about leader-follower cooperation dynamics, unrelated to positional encoding consistency. · source: https://www.semanticscholar.org/paper/f25e8f93be549b629c88f0e7af9815150e60a357",
       "error": null,
       "labels": null
     },
@@ -10069,7 +9925,7 @@
       ],
       "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence uses Transformer attention for vehicle trajectory prediction, related but not confirming token-importance computation. · source: https://www.semanticscholar.org/paper/13a8f2521a17359efc1ab6bf4353e0de80eda8c8",
+      "notes": "(based on abstract only) Applies Transformer multi-attention to vehicle trajectory prediction, related to attention but not the claimed definition of token relevance in generation. · source: https://www.semanticscholar.org/paper/13a8f2521a17359efc1ab6bf4353e0de80eda8c8",
       "error": null,
       "labels": null
     },
@@ -10154,7 +10010,7 @@
       ],
       "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence describes neighborhood self-attention for vision, related to attention but not the stated token-relevance claim. · source: https://arxiv.org/pdf/2204.07143",
+      "notes": "(based on abstract only) Describes neighborhood self-attention for vision pixels, related to attention but not the definitional claim about token importance in generation. · source: https://arxiv.org/pdf/2204.07143",
       "error": null,
       "labels": null
     },
@@ -10245,7 +10101,7 @@
       ],
       "confidence": 0.7,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence describes a model based solely on attention mechanisms, consistent with attention scoring. · source: https://www.semanticscholar.org/paper/204e3073870fae3d05bcbc2f6a8e263d9b72e776",
+      "notes": "(based on abstract only) The Transformer paper's attention mechanism computes scores over query and key vectors. · source: https://www.semanticscholar.org/paper/204e3073870fae3d05bcbc2f6a8e263d9b72e776",
       "error": null,
       "labels": null
     },
@@ -10322,9 +10178,9 @@
           "url": "https://www.semanticscholar.org/paper/a84248bdf4b72c3b2122ad68eadb97e32ecc0647"
         }
       ],
-      "confidence": 0.5,
+      "confidence": 0.6,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence covers multi-head attention attending to relevant tokens in a transformer, but not ChatGPT specifically. · source: https://www.semanticscholar.org/paper/a84248bdf4b72c3b2122ad68eadb97e32ecc0647",
+      "notes": "(based on abstract only) Describes multi-head attention heads attending to relevant tokens, supporting the mechanism generally but in a Dogecoin forecasting context, not ChatGPT. · source: https://www.semanticscholar.org/paper/a84248bdf4b72c3b2122ad68eadb97e32ecc0647",
       "error": null,
       "labels": null
     },
@@ -10484,9 +10340,9 @@
           "url": "https://www.semanticscholar.org/paper/14c4fad664096a2996598e2f4771b6d70ae800e7"
         }
       ],
-      "confidence": 0.9,
+      "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is about knowledge-graph path reasoning, not ChatGPT acquiring language understanding from text. · source: https://www.semanticscholar.org/paper/14c4fad664096a2996598e2f4771b6d70ae800e7",
+      "notes": "(based on abstract only) Evidence is about knowledge-graph path reasoning, not about ChatGPT acquiring language understanding from text training. · source: https://www.semanticscholar.org/paper/14c4fad664096a2996598e2f4771b6d70ae800e7",
       "error": null,
       "labels": null
     },
@@ -10581,9 +10437,9 @@
       "metadata_issues": [
         "first-author mismatch: cited 'Huang J' vs 'Tom B. Brown'"
       ],
-      "supports_claim": "inconclusive",
-      "priority": "helpful",
-      "severity": "low",
+      "supports_claim": "does_not",
+      "priority": "obligatory",
+      "severity": "high",
       "compared_against": null,
       "evidence": [
         {
@@ -10605,9 +10461,9 @@
           "url": "https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.7,
       "model_tier": "judge",
-      "notes": "(based on full text §GPT-3 175B) Evidence is the GPT-3 paper on synthetic articles, not the trainer/model-written-suggestion methodology described. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
+      "notes": "(based on full text §GPT-3 175B) GPT-3 paper evidence on synthetic articles and memorization does not describe trainers having model-written suggestions. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
       "error": null,
       "labels": null
     },
@@ -10702,9 +10558,9 @@
       "metadata_issues": [
         "first-author mismatch: cited 'Huang J' vs 'Tom B. Brown'"
       ],
-      "supports_claim": "inconclusive",
-      "priority": "helpful",
-      "severity": "low",
+      "supports_claim": "does_not",
+      "priority": "obligatory",
+      "severity": "high",
       "compared_against": null,
       "evidence": [
         {
@@ -10726,9 +10582,9 @@
           "url": "https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.7,
       "model_tier": "judge",
-      "notes": "(based on full text §Introduction) Evidence does not describe supervised learning predicting human-written responses from conversation context. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
+      "notes": "(based on full text §Introduction) Evidence does not describe supervised learning on human-written conversational responses. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
       "error": null,
       "labels": null
     },
@@ -10823,9 +10679,9 @@
       "metadata_issues": [
         "first-author mismatch: cited 'Huang J' vs 'Tom B. Brown'"
       ],
-      "supports_claim": "inconclusive",
-      "priority": "helpful",
-      "severity": "low",
+      "supports_claim": "does_not",
+      "priority": "obligatory",
+      "severity": "high",
       "compared_against": null,
       "evidence": [
         {
@@ -10847,9 +10703,9 @@
           "url": "https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.72,
       "model_tier": "judge",
-      "notes": "(based on full text §NLI) Evidence does not mention self-play, rollouts, or a reward model. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
+      "notes": "(based on full text §NLI) Evidence does not mention self-play, rollouts, or reward-model evaluation of completions. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
       "error": null,
       "labels": null
     },
@@ -10937,7 +10793,7 @@
       ],
       "confidence": 0.6,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence addresses measuring/mitigating bias and toxicity, related to evaluating discriminatory content but not the full claim. · source: https://dl.acm.org/doi/pdf/10.1145/3278721.3278729",
+      "notes": "(based on abstract only) Paper measures/mitigates unintended bias and toxicity in classifiers, supporting bias evaluation broadly but not the specific ChatGPT response-violation testing described. · source: https://dl.acm.org/doi/pdf/10.1145/3278721.3278729",
       "error": null,
       "labels": null
     },
@@ -11054,8 +10910,8 @@
       },
       "metadata_issues": [],
       "supports_claim": "does_not",
-      "priority": "helpful",
-      "severity": "low",
+      "priority": "obligatory",
+      "severity": "high",
       "compared_against": null,
       "evidence": [
         {
@@ -11077,9 +10933,9 @@
           "url": "https://www.aclweb.org/anthology/P19-1355.pdf"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.78,
       "model_tier": "judge",
-      "notes": "(based on full text §Abstract) Evidence is about financial/environmental costs of training NLP models, not ChatGPT's use in education. · source: https://www.aclweb.org/anthology/P19-1355.pdf",
+      "notes": "(based on full text §Abstract) Cited for education use of ChatGPT, but evidence is about the financial/environmental costs of training NLP models. · source: https://www.aclweb.org/anthology/P19-1355.pdf",
       "error": null,
       "labels": null
     },
@@ -11254,7 +11110,7 @@
         "abstract": "It is demonstrated that language models begin to learn these tasks without any explicit supervision when trained on a new dataset of millions of webpages called WebText, suggesting a promising path towards building language processing systems which learn to perform tasks from their naturally occurring demonstrations."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -11272,9 +11128,9 @@
           "url": "https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence does not discuss ChatGPT use cases like research applications. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
+      "notes": "(based on abstract only) GPT-2 abstract does not address ChatGPT use cases in research. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
       "error": null,
       "labels": null
     },
@@ -11341,7 +11197,7 @@
         "abstract": "It is demonstrated that language models begin to learn these tasks without any explicit supervision when trained on a new dataset of millions of webpages called WebText, suggesting a promising path towards building language processing systems which learn to perform tasks from their naturally occurring demonstrations."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -11359,9 +11215,9 @@
           "url": "https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Marketing campaign generation not mentioned in evidence. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
+      "notes": "(based on abstract only) No mention of marketing campaigns in the evidence. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
       "error": null,
       "labels": null
     },
@@ -11428,7 +11284,7 @@
         "abstract": "It is demonstrated that language models begin to learn these tasks without any explicit supervision when trained on a new dataset of millions of webpages called WebText, suggesting a promising path towards building language processing systems which learn to perform tasks from their naturally occurring demonstrations."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -11446,9 +11302,9 @@
           "url": "https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Content creation/journalism assistance not mentioned in evidence. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
+      "notes": "(based on abstract only) Evidence does not discuss journalism or content fact-checking. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
       "error": null,
       "labels": null
     },
@@ -11515,7 +11371,7 @@
         "abstract": "It is demonstrated that language models begin to learn these tasks without any explicit supervision when trained on a new dataset of millions of webpages called WebText, suggesting a promising path towards building language processing systems which learn to perform tasks from their naturally occurring demonstrations."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "partial",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -11533,9 +11389,9 @@
           "url": "https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.35,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Creative writing styles/genres not addressed in evidence. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
+      "notes": "(based on abstract only) GPT-2 generates text but abstract does not mention styles/genres for creative writing. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
       "error": null,
       "labels": null
     },
@@ -11602,7 +11458,7 @@
         "abstract": "It is demonstrated that language models begin to learn these tasks without any explicit supervision when trained on a new dataset of millions of webpages called WebText, suggesting a promising path towards building language processing systems which learn to perform tasks from their naturally occurring demonstrations."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -11620,9 +11476,9 @@
           "url": "https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.55,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Healthcare delivery not addressed in evidence. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
+      "notes": "(based on abstract only) GPT-2 text-generation paper, off-topic for healthcare delivery. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
       "error": null,
       "labels": null
     },
@@ -11661,51 +11517,19 @@
         "url": null
       },
       "in_table": false,
-      "exists": "yes",
-      "resolved": {
-        "source": "crossref",
-        "match_method": "fuzzy_title",
-        "match_score": 1.0,
-        "title": "Systematic Review",
-        "authors": [
-          "Małgorzata Pieścik‐Lech",
-          "Anna Chmielewska",
-          "Raanan Shamir",
-          "Hania Szajewska"
-        ],
-        "year": 2017,
-        "venue": "Journal of Pediatric Gastroenterology and Nutrition",
-        "doi": "10.1097/mpg.0000000000001293",
-        "arxiv_id": null,
-        "url": "https://doi.org/10.1097/mpg.0000000000001293",
-        "url_valid": true,
-        "abstract": "ABSTRACT Background: In addition to genetic background, a number of environmental factors have been claimed to influence the development of type 1 diabetes (T1D), including infant diet. Objective: The aim of the study was to systematically update evidence on the possible relation between early feeding practices and the risk of T1D. Methods: The Cochrane Library, MEDLINE, EMBASE, Web of Science, and CINAHL were searched for studies of any design up to July 2015. MEDLINE and EMBASE were additionally searched in March 2016. The primary outcome measures were the development of T1D or T1D‐associate…"
-      },
+      "exists": "unresolved",
+      "resolved": null,
       "metadata_issues": [
-        "year mismatch: cited 2021 vs 2017",
-        "first-author mismatch: cited 'Naidoo V' vs 'Małgorzata Pieścik‐Lech'"
+        "abstained from a weak fuzzy-title match — both author and year contradict the cited reference (closest candidate: 'Systematic Review')"
       ],
-      "supports_claim": "does_not",
+      "supports_claim": "inconclusive",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
-      "evidence": [
-        {
-          "kind": "metadata",
-          "source": "10.1097/mpg.0000000000001293",
-          "quote": "Systematic Review — Małgorzata Pieścik‐Lech, Anna Chmielewska, Raanan Shamir, Hania Szajewska — 2017",
-          "url": "https://doi.org/10.1097/mpg.0000000000001293"
-        },
-        {
-          "kind": "abstract",
-          "source": "10.1097/mpg.0000000000001293",
-          "quote": "ABSTRACT Background: In addition to genetic background, a number of environmental factors have been claimed to influence the development of type 1 diabetes (T1D), including infant diet. Objective: The aim of the study was to systematically update evidence on the possible relation between early feeding practices and the risk of T1D. Methods: The Cochrane Library, MEDLINE, EMBASE, Web of Science, and CINAHL were searched for studies of any design up to July 2015. MEDLINE and EMBASE were additionally searched in March 2016. The primary outcome measures were the development of T1D or T1D‐associate…",
-          "url": "https://doi.org/10.1097/mpg.0000000000001293"
-        }
-      ],
-      "confidence": 0.95,
-      "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence reviews infant diet and type 1 diabetes risk, unrelated to ChatGPT self-care recommendations. · source: https://doi.org/10.1097/mpg.0000000000001293",
+      "evidence": [],
+      "confidence": null,
+      "model_tier": "bulk",
+      "notes": null,
       "error": null,
       "labels": null
     },
@@ -11820,51 +11644,19 @@
         "url": null
       },
       "in_table": false,
-      "exists": "yes",
-      "resolved": {
-        "source": "crossref",
-        "match_method": "fuzzy_title",
-        "match_score": 1.0,
-        "title": "Deep Learning for Healthcare Decision Making",
-        "authors": [
-          "Vishal Jain",
-          "Jyotir Moy Chatterjee",
-          "Ishaani Priyadarshini",
-          "Fadi Al-Turjman"
-        ],
-        "year": 2023,
-        "venue": null,
-        "doi": "10.1201/9781003373261",
-        "arxiv_id": null,
-        "url": "https://doi.org/10.1201/9781003373261",
-        "url_valid": true,
-        "abstract": "Health care today is known to suffer from siloed and fragmented data, delayed clinical communications, and disparate workflow tools due to the lack of interoperability caused by vendor-locked health care systems, lack of trust among data holders, and security/privacy concerns regarding data sharing. The health information industry is ready for big leaps and bounds in terms of growth and advancement. This book is an attempt to unveil the hidden potential of the enormous amount of health information and technology. Throughout this book, we attempt to combine numerous compelling views, guidelines…"
-      },
+      "exists": "unresolved",
+      "resolved": null,
       "metadata_issues": [
-        "year mismatch: cited 2020 vs 2023",
-        "first-author mismatch: cited 'Liu X' vs 'Vishal Jain'"
+        "abstained from a weak fuzzy-title match — both author and year contradict the cited reference (closest candidate: 'Deep Learning for Healthcare Decision Making')"
       ],
       "supports_claim": "inconclusive",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
-      "evidence": [
-        {
-          "kind": "metadata",
-          "source": "10.1201/9781003373261",
-          "quote": "Deep Learning for Healthcare Decision Making — Vishal Jain, Jyotir Moy Chatterjee, Ishaani Priyadarshini, Fadi Al-Turjman — 2023",
-          "url": "https://doi.org/10.1201/9781003373261"
-        },
-        {
-          "kind": "abstract",
-          "source": "10.1201/9781003373261",
-          "quote": "Health care today is known to suffer from siloed and fragmented data, delayed clinical communications, and disparate workflow tools due to the lack of interoperability caused by vendor-locked health care systems, lack of trust among data holders, and security/privacy concerns regarding data sharing. The health information industry is ready for big leaps and bounds in terms of growth and advancement. This book is an attempt to unveil the hidden potential of the enormous amount of health information and technology. Throughout this book, we attempt to combine numerous compelling views, guidelines…",
-          "url": "https://doi.org/10.1201/9781003373261"
-        }
-      ],
-      "confidence": 0.65,
-      "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence discusses health data interoperability generally, not ChatGPT as a medical information source. · source: https://doi.org/10.1201/9781003373261",
+      "evidence": [],
+      "confidence": null,
+      "model_tier": "bulk",
+      "notes": null,
       "error": null,
       "labels": null
     },
@@ -11960,44 +11752,19 @@
         "url": null
       },
       "in_table": false,
-      "exists": "yes",
-      "resolved": {
-        "source": "crossref",
-        "match_method": "fuzzy_title",
-        "match_score": 0.861,
-        "title": "Artificial Intelligence and Healthcare Ethics",
-        "authors": [
-          "Aakanksha Rana",
-          "Caroline M. W. Goedmakers",
-          "Timothy R. Smith"
-        ],
-        "year": 2021,
-        "venue": "Traumatic Brain Injury",
-        "doi": "10.1007/978-3-030-78075-3_31",
-        "arxiv_id": null,
-        "url": "https://doi.org/10.1007/978-3-030-78075-3_31",
-        "url_valid": true,
-        "abstract": null
-      },
+      "exists": "unresolved",
+      "resolved": null,
       "metadata_issues": [
-        "title mismatch: cited 'The impact of artificial intelligence on healthcare delivery' vs 'Artificial Intelligence and Healthcare Ethics'",
-        "first-author mismatch: cited 'Smith SF' vs 'Aakanksha Rana'"
+        "abstained from a weak fuzzy-title match — both author and year contradict the cited reference (closest candidate: 'Artificial intelligence-enabled healthcare delivery')"
       ],
       "supports_claim": "inconclusive",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
-      "evidence": [
-        {
-          "kind": "metadata",
-          "source": "10.1007/978-3-030-78075-3_31",
-          "quote": "Artificial Intelligence and Healthcare Ethics — Aakanksha Rana, Caroline M. W. Goedmakers, Timothy R. Smith — 2021",
-          "url": "https://doi.org/10.1007/978-3-030-78075-3_31"
-        }
-      ],
+      "evidence": [],
       "confidence": null,
-      "model_tier": "judge",
-      "notes": "(based on abstract only) no abstract or introduction to judge from · source: https://doi.org/10.1007/978-3-030-78075-3_31",
+      "model_tier": "bulk",
+      "notes": null,
       "error": null,
       "labels": null
     },
@@ -12086,7 +11853,7 @@
       ],
       "confidence": 0.55,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence reviews health chatbots broadly but does not confirm medication-management functions. · source: https://doi.org/10.5753/enucompi.2021.17771",
+      "notes": "(based on abstract only) Systematic review of health chatbots is on-topic but the abstract does not mention medication management, dosage reminders, or drug interactions specifically. · source: https://doi.org/10.5753/enucompi.2021.17771",
       "error": null,
       "labels": null
     },
@@ -12185,56 +11952,19 @@
         "url": null
       },
       "in_table": false,
-      "exists": "yes",
-      "resolved": {
-        "source": "crossref",
-        "match_method": "fuzzy_title",
-        "match_score": 0.968,
-        "title": "Bibliometric Analysis of Artificial Intelligence",
-        "authors": [
-          "Rohimatun Nur’aeni",
-          "Rendy Zalsahra"
-        ],
-        "year": 2024,
-        "venue": "West Science Interdisciplinary Studies",
-        "doi": "10.58812/wsis.v2i01.563",
-        "arxiv_id": null,
-        "url": "https://doi.org/10.58812/wsis.v2i01.563",
-        "url_valid": true,
-        "abstract": "Artificial Intelligence Bibliometric Analysis (AI) is a study involving quantitative measurement and evaluation of scientific literature on artificial intelligence. Relevant keywords in this analysis include \"artificial intelligence\", \"machine teaching\", \"deep training\", and \"This method allows researchers to identify major developments and focus in artificial intelligence research, provide insight into the authors' contributions, and understand the direction of this science. Artificial intelligence is a branch of computer science that focuses on developing computing systems that can perform t…"
-      },
+      "exists": "unresolved",
+      "resolved": null,
       "metadata_issues": [
-        "title mismatch: cited 'Artificial intelligence in telemedicine: A bibliometric ana…' vs 'Bibliometric Analysis of Artificial Intelligence'",
-        "year mismatch: cited 2021 vs 2024",
-        "first-author mismatch: cited 'Blanco-Mavillard I' vs 'Rohimatun Nur’aeni'"
+        "abstained from a weak fuzzy-title match — both author and year contradict the cited reference (closest candidate: 'Bibliometric Analysis of Artificial Intelligence')"
       ],
       "supports_claim": "inconclusive",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
-      "evidence": [
-        {
-          "kind": "metadata",
-          "source": "10.58812/wsis.v2i01.563",
-          "quote": "Bibliometric Analysis of Artificial Intelligence — Rohimatun Nur’aeni, Rendy Zalsahra — 2024",
-          "url": "https://doi.org/10.58812/wsis.v2i01.563"
-        },
-        {
-          "kind": "full_text",
-          "source": "openalex_oa §West Science Interdisciplinary Studies",
-          "quote": "After all the article metadata is fully confirmed, the next step is to perform a bibliometric analysis. The application used to analyse bibliometrics in this article is VosViewer It is an application developed by the Centre for Science and Technology Studies (CWTS) of Leiden University. There are three functions this application can perform, namely: data, visualization and engineering based on a database file.csv is donwloaded from scopus site with search keywords about Artificial Intelligence. To answer the first purpose of this journal about artificial intelligence, some journals are based o…",
-          "url": "https://wsj.westscience-press.com/index.php/wsis/article/download/563/576"
-        },
-        {
-          "kind": "abstract",
-          "source": "10.58812/wsis.v2i01.563",
-          "quote": "Artificial Intelligence Bibliometric Analysis (AI) is a study involving quantitative measurement and evaluation of scientific literature on artificial intelligence. Relevant keywords in this analysis include \"artificial intelligence\", \"machine teaching\", \"deep training\", and \"This method allows researchers to identify major developments and focus in artificial intelligence research, provide insight into the authors' contributions, and understand the direction of this science. Artificial intelligence is a branch of computer science that focuses on developing computing systems that can perform t…",
-          "url": "https://doi.org/10.58812/wsis.v2i01.563"
-        }
-      ],
-      "confidence": 0.55,
-      "model_tier": "judge",
-      "notes": "(based on full text §West Science Interdisciplinary Studies) Evidence is a bibliometric AI study and does not address ChatGPT for remote health monitoring or chronic conditions. · source: https://doi.org/10.58812/wsis.v2i01.563",
+      "evidence": [],
+      "confidence": null,
+      "model_tier": "bulk",
+      "notes": null,
       "error": null,
       "labels": null
     },
@@ -12275,43 +12005,19 @@
         "url": null
       },
       "in_table": false,
-      "exists": "yes",
-      "resolved": {
-        "source": "crossref",
-        "match_method": "fuzzy_title",
-        "match_score": 1.0,
-        "title": "A Comprehensive Survey",
-        "authors": [
-          "William G. Carleton",
-          "William A. Robson"
-        ],
-        "year": 1955,
-        "venue": "The Journal of Higher Education",
-        "doi": "10.2307/1977519",
-        "arxiv_id": null,
-        "url": "https://doi.org/10.2307/1977519",
-        "url_valid": true,
-        "abstract": null
-      },
+      "exists": "unresolved",
+      "resolved": null,
       "metadata_issues": [
-        "year mismatch: cited 2020 vs 1955",
-        "first-author mismatch: cited 'Marshall MT' vs 'William G. Carleton'"
+        "abstained from a weak fuzzy-title match — both author and year contradict the cited reference (closest candidate: 'A Comprehensive Survey')"
       ],
       "supports_claim": "inconclusive",
-      "priority": "obligatory",
+      "priority": "helpful",
       "severity": "low",
       "compared_against": null,
-      "evidence": [
-        {
-          "kind": "metadata",
-          "source": "10.2307/1977519",
-          "quote": "A Comprehensive Survey — William G. Carleton, William A. Robson — 1955",
-          "url": "https://doi.org/10.2307/1977519"
-        }
-      ],
+      "evidence": [],
       "confidence": null,
-      "model_tier": "judge",
-      "notes": "(based on abstract only) no abstract or introduction to judge from · source: https://doi.org/10.2307/1977519",
+      "model_tier": "bulk",
+      "notes": null,
       "error": null,
       "labels": null
     },
@@ -12459,7 +12165,7 @@
         "abstract": "Recent work has demonstrated substantial gains on many NLP tasks and benchmarks by pre-training on a large corpus of text followed by fine-tuning on a specific task. While typically task-agnostic in architecture, this method still requires task-specific fine-tuning datasets of thousands or tens of thousands of examples. By contrast, humans can generally perform a new language task from only a few examples or from simple instructions - something which current NLP systems still largely struggle to do. Here we show that scaling up language models greatly improves task-agnostic, few-shot performan…"
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "partial",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -12471,21 +12177,15 @@
           "url": "https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0"
         },
         {
-          "kind": "full_text",
-          "source": "arxiv_html §GPT-3 Few-Shot",
-          "quote": "In this section we measure GPT-3’s ability to answer questions about broad factual knowledge. Due to the immense amount of possible queries, this task has normally been approached by using an information retrieval system to find relevant text in combination with a model which learns to generate an answer given the question and the retrieved text. Since this setting allows a system to search for and condition on text which potentially contains the answer it is denoted “open-book”. Second, the potential to exploit spurious correlations in training data fundamentally grows with the expressiveness…",
-          "url": "https://ar5iv.org/abs/2005.14165"
-        },
-        {
           "kind": "abstract",
           "source": "2005.14165",
           "quote": "Recent work has demonstrated substantial gains on many NLP tasks and benchmarks by pre-training on a large corpus of text followed by fine-tuning on a specific task. While typically task-agnostic in architecture, this method still requires task-specific fine-tuning datasets of thousands or tens of thousands of examples. By contrast, humans can generally perform a new language task from only a few examples or from simple instructions - something which current NLP systems still largely struggle to do. Here we show that scaling up language models greatly improves task-agnostic, few-shot performan…",
           "url": "https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.3,
       "model_tier": "judge",
-      "notes": "(based on full text §GPT-3 Few-Shot) Evidence on GPT-3 model details and news generation does not address interactive expert brainstorming. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
+      "notes": "(based on abstract only) Evidence is about few-shot learning, not interactive expert conversations. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
       "error": null,
       "labels": null
     },
@@ -12552,7 +12252,7 @@
         "abstract": "It is demonstrated that language models begin to learn these tasks without any explicit supervision when trained on a new dataset of millions of webpages called WebText, suggesting a promising path towards building language processing systems which learn to perform tasks from their naturally occurring demonstrations."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -12570,9 +12270,9 @@
           "url": "https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Research dissemination/collaboration not addressed in evidence. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
+      "notes": "(based on abstract only) No mention of disseminating research findings or collaboration. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
       "error": null,
       "labels": null
     },
@@ -12668,7 +12368,7 @@
         "abstract": "Recent work has demonstrated substantial gains on many NLP tasks and benchmarks by pre-training on a large corpus of text followed by fine-tuning on a specific task. While typically task-agnostic in architecture, this method still requires task-specific fine-tuning datasets of thousands or tens of thousands of examples. By contrast, humans can generally perform a new language task from only a few examples or from simple instructions - something which current NLP systems still largely struggle to do. Here we show that scaling up language models greatly improves task-agnostic, few-shot performan…"
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -12692,9 +12392,9 @@
           "url": "https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.78,
       "model_tier": "judge",
-      "notes": "(based on full text §GPT-3 Few-Shot) Evidence does not discuss assisting researchers with analytical approaches or statistical techniques. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
+      "notes": "(based on full text §GPT-3 Few-Shot) GPT-3 paper evidence does not discuss ChatGPT assisting researchers with analytical approaches or statistical techniques. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
       "error": null,
       "labels": null
     },
@@ -12761,7 +12461,7 @@
         "abstract": "It is demonstrated that language models begin to learn these tasks without any explicit supervision when trained on a new dataset of millions of webpages called WebText, suggesting a promising path towards building language processing systems which learn to perform tasks from their naturally occurring demonstrations."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -12779,9 +12479,9 @@
           "url": "https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Research collaboration outcomes not addressed in evidence. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
+      "notes": "(based on abstract only) Evidence does not address augmenting researchers' analytical capabilities. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
       "error": null,
       "labels": null
     },
@@ -12877,7 +12577,7 @@
         "abstract": "Recent work has demonstrated substantial gains on many NLP tasks and benchmarks by pre-training on a large corpus of text followed by fine-tuning on a specific task. While typically task-agnostic in architecture, this method still requires task-specific fine-tuning datasets of thousands or tens of thousands of examples. By contrast, humans can generally perform a new language task from only a few examples or from simple instructions - something which current NLP systems still largely struggle to do. Here we show that scaling up language models greatly improves task-agnostic, few-shot performan…"
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -12901,9 +12601,9 @@
           "url": "https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.78,
       "model_tier": "judge",
-      "notes": "(based on full text §Introduction) Evidence does not mention generating alternative hypotheses or diverse research perspectives. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
+      "notes": "(based on full text §Introduction) Evidence about GPT-3 model training/benchmarks does not address ChatGPT generating alternative hypotheses or research insights. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
       "error": null,
       "labels": null
     },
@@ -12970,7 +12670,7 @@
         "abstract": "It is demonstrated that language models begin to learn these tasks without any explicit supervision when trained on a new dataset of millions of webpages called WebText, suggesting a promising path towards building language processing systems which learn to perform tasks from their naturally occurring demonstrations."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -12988,9 +12688,9 @@
           "url": "https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Innovation/problem-solving collaboration not addressed in evidence. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
+      "notes": "(based on abstract only) No support for collaborative research innovation claim. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
       "error": null,
       "labels": null
     },
@@ -13071,9 +12771,9 @@
           "url": "http://arxiv.org/abs/2304.10778v2"
         }
       ],
-      "confidence": 0.85,
+      "confidence": 0.55,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence explicitly discusses Amazon CodeWhisperer's capabilities. · source: http://arxiv.org/abs/2304.10778v2",
+      "notes": "(based on abstract only) Evidence assesses Amazon CodeWhisperer's code-generation capabilities. · source: http://arxiv.org/abs/2304.10778v2",
       "error": null,
       "labels": null
     },
@@ -13219,9 +12919,9 @@
         "abstract": "Artificial intelligence and large-language model chatbots have generated significant attention in higher education, and in research practice. Whether ChatGPT, Bard, Jasper Chat, Socratic, Bing AI, DialoGPT, or something else, these are all shaping how education and research occur. In this Editorial, we offer five editorial principles to guide decision-making for editors, which will also become policy for the Journal of University Teaching and Learning Practice. First, we articulate that non-human authorship does not constitute authorship. Second, artificial intelligence should be leveraged to …"
       },
       "metadata_issues": [],
-      "supports_claim": "supports",
-      "priority": "obligatory",
-      "severity": "ok",
+      "supports_claim": "partial",
+      "priority": "helpful",
+      "severity": "low",
       "compared_against": null,
       "evidence": [
         {
@@ -13237,9 +12937,9 @@
           "url": "https://doi.org/10.53761/1.20.5.01"
         }
       ],
-      "confidence": 0.8,
+      "confidence": 0.4,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence references Microsoft Bing AI among AI chatbots. · source: https://doi.org/10.53761/1.20.5.01",
+      "notes": "(based on abstract only) Evidence mentions Bing AI but focuses on editorial principles, not its capabilities. · source: https://doi.org/10.53761/1.20.5.01",
       "error": null,
       "labels": null
     },
@@ -13298,9 +12998,9 @@
         "abstract": "While we applaud the promise and value of generative artificial intelligence and Chat Generative Pretrained Transformer–like tools, leveraging their potential and values heavily depends on what we use them for and how, while also acknowledging and addressing their limits, limitations, and concerns."
       },
       "metadata_issues": [],
-      "supports_claim": "partial",
-      "priority": "helpful",
-      "severity": "low",
+      "supports_claim": "does_not",
+      "priority": "obligatory",
+      "severity": "high",
       "compared_against": null,
       "evidence": [
         {
@@ -13324,7 +13024,7 @@
       ],
       "confidence": 0.55,
       "model_tier": "judge",
-      "notes": "(based on full text §Google’s LaMDA, released in May) Evidence details LaMDA/Bard features, supporting that portion of the listed models but not Sparrow/Character AI. · source: https://ieeexplore.ieee.org/ielx7/2/10109259/10109305.pdf",
+      "notes": "(based on full text §Google’s LaMDA, released in May) Evidence covers LaMDA and ChatGPT, not the DeepMind Sparrow capabilities for which it is cited. · source: https://ieeexplore.ieee.org/ielx7/2/10109259/10109305.pdf",
       "error": null,
       "labels": null
     },
@@ -13385,8 +13085,8 @@
         "abstract": "Open Artificial Intelligence (AI) published an AI chatbot tool called ChatGPT at the end of November 2022. Generative Pre-trained Transformer (GPT) architecture is the foundation of ChatGPT. On the internet, ChatGPT has been rapidly growing. This chatbot enables users to discuss with the AI by inputting prompts, and it is based on OpenAI’s language model. Although ChatGPT is fantastic and produces exciting results for writing tales, poetry, songs, essays, and other things, it has certain restrictions. Users may ask the bot questions, and it will reply with pertinent, convincing subjects and re…"
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
-      "priority": "obligatory",
+      "supports_claim": "does_not",
+      "priority": "helpful",
       "severity": "low",
       "compared_against": null,
       "evidence": [
@@ -13403,9 +13103,9 @@
           "url": "https://www.semanticscholar.org/paper/ac9100f6e152c6560fd47305eeca83c701398be4"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence does not discuss Character AI's features. · source: https://www.semanticscholar.org/paper/ac9100f6e152c6560fd47305eeca83c701398be4",
+      "notes": "(based on abstract only) Evidence describes ChatGPT, not Character AI's capabilities. · source: https://www.semanticscholar.org/paper/ac9100f6e152c6560fd47305eeca83c701398be4",
       "error": null,
       "labels": null
     },
@@ -13472,7 +13172,7 @@
         "abstract": "It is demonstrated that language models begin to learn these tasks without any explicit supervision when trained on a new dataset of millions of webpages called WebText, suggesting a promising path towards building language processing systems which learn to perform tasks from their naturally occurring demonstrations."
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -13490,9 +13190,9 @@
           "url": "https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Model features like code assistance/storytelling not addressed in evidence. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
+      "notes": "(based on abstract only) Abstract does not list models for code assistance or storytelling. · source: https://www.semanticscholar.org/paper/9405cc0d6169988371b2755e573cc28650d14dfe",
       "error": null,
       "labels": null
     },
@@ -13536,7 +13236,7 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "crossref",
+        "source": "s2",
         "match_method": "fuzzy_title",
         "match_score": 1.0,
         "title": "ASRO-DIO: Active Subspace Random Optimization Based Depth Inertial Odometry",
@@ -13547,10 +13247,10 @@
           "Kai Xu"
         ],
         "year": 2023,
-        "venue": "IEEE Transactions on Robotics",
+        "venue": "IEEE Transactions on robotics",
         "doi": "10.1109/tro.2022.3208503",
         "arxiv_id": null,
-        "url": "https://doi.org/10.1109/tro.2022.3208503",
+        "url": "https://www.semanticscholar.org/paper/f64eeaf9345fbe44a5e73eeb4018b78a74661ea5",
         "url_valid": true,
         "abstract": "High-dimensional nonlinear state estimation is at the heart of inertial-aided navigation systems (INS). Traditional methods usually rely on good initialization and find difficulty in handling large interframe transformations due to fast camera motion. We opt to tackle these challenges by solving the depth inertial odometry (DIO) problem with random optimization. To address the exponentially increased amount of candidate states sampled for the high-dimensional state space, we propose a highly efficient variant of random optimization based on the idea of active subspace. Our method identifies th…"
       },
@@ -13564,18 +13264,18 @@
           "kind": "metadata",
           "source": "10.1109/tro.2022.3208503",
           "quote": "ASRO-DIO: Active Subspace Random Optimization Based Depth Inertial Odometry — Jiazhao Zhang, Yijie Tang, He Wang, Kai Xu — 2023",
-          "url": "https://doi.org/10.1109/tro.2022.3208503"
+          "url": "https://www.semanticscholar.org/paper/f64eeaf9345fbe44a5e73eeb4018b78a74661ea5"
         },
         {
           "kind": "abstract",
           "source": "10.1109/tro.2022.3208503",
           "quote": "High-dimensional nonlinear state estimation is at the heart of inertial-aided navigation systems (INS). Traditional methods usually rely on good initialization and find difficulty in handling large interframe transformations due to fast camera motion. We opt to tackle these challenges by solving the depth inertial odometry (DIO) problem with random optimization. To address the exponentially increased amount of candidate states sampled for the high-dimensional state space, we propose a highly efficient variant of random optimization based on the idea of active subspace. Our method identifies th…",
-          "url": "https://doi.org/10.1109/tro.2022.3208503"
+          "url": "https://www.semanticscholar.org/paper/f64eeaf9345fbe44a5e73eeb4018b78a74661ea5"
         }
       ],
-      "confidence": 0.95,
+      "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence concerns inertial navigation/depth-inertial odometry, unrelated to model scalability optimization. · source: https://doi.org/10.1109/tro.2022.3208503",
+      "notes": "(based on abstract only) Evidence concerns inertial navigation/depth odometry optimization, unrelated to ChatGPT scalability, batching, or caching. · source: https://www.semanticscholar.org/paper/f64eeaf9345fbe44a5e73eeb4018b78a74661ea5",
       "error": null,
       "labels": null
     },
@@ -13659,9 +13359,9 @@
           "url": "https://www.semanticscholar.org/paper/19aaa2b92ff0913f7585dea7965cf4c236f37209"
         }
       ],
-      "confidence": 0.95,
+      "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is about finite-time/time-synchronized stability control, unrelated to caching/scalability of ChatGPT. · source: https://www.semanticscholar.org/paper/19aaa2b92ff0913f7585dea7965cf4c236f37209",
+      "notes": "(based on abstract only) Evidence is about time-synchronized stability in finite-time control, unrelated to model scalability or response times. · source: https://www.semanticscholar.org/paper/19aaa2b92ff0913f7585dea7965cf4c236f37209",
       "error": null,
       "labels": null
     },
@@ -13742,9 +13442,9 @@
           "url": "https://www.semanticscholar.org/paper/48aa621c0fc9c64276a4bf8bde7fc13ffa1fd7ea"
         }
       ],
-      "confidence": 0.95,
+      "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence models human visual attention for driving, unrelated to TPUs for ChatGPT training. · source: https://www.semanticscholar.org/paper/48aa621c0fc9c64276a4bf8bde7fc13ffa1fd7ea",
+      "notes": "(based on abstract only) Evidence is about computational visual attention models and driver eye fixation, not TPUs or hardware for large-scale ChatGPT. · source: https://www.semanticscholar.org/paper/48aa621c0fc9c64276a4bf8bde7fc13ffa1fd7ea",
       "error": null,
       "labels": null
     },
@@ -13823,9 +13523,9 @@
           "url": "https://www.semanticscholar.org/paper/25447cce7bc711279839c13e4eb15645cc727160"
         }
       ],
-      "confidence": 0.95,
+      "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence studies driver eye movement in a simulator, unrelated to hardware for large-scale models. · source: https://www.semanticscholar.org/paper/25447cce7bc711279839c13e4eb15645cc727160",
+      "notes": "(based on abstract only) Evidence concerns driver eye movement and driving behavior, unrelated to TPUs or hardware for ChatGPT training/inference. · source: https://www.semanticscholar.org/paper/25447cce7bc711279839c13e4eb15645cc727160",
       "error": null,
       "labels": null
     },
@@ -13915,9 +13615,9 @@
           "url": "https://link.springer.com/content/pdf/10.1007/s44196-023-00233-6.pdf"
         }
       ],
-      "confidence": 0.55,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on full text §VGG model and the ResNet model trained in big data such) Evidence notes pre-trained classical models (transfer learning) reduce reliance on new data, loosely supporting reduced training cost, but in an image-VQA context. · source: https://link.springer.com/content/pdf/10.1007/s44196-023-00233-6.pdf",
+      "notes": "(based on full text §VGG model and the ResNet model trained in big data such) Evidence supports using pre-trained models (VGG/ResNet) to leverage prior training, but in image VQA rather than ChatGPT development. · source: https://link.springer.com/content/pdf/10.1007/s44196-023-00233-6.pdf",
       "error": null,
       "labels": null
     },
@@ -14003,7 +13703,7 @@
       ],
       "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence concerns mobile-app cyber activity pattern discovery, unrelated to pre-trained model training efficiency. · source: https://www.semanticscholar.org/paper/13db0f5b85837f2ee908d843a618e14f83f1b1e5",
+      "notes": "(based on abstract only) Evidence is about mobile app usage cyber-activity patterns, unrelated to pre-trained models for ChatGPT development. · source: https://www.semanticscholar.org/paper/13db0f5b85837f2ee908d843a618e14f83f1b1e5",
       "error": null,
       "labels": null
     },
@@ -14089,9 +13789,9 @@
           "url": "https://www.mdpi.com/2079-8954/11/8/390/pdf?version=1690858621"
         }
       ],
-      "confidence": 0.85,
+      "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is about emotion-word corpora for sentiment classification, not pre-trained models or training time. · source: https://www.mdpi.com/2079-8954/11/8/390/pdf?version=1690858621",
+      "notes": "(based on abstract only) Evidence is about building emotional-word corpora for sentiment classification, unrelated to pre-trained models reducing ChatGPT training time. · source: https://www.mdpi.com/2079-8954/11/8/390/pdf?version=1690858621",
       "error": null,
       "labels": null
     },
@@ -14168,9 +13868,9 @@
           "url": "https://www.semanticscholar.org/paper/fe0f3ce753edad5b9fbc8411b0d47b8937ddd810"
         }
       ],
-      "confidence": 0.95,
+      "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence concerns cross-border transport infrastructure dynamics, unrelated to domain-specific fine-tuning. · source: https://www.semanticscholar.org/paper/fe0f3ce753edad5b9fbc8411b0d47b8937ddd810",
+      "notes": "(based on abstract only) Evidence concerns cross-border transport infrastructure performance, unrelated to domain-specific fine-tuning of ChatGPT. · source: https://www.semanticscholar.org/paper/fe0f3ce753edad5b9fbc8411b0d47b8937ddd810",
       "error": null,
       "labels": null
     },
@@ -14259,9 +13959,9 @@
           "url": "https://publications.aston.ac.uk/id/eprint/41202/1/The_continuous_pollution_routing_problem.pdf"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on full text §The continuous pollution routing problem) Evidence is about pollution routing optimization, unrelated to multilingual/cross-cultural model training. · source: https://publications.aston.ac.uk/id/eprint/41202/1/The_continuous_pollution_routing_problem.pdf",
+      "notes": "(based on full text §The continuous pollution routing problem) Evidence concerns a pollution routing optimization problem, unrelated to training on diverse linguistic/cultural datasets. · source: https://publications.aston.ac.uk/id/eprint/41202/1/The_continuous_pollution_routing_problem.pdf",
       "error": null,
       "labels": null
     },
@@ -14330,7 +14030,7 @@
         "abstract": "Text classification has been highlighted as the key process to organize online texts for better communication in the Digital Media Age. Text classification establishes classification rules based on text features, so the accuracy of feature selection is the basis of text classification. Facing fast-increasing Chinese electronic documents in the digital environment, scholars have accumulated quite a few algorithms for the feature selection for the automatic classification of Chinese texts in recent years. However, discussion about how to adapt existing feature selection algorithms for various ty…"
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -14348,9 +14048,9 @@
           "url": "https://www.mdpi.com/2079-8954/11/9/483/pdf?version=1695214400"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.75,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is about feature selection for Chinese text classification, not training models across multiple languages/cultures. · source: https://www.mdpi.com/2079-8954/11/9/483/pdf?version=1695214400",
+      "notes": "(based on abstract only) Evidence is about feature selection for Chinese text classification, not training models on diverse linguistic and cultural datasets for multilingual interaction. · source: https://www.mdpi.com/2079-8954/11/9/483/pdf?version=1695214400",
       "error": null,
       "labels": null
     },
@@ -14418,7 +14118,7 @@
         "abstract": "The process of computationally identifying and categorizing opinions expressed in a piece of text is of great importance to support better understanding and services to online users in the digital environment. However, accurate and fast multi-label automatic classification is still insufficient. By considering not only individual in-sentence features but also the features in the adjacent sentences and the full text of the tweet, this study adjusted the Multi-label K -Nearest Neighbors (MLkNN) classifier to allow iterative corrections of the multi-label emotion classification. It applies the ne…"
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -14442,9 +14142,9 @@
           "url": "https://www.nature.com/articles/s41599-023-01816-6.pdf"
         }
       ],
-      "confidence": 0.5,
+      "confidence": 0.7,
       "model_tier": "judge",
-      "notes": "(based on full text §OPEN) Evidence concerns MLkNN emotion classification of short texts, not training on diverse multilingual/cultural datasets. · source: https://www.nature.com/articles/s41599-023-01816-6.pdf",
+      "notes": "(based on full text §OPEN) Evidence is about MLkNN emotion/sentiment classification of short texts, not multilingual or cross-cultural model training. · source: https://www.nature.com/articles/s41599-023-01816-6.pdf",
       "error": null,
       "labels": null
     },
@@ -14509,7 +14209,7 @@
         "abstract": "Nonfactoid question answering (QA) is one of the most extensive yet challenging applications and research areas in natural language processing (NLP). Existing methods fall short of handling the long-distance and complex semantic relations between the question and the document sentences. In this work, we propose a novel query-focused summarization method, namely a graph-enhanced multihop query-focused summarizer (GMQS), to tackle the nonfactoid QA problem. Specifically, we leverage graph-enhanced reasoning techniques to elaborate the multihop inference process in nonfactoid QA. Three types of g…"
       },
       "metadata_issues": [],
-      "supports_claim": "inconclusive",
+      "supports_claim": "does_not",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -14527,9 +14227,9 @@
           "url": "https://www.semanticscholar.org/paper/6bd812d5883c31b12d33e2b61aa2358e9370c50d"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is about graph-enhanced nonfactoid QA summarization, not diverse linguistic/cultural training data. · source: https://www.semanticscholar.org/paper/6bd812d5883c31b12d33e2b61aa2358e9370c50d",
+      "notes": "(based on abstract only) Evidence is about graph-enhanced query-focused summarization for nonfactoid QA, not training on diverse linguistic and cultural datasets. · source: https://www.semanticscholar.org/paper/6bd812d5883c31b12d33e2b61aa2358e9370c50d",
       "error": null,
       "labels": null
     }
