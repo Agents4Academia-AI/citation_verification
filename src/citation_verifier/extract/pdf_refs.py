@@ -51,6 +51,22 @@ _STOP_RE = re.compile(
 _NUM_MARKER_RE = re.compile(r"^\s*(?:\[(\d{1,3})\]|(\d{1,3})\.)\s+")
 _URL_CONT_RE = re.compile(r"^(?:https?://|doi:|URL\b|arXiv:)", re.IGNORECASE)
 
+# A flush-left author-year bibliography (e.g. AAAI) has NO hanging indent — every
+# entry line sits at the column-left margin — so the indent split treats each
+# visual line as its own entry (one real reference becomes 3-4). Segment it on
+# content instead: the reliable anchor is the author-list -> year transition. A
+# name token is "Surname, I." — initials may be hyphenated ("P.-Y."), spaced
+# ("S.- T."), or lowercase (Korean romanization "Jung, J.-w.", "Kim, j.-h."); each
+# initial keeps its period, which (with the year anchor below) stops the run from
+# eating title words. Names are ";"/"," separated with an optional trailing "and".
+# We split the joined stream just before each fresh author run that leads into a
+# 4-digit year.
+_AY_NAME_TOK = r"[A-Z][A-Za-z'’-]+,\s+[A-Za-z]\.(?:[-\s]*[A-Za-z]\.)*"
+_AY_ENTRY_BOUNDARY = re.compile(
+    r"(?<=[.\d)])\s+"
+    r"(?=(?:" + _AY_NAME_TOK + r"[;,]?\s+(?:and\s+)?)+(?:19|20)\d{2}[a-z]?[.,])"
+)
+
 
 # A combining mark (U+0300–U+036F) stranded after a space — a despacing artifact.
 _ORPHAN_COMBINING_RE = re.compile("\\s+[̀-ͯ]+")
@@ -123,6 +139,11 @@ def extract_reference_entries(pdf_path) -> list[tuple[str, str]]:
         return []
     if _is_numbered(ref_lines):
         pairs = _split_numbered(ref_lines)
+    elif _is_flush_left(ref_lines):
+        bodies = _split_author_year(ref_lines)
+        if len(bodies) < 3:  # not a surname-first author-year block — don't trust it
+            bodies = _split_by_indent(ref_lines)
+        pairs = [(f"ref-{i}", body) for i, body in enumerate(bodies, start=1)]
     else:
         pairs = [(f"ref-{i}", body) for i, body in enumerate(_split_by_indent(ref_lines), start=1)]
     return [(key, body) for key, body in pairs if len(body) >= 10]
@@ -277,6 +298,33 @@ def _split_by_indent(ref_lines: list[_Line]) -> list[str]:
     if cur:
         refs.append(_join(cur))
     return refs
+
+
+def _is_flush_left(ref_lines: list[_Line], thresh: float = 0.85) -> bool:
+    """True when nearly every entry line sits at the column-left margin.
+
+    A flush-left (no hanging indent) author-year bibliography gives the indent
+    split no boundary to work with, so it emits one entry per visual line. When
+    that's the case, :func:`_split_author_year` segments on content instead.
+    """
+    left: dict[tuple[int, int], float] = {}
+    for ln in ref_lines:
+        key = (ln.page, ln.col)
+        left[key] = min(left.get(key, ln.x0), ln.x0)
+    at_left = sum(1 for ln in ref_lines if ln.x0 <= left[(ln.page, ln.col)] + 6.0)
+    return bool(ref_lines) and at_left >= thresh * len(ref_lines)
+
+
+def _split_author_year(ref_lines: list[_Line]) -> list[str]:
+    """Segment a flush-left author-year bibliography on the author-list -> year
+    transition (see :data:`_AY_ENTRY_BOUNDARY`).
+
+    The lines are joined into one stream and split just before each fresh author
+    run that leads into a 4-digit year, so a multi-line entry stays whole instead
+    of fragmenting at every visual line break.
+    """
+    joined = _join([ln.text for ln in ref_lines])
+    return [p.strip() for p in _AY_ENTRY_BOUNDARY.split(joined) if p.strip()]
 
 
 def _join(parts: list[str]) -> str:

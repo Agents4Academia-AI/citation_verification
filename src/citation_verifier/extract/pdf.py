@@ -376,11 +376,18 @@ _ETAL_TAIL_RE = re.compile(r"\s*,?\s+et\s+al\.?$", re.IGNORECASE)
 # swallowing the first title word.
 # Initials like "Z.", "G. P.", "M.-A.", and "K.- F." (a despacing artifact puts a
 # space after the hyphen) — tolerate optional whitespace around the hyphen.
-_AY_INITS = r"(?:[A-Z]\.(?:\s*-\s*[A-Z]\.?)*\s*){1,4}"
+# An initials group after the surname: "J.", "P. J.", "S.-T.", and the lowercase
+# Korean romanization "J.-w." / "j.-h." — each initial keeps its period (so a title
+# word can't pose as one). The surname still starts uppercase, so a title fragment
+# ("Method, e.g. …") can't open an author run.
+_AY_INITS = r"(?:[A-Za-z]\.(?:\s*-\s*[A-Za-z]\.?)*\s*){1,4}"
 _AY_NAME = rf"[A-Z][\w'’`-]+,\s*{_AY_INITS}"
+# Names are comma- OR semicolon-separated ("Cai, H.; Zhang, P.; and Yuan, T." —
+# the AAAI/IEEE style); the comma-after-surname in _AY_NAME keeps this from firing
+# on Vancouver ("Surname I"), so allowing ";" only widens it to semicolon lists.
 _AY_RUN_RE = re.compile(
-    rf"^\s*(?P<authors>{_AY_NAME}(?:\s*,?\s*(?:and\s+)?{_AY_NAME})*"
-    rf"(?:\s*,?\s+et\s+al\.?)?)\s*(?P<rest>[A-Z0-9].+)$",
+    rf"^\s*(?P<authors>{_AY_NAME}(?:\s*[,;]?\s*(?:and\s+)?{_AY_NAME})*"
+    rf"(?:\s*[,;]?\s+et\s+al\.?)?)\s*(?P<rest>[A-Z0-9].+)$",
     re.DOTALL,
 )
 
@@ -467,12 +474,28 @@ def _title_from(title_raw: str) -> str | None:
     ``Title, YEAR.`` so the year leaks into the title otherwise, which then
     pollutes the resolver's title query (e.g. "… applications, 2025" never matched).
     """
+    # Author-year references put the year *between* authors and title ("… Ginis.
+    # 2025. The relationship …"); strip a leading year token so the title isn't
+    # read as "2025" (the ACL/EMNLP and AAAI "Authors. YEAR. Title." structure).
+    title_raw = re.sub(r"^\s*(?:19|20)\d{2}[a-z]?\.\s+(?=\S)", "", title_raw)
     title = re.split(r"\.\s+(?=[A-Z0-9])|\s+In:\s", title_raw, maxsplit=1)[0].strip(" .,")
     # Cut a journal trailer that started lowercase so the split above missed it
     # ("… knowledge. nature, 550(7676):354–359, 2017") — keyed on a volume(issue):page.
     title = re.split(r"\.\s+\S.*?\b\d{1,4}\s*\(\d{1,4}\)\s*:\s*\d", title, maxsplit=1)[0].strip(" .,")
     title = re.sub(r",\s*(?:19|20)\d{2}[a-z]?$", "", title).strip(" .,")
     return title or None
+
+
+# Springer/LNCS colon style ("Surname, I., …, Surname, I.: Title. In: Venue (Year)").
+# The author list — the same surname-comma-initials run as author-year — terminates
+# at a COLON, not a period+year, so the period tiers eat the last author into the
+# title. Anchored on a real author run immediately before ":", so a title's own
+# colon ("Llemma: An open …", whose prefix is not "Surname, I.") never triggers it.
+_LNCS_COLON_RE = re.compile(
+    rf"^\s*(?P<authors>{_AY_NAME}(?:\s*,\s*(?:and\s+)?{_AY_NAME})*"
+    rf"(?:\s*,\s*et\s+al\.?)?)\s*:\s+(?P<rest>{_TITLE_START}.+)$",
+    re.DOTALL,
+)
 
 
 def _split_author_title(body: str) -> tuple[list[str], str | None]:
@@ -495,6 +518,16 @@ def _split_author_title(body: str) -> tuple[list[str], str | None]:
     got merged with no spaces).
     """
     head = re.split(r"(?i)\b(?:arxiv|doi|https?://)", body)[0]
+
+    # Tier 0a: Springer/LNCS colon style — the author run ends at ":", not a period,
+    # so the period tiers below would steal the last author into the title. Tried
+    # first because the colon is an unambiguous boundary when a real author run
+    # precedes it.
+    m = _LNCS_COLON_RE.match(head)
+    if m:
+        ay_authors = _split_ay_authors(m.group("authors"))
+        if ay_authors:
+            return ay_authors, _title_from(m.group("rest"))
 
     # Tier 0: author-year ("Surname, I., …. Title"). Tried first because its names
     # carry an internal comma that the Vancouver tiers below would mis-split. The
@@ -870,7 +903,9 @@ def _bind_author_year(cite_key: str, references: dict[str, CitedAs]) -> CitedAs 
     if m:
         # strip any digits from the surname token ("qwen3" -> "qwen") for matching
         surname = _fold(re.sub(r"[^A-Za-z]", "", m.group(1)))
-        year, kw = int(m.group(2)), (m.group(3) + m.group(4)).lower()
+        # group(3) is the a/b/c disambiguator letter; group(4) the keyword tail —
+        # keep them apart (the old code glued "b" onto the keyword).
+        year, suffix, kw = int(m.group(2)), m.group(3).lower(), m.group(4).lower()
         by_surname = [
             c for c in references.values()
             if c.authors and any(_surname_matches(surname, rs) for rs in _ay_surnames(c.authors[0]))
@@ -878,13 +913,25 @@ def _bind_author_year(cite_key: str, references: dict[str, CitedAs]) -> CitedAs 
         if len(by_surname) == 1:
             return by_surname[0]  # a unique surname binds (cited year may differ slightly)
         if by_surname:
-            # Several same-surname refs: disambiguate by year (±1), then by the bibkey
-            # keyword as a WHOLE title word that is unique within the pool ("you" ->
+            # Author-year citations carry the EXACT year, so disambiguate among
+            # same-surname refs by exact year FIRST. The ±1 tolerance (for arXiv-vs-
+            # published drift) is a last resort below — applied up front it wrongly
+            # ties "Cai 2024" with the neighbouring "Cai 2023"/"Cai 2025".
+            exact = [c for c in by_surname if c.year == year]
+            if len(exact) == 1:
+                return exact[0]
+            # Same surname AND same year: the cite-key's a/b/c suffix is an ordinal in
+            # the reference list's document order ("2022a" -> 1st, "2022b" -> 2nd).
+            # Only when there's no keyword tail, so a real keyword ("…best") isn't read
+            # as the letter "b".
+            if len(exact) > 1 and suffix and not kw:
+                idx = ord(suffix) - ord("a")
+                if 0 <= idx < len(exact):
+                    return exact[idx]
+            # The bibkey keyword as a WHOLE title word unique within the pool ("you" ->
             # "Are you sure?…"). Word-boundary + uniqueness avoids substring false hits.
-            pool = [c for c in by_surname if not c.year or abs(c.year - year) <= 1] or by_surname
-            if len(pool) == 1:
-                return pool[0]
-            if len(kw) >= 3:  # the keyword as a whole title word, unique in the pool
+            pool = exact or by_surname
+            if len(kw) >= 3:
                 hits = [c for c in pool if kw in re.findall(r"[a-z0-9]+", (c.title or "").lower())]
                 if len(hits) == 1:
                     return hits[0]
@@ -892,6 +939,10 @@ def _bind_author_year(cite_key: str, references: dict[str, CitedAs]) -> CitedAs 
                 hits = [c for c in pool if kw[:5] in re.sub(r"[^a-z0-9]", "", (c.title or "").lower())]
                 if len(hits) == 1:
                     return hits[0]
+            # Last resort: a UNIQUE ±1-year match (publication-year drift).
+            near = [c for c in by_surname if c.year and abs(c.year - year) <= 1]
+            if len(near) == 1:
+                return near[0]
             return None  # a genuine same-surname ambiguity — never guess
     # No surname match (incl. keyless keys like "2024bfcl" and title-name keys like
     # "brokenmath2025"): bind by a UNIQUE title acronym (key initials == the title's

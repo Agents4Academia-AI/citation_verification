@@ -100,6 +100,63 @@ def test_split_author_title_handles_author_year_comma_initials():
     assert a == ["Radford A", "Wu J", "Child R"] and t == "Language models"
 
 
+def test_split_author_title_handles_year_delimited_author_year():
+    # AAAI semicolon style: "Surname, I.; …; and Surname, I. YEAR. Title." Names are
+    # semicolon-separated and the YEAR sits between the authors and the title.
+    a, t = _split_author_title(
+        "Cai, H.; Zhang, P.; Dong, H.; and Yuan, T. 2023. Adversarial example-based "
+        "test case generation for speech systems. Software Testing, 33(5)."
+    )
+    assert a == ["Cai, H.", "Zhang, P.", "Dong, H.", "Yuan, T."]
+    assert t == "Adversarial example-based test case generation for speech systems"
+    # a YEAR + disambiguation letter ("2025a") must not be read as the title
+    a, t = _split_author_title(
+        "Chen, Y.; Li, B.; and Ren, K. 2025a. Taught well learned ill: Towards "
+        "distillation-conditional backdoor attack. In NeurIPS."
+    )
+    assert a == ["Chen, Y.", "Li, B.", "Ren, K."]
+    assert t == "Taught well learned ill: Towards distillation-conditional backdoor attack"
+    # ACL/EMNLP given-name-first with a year delimiter: "First Last, …, and First
+    # Last. YEAR. Title." — the year must not be read as the title.
+    a, t = _split_author_title(
+        "Marthe Ballon, Andres Algaba, and Vincent Ginis. 2025. The relationship "
+        "between reasoning and performance in large language models. arXiv:2502.01234."
+    )
+    assert a == ["Marthe Ballon", "Andres Algaba", "Vincent Ginis"]
+    assert t == "The relationship between reasoning and performance in large language models"
+
+
+def test_split_author_title_handles_lncs_colon_style():
+    # Springer/LNCS: "Surname, I., …, Surname, I.: Title. In: Venue (Year)". The
+    # author run ends at a COLON; the period tiers would steal the last author.
+    a, t = _split_author_title(
+        "Arjovsky, M., Chintala, S., Bottou, L.: Wasserstein generative adversarial "
+        "networks. In: International conference on machine learning (2017)."
+    )
+    assert a == ["Arjovsky, M.", "Chintala, S.", "Bottou, L."]
+    assert t == "Wasserstein generative adversarial networks"
+    # an internal colon in the TITLE survives (only the author-run colon delimits)
+    a, t = _split_author_title(
+        "Changpinyo, S., Sharma, P., Ding, N., Soricut, R.: Conceptual 12m: Pushing "
+        "webscale image-text pre-training. In: CVPR (2021)."
+    )
+    assert a == ["Changpinyo, S.", "Sharma, P.", "Ding, N.", "Soricut, R."]
+    assert t == "Conceptual 12m: Pushing webscale image-text pre-training"
+    # an "et al." author run terminates cleanly at the colon
+    a, _ = _split_author_title(
+        "Betker, J., Goh, G., Lee, J., et al.: Improving image generation. (2023)."
+    )
+    assert a == ["Betker, J.", "Goh, G.", "Lee, J."]
+    # a title's OWN colon must NOT be mistaken for the delimiter: this author-year
+    # entry (period after "et al.", colon only in "Llemma:") still parses correctly.
+    a, t = _split_author_title(
+        "Azerbayev, Z., Schoelkopf, H., Paster, K., et al. Llemma: An open language "
+        "model for mathematics. In ICLR, 2024."
+    )
+    assert a == ["Azerbayev, Z.", "Schoelkopf, H.", "Paster, K."]
+    assert t == "Llemma: An open language model for mathematics"
+
+
 def test_parse_reference_block_drops_trailing_publisher_boilerplate():
     # The last reference must not absorb the journal's trailing "Publisher's Note \u2026
     # Springer Nature remains neutral \u2026" boilerplate (observed swallowing ref-89).
@@ -363,6 +420,33 @@ def test_pdf_refs_splits_author_year_on_hanging_indent():
     assert refs[1].startswith("Boltzmann")
 
 
+def test_pdf_refs_splits_flush_left_author_year_on_content():
+    from citation_verifier.extract.pdf_refs import (
+        _is_flush_left,
+        _is_numbered,
+        _split_author_year,
+    )
+
+    # AAAI style: NO hanging indent (every line flush-left at x0=54), semicolon
+    # author lists, the year delimits authors from title. The indent split would
+    # emit one entry per visual line; the content split keeps each entry whole.
+    lines = [
+        _line("Cai, H.; Zhang, P.; and Yuan, T. 2023. Adversarial example-based", x0=54.0, y0=100.0),
+        _line("test case generation for speech systems. Software Testing, 33(5).", x0=54.0, y0=112.0),
+        _line("Chen, Y.; Li, B.; and Ren, K. 2025a. Taught well learned ill:", x0=54.0, y0=124.0),
+        _line("Towards distillation-conditional backdoor attack. In NeurIPS.", x0=54.0, y0=136.0),
+        _line("Dehak, N.; Kenny, P. J.; and Ouellet, P. 2010. Front-end factor", x0=54.0, y0=148.0),
+        _line("analysis for speaker verification. IEEE Trans, 19: 788–798.", x0=54.0, y0=160.0),
+    ]
+    assert not _is_numbered(lines)
+    assert _is_flush_left(lines)  # no hanging indent → indent split would over-count
+    refs = _split_author_year(lines)
+    assert len(refs) == 3  # three entries, NOT six visual lines
+    assert refs[0].startswith("Cai, H.") and "Software Testing" in refs[0]
+    assert refs[1].startswith("Chen, Y.") and "NeurIPS" in refs[1]  # 2025a disambiguator
+    assert refs[2].startswith("Dehak, N.") and "788" in refs[2]
+
+
 def test_pdf_refs_is_numbered_rejects_stray_numbers():
     from citation_verifier.extract.pdf_refs import _is_numbered
 
@@ -491,6 +575,45 @@ def test_bind_author_year_matches_surname_year_and_disambiguates():
     assert b("DBLP:journals/iandc/CoquandH88").title.startswith("The calculus")
     # no surname/year match -> no guess
     assert b("nonexistent2020foo") is None
+
+
+def test_bind_author_year_disambiguates_by_exact_year_then_suffix():
+    from citation_verifier.extract.pdf import _bind_author_year
+    from citation_verifier.schema import CitedAs
+
+    # Three same-surname refs across adjacent years. The EXACT year must win — a ±1
+    # tolerance applied first swallowed it into an ambiguous tie (the bug that left
+    # AAAI "cai2024" / EMNLP author-year citations unbound).
+    refs = {
+        "ref-1": CitedAs(authors=["Cai, H."], title="Adversarial example test generation", year=2023),
+        "ref-2": CitedAs(authors=["Cai, H."], title="Stealthy backdoor attacks on speech", year=2024),
+        "ref-3": CitedAs(authors=["Cai, H."], title="Clean-label backdoor attack", year=2025),
+        # two same-surname, same-year refs in document order -> the a/b/c suffix picks by position
+        "ref-4": CitedAs(authors=["Li, Y."], title="Backdoor learning fundamentals", year=2022),
+        "ref-5": CitedAs(authors=["Li, Y."], title="Backdoor learning: a survey", year=2022),
+    }
+
+    def b(k):
+        return _bind_author_year(k, refs)
+
+    assert b("cai2024").year == 2024  # exact year, no longer an ambiguous ±1 tie
+    assert b("cai2023").year == 2023
+    assert b("cai2025").year == 2025
+    assert b("li2022a").title.endswith("fundamentals")  # 1st same-year entry -> "a"
+    assert b("li2022b").title.endswith("survey")  # 2nd same-year entry -> "b"
+
+
+def test_bind_author_year_keeps_pm1_year_as_last_resort():
+    from citation_verifier.extract.pdf import _bind_author_year
+    from citation_verifier.schema import CitedAs
+
+    # Two same-surname refs; the cited year matches neither exactly. A UNIQUE ±1
+    # match (publication-vs-arXiv drift) still binds, but only as the last resort.
+    refs = {
+        "ref-1": CitedAs(authors=["Brown, T."], title="Few-shot learners", year=2020),
+        "ref-2": CitedAs(authors=["Brown, T."], title="A later Brown paper", year=2024),
+    }
+    assert _bind_author_year("brown2021", refs).year == 2020  # 2020 is within ±1; 2024 is far
 
 
 def test_extract_text_citations_finds_author_year_forms():
