@@ -115,7 +115,7 @@ class ClaudeCodeBackend(BaseBackend):
 
     def __init__(self, *, settings: Any | None = None) -> None:
         self.settings = settings
-        self.model = _setting(settings, "model_judge", "claude-opus-4-6")
+        self.model = _setting(settings, "model_judge", "claude-opus-4-8")
         # No agent loop: each chunk is one structured call. A small ceiling is
         # plenty (the model answers in one turn) and caps a runaway chunk.
         self.max_turns = int(_setting(settings, "claude_code_max_turns", 4) or 4)

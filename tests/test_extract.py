@@ -659,6 +659,20 @@ def test_apostrophe_split_surname_is_rejoined_and_binds():
     assert "murakhovs" in _ay_surnames("Lidiya Murakhovs’ka")
 
 
+def test_bind_acl_anthology_and_title_name_keys():
+    from citation_verifier.extract.pdf import _bind_author_year
+    from citation_verifier.schema import CitedAs
+
+    # ACL-Anthology key "surname-etal-year-word": the "etal" segment must not block
+    # surname/year parsing, so the surname still binds.
+    refs = {"ref-23": CitedAs(authors=["Ethan Perez", "Sam Ringer"], title="Discovering language model behaviors with model-written evaluations", year=2023)}
+    assert _bind_author_year("perez-etal-2023-discovering", refs).year == 2023
+    # title-name key "brokenmath2025": the leading slot is a TITLE word, not an author —
+    # bind via the unique title word.
+    refs = {"ref-24": CitedAs(authors=["Ivo Petrov", "Jasper Dekoninck"], title="Brokenmath: A benchmark for sycophancy in theorem proving with llms", year=2025)}
+    assert _bind_author_year("brokenmath2025", refs).title.startswith("Brokenmath")
+
+
 def test_given_name_first_solo_author_is_parsed():
     # a lone given-name-first author ("Harrison Chase. Langchain …") must yield the author.
     from citation_verifier.extract.pdf import _split_author_title

@@ -798,7 +798,9 @@ def _sentence_around(text: str, pos: int, window: int = 500) -> tuple[str, tuple
 # A BibTeX-style key: a leading surname, an optional separator, a 4-digit year,
 # then an optional suffix/keyword. Tolerates CamelCase and separators:
 # "yang2023leandojo", "Zhao_2024", "MartinLofTypeTheory1998", "kaplan2020scaling".
-_BIBKEY_RE = re.compile(r"^([A-Za-z][A-Za-z0-9]*?)[_:.\- ]?((?:19|20)\d{2})([a-z]?)(.*)$")
+_BIBKEY_RE = re.compile(
+    r"^([A-Za-z][A-Za-z0-9]*?)(?:[-_ ]?et[-_ ]?al\d*)?[_:.\- ]?((?:19|20)\d{2})([a-z]?)(.*)$"
+)
 
 
 def _fold(s: str) -> str:
@@ -891,11 +893,16 @@ def _bind_author_year(cite_key: str, references: dict[str, CitedAs]) -> CitedAs 
                 if len(hits) == 1:
                     return hits[0]
             return None  # a genuine same-surname ambiguity — never guess
-    # No surname match (incl. keyless keys like "2024bfcl"): bind by a UNIQUE title
-    # acronym (key initials == the title's leading initials) or a distinctive (>=4-char)
-    # title word. Only when exactly one reference matches — otherwise stay unresolved.
-    token = _fold(re.sub(r"[^A-Za-z]", "", (m.group(4) if m else cite_key)))
-    if len(token) >= 3:
+    # No surname match (incl. keyless keys like "2024bfcl" and title-name keys like
+    # "brokenmath2025"): bind by a UNIQUE title acronym (key initials == the title's
+    # leading initials) or a distinctive (>=4-char) title word. The candidate token is
+    # the bibkey's keyword tail, then its leading slot (a title word, not an author, for
+    # short-name keys). Only when exactly one reference matches — else stay unresolved.
+    cand_tokens = [m.group(4), m.group(1)] if m else [cite_key]
+    for raw_tok in cand_tokens:
+        token = _fold(re.sub(r"[^A-Za-z]", "", raw_tok or ""))
+        if len(token) < 3:
+            continue
         hits = []
         for c in references.values():
             words = re.findall(r"[a-z0-9]+", (c.title or "").lower())

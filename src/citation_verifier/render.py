@@ -184,14 +184,25 @@ def render_table(records: list[CitationRecord]) -> str:
         ).items()
         if count > 1
     }
-    for i, rec in enumerate(records, start=1):
+    # Group rows by reference: references ordered by first appearance, each
+    # reference's claims kept in document order. exists/metadata/title/URL are
+    # reference-level facts, so clustering a paper's rows keeps them scannable —
+    # one paper's uses sit together ("cited 6×: 4 supports, 2 partial") instead of
+    # scattering the same reference down a long table.
+    first_seen: dict[str, int] = {}
+    for i, rec in enumerate(records):
+        first_seen.setdefault(rec.cite_key, i)
+    order = sorted(range(len(records)), key=lambda i: (first_seen[records[i].cite_key], i))
+
+    for n, idx in enumerate(order, start=1):
+        rec = records[idx]
         marker = (
             _cite_marker(rec.cite_key)
             if rec.claim and rec.claim.char_span in shared_spans
             else None
         )
         row = [
-            str(i),
+            str(n),
             _cell(_citation_cell(rec)),
             _cell(_claim_cell(rec, marker=marker)),
             EXISTS_STR.get(_enum_value(rec.exists), "unresolved"),
@@ -229,21 +240,35 @@ def render_summary(records: list[CitationRecord]) -> str:
         A Markdown summary block.
     """
     n = len(records)
-    exists_no = sum(1 for r in records if _enum_value(r.exists) == Exists.NO.value)
-    unresolved = sum(1 for r in records if _enum_value(r.exists) == Exists.UNRESOLVED.value)
-    does_not = sum(
-        1 for r in records if _enum_value(r.supports_claim) == SupportsClaim.DOES_NOT.value
-    )
+    # exists + metadata are REFERENCE-level facts (identical across a reference's
+    # rows) — tally them once per unique cite_key, not per (claim, citation) pair, so
+    # a paper cited 6× doesn't count its existence 6 times. supports + severity are
+    # per-pair (a reference can support one claim and not another), so stay row-level.
+    exists_by_ref: dict[str, str] = {}
+    meta_refs: set[str] = set()
+    for r in records:
+        exists_by_ref.setdefault(r.cite_key, _enum_value(r.exists))
+        if r.metadata_issues:
+            meta_refs.add(r.cite_key)
+    refs = len(exists_by_ref)
+    ex = Counter(exists_by_ref.values())
+    sc = Counter(_enum_value(r.supports_claim) for r in records)
+    meta = len(meta_refs)
     high = [r for r in records if _enum_value(r.severity) == Severity.HIGH.value]
 
+    # Side-by-side stats: reference existence (left) and claim relevance (right).
     lines = [
         "## Summary",
         "",
-        f"- Pairs checked: **{n}**",
-        f"- Fabricated / not found (`exists = no`): **{exists_no}**",
-        f"- Unresolved: **{unresolved}**",
-        f"- Does not support the claim: **{does_not}**",
-        f"- High-severity issues: **{len(high)}**",
+        f"**{n}** (claim, citation) pairs over **{refs}** unique references · "
+        f"**{meta}** with metadata issues · **{len(high)}** high-severity.",
+        "",
+        "| References — Exists? | n |  | Claims — Supports? | n |",
+        "|:---|---:|:-:|:---|---:|",
+        f"| yes | {ex.get(Exists.YES.value, 0)} |  | supports | {sc.get(SupportsClaim.SUPPORTS.value, 0)} |",
+        f"| unresolved | {ex.get(Exists.UNRESOLVED.value, 0)} |  | partial | {sc.get(SupportsClaim.PARTIAL.value, 0)} |",
+        f"| no (fabricated) | {ex.get(Exists.NO.value, 0)} |  | does not | {sc.get(SupportsClaim.DOES_NOT.value, 0)} |",
+        f"| **total refs** | **{refs}** |  | inconclusive | {sc.get(SupportsClaim.INCONCLUSIVE.value, 0)} |",
     ]
     if high:
         lines += ["", "### Fix before submission"]

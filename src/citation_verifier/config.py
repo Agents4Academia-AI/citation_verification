@@ -29,7 +29,7 @@ __all__ = ["Settings", "load_settings", "model_for", "apply_auth"]
 # Default per-tier model ids. Overridable via MODEL_BULK / MODEL_JUDGE so the
 # real model strings live in config, not in source.
 _DEFAULT_MODEL_BULK = "claude-haiku-4-5-20251001"
-_DEFAULT_MODEL_JUDGE = "claude-opus-4-6"
+_DEFAULT_MODEL_JUDGE = "claude-opus-4-8"
 
 
 class Settings(BaseModel):
@@ -54,9 +54,11 @@ class Settings(BaseModel):
         default=0.50, ge=0.0, description="Per-run USD ceiling; 0 disables the cap. Orchestrator aborts gracefully past it."
     )
     enable_relevance_judge: bool = Field(
-        default=False,
-        description="Turn on the LLM relevance judge (STEP 2) in the 'agentic' backend. "
-        "False => agentic stays keyless and abstains on supports_claim.",
+        default=True,
+        description="Run the LLM relevance judge (STEP 2) in the 'agentic' backend. ON by "
+        "default — relevance is the product's core check. Fails soft to abstain when no "
+        "SDK/auth is available, so the keyless floor stays green; set false to force "
+        "keyless abstention on supports_claim.",
     )
 
     # ── Grounding sources ──
@@ -163,7 +165,7 @@ def load_settings(env_file: str | Path | None = ".env") -> Settings:
         model_bulk=_opt(get("MODEL_BULK")) or _DEFAULT_MODEL_BULK,
         model_judge=_opt(get("MODEL_JUDGE")) or _DEFAULT_MODEL_JUDGE,
         cost_ceiling_usd=_as_float(get("COST_CEILING_USD"), 0.50),
-        enable_relevance_judge=_as_bool(get("ENABLE_RELEVANCE_JUDGE"), False),
+        enable_relevance_judge=_as_bool(get("ENABLE_RELEVANCE_JUDGE"), True),
         crossref_mailto=_opt(get("CROSSREF_MAILTO")),
         s2_api_key=_opt(get("S2_API_KEY")),
         openalex_api_key=_opt(get("OPENALEX_API_KEY")),

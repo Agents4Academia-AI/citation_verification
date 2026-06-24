@@ -7,7 +7,7 @@ without flagging — only a genuinely different surname/initial should flag.
 
 from __future__ import annotations
 
-from citation_verifier.stages.correctness import _author_issue, _same_author, _unresolved_note
+from citation_verifier.stages.correctness import _author_issue, _name_key, _same_author, _unresolved_note
 
 
 def test_same_author_matches_abbreviated_and_glued_forms():
@@ -50,3 +50,15 @@ def test_author_issue_clears_abbreviations_but_keeps_real_mismatch():
     assert _author_issue(["Huang J"], ["Tom B. Brown"]) is not None
     # A list that mostly disagrees -> flagged.
     assert _author_issue(["Smith J", "Jones A"], ["Adams B", "Clark C"]) is not None
+
+
+def test_name_key_total_on_all_initials_fragment():
+    # A despaced reference can orphan an all-initials fragment ("S. R." from
+    # "Bowman, S. R."); _name_key must stay total (no surname to key on), never
+    # IndexError. Regression: a 60-author list that mis-split this way crashed the
+    # whole correctness stage ("list index out of range").
+    assert _name_key("S. R.") == ("", "s")
+    assert _name_key("S.") == ("s.", "")  # a single initial is harmless either way
+    # The crash reproduced through the real path: _author_issue over a mangled list.
+    mangled = ["Perez", "E.", "Ringer", "S.", "Bowman", "S. R.", "Askell", "A."]
+    assert _author_issue(mangled, ["Ethan Perez", "Sam Ringer"]) is not None  # no crash

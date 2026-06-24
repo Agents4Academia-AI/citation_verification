@@ -254,8 +254,8 @@ def fill_relevance_batch(
             rec.supports_claim = SupportsClaim.INCONCLUSIVE
         return records
 
-    # Stage 2: the abstract couldn't decide these — re-judge against full-text chunks.
-    verdicts, escalated = _escalate_inconclusive(judged, verdicts, judge_batch)
+    # Stage 2: re-judge the abstract-uncertain verdicts against full-text chunks.
+    verdicts, escalated = _escalate_to_full_text(judged, verdicts, judge_batch)
 
     for pos, (rec, item, verdict) in enumerate(zip(judged, items, verdicts, strict=False)):
         if verdict is None:
@@ -267,8 +267,12 @@ def fill_relevance_batch(
         rec.confidence = verdict.confidence
         rec.model_tier = verdict.model_tier
         if verdict.justification:
-            source = "full text" if pos in escalated else "abstract"
-            note = f"(based on {source}) {verdict.justification}"
+            if pos in escalated:
+                sec = escalated[pos]
+                basis = f"full text §{sec}" if sec else "full text"
+            else:
+                basis = "abstract only"
+            note = f"(based on {basis}) {verdict.justification}"
             rec.notes = (rec.notes + "\n" if rec.notes else "") + note
         if item["abstract"]:
             rec.evidence = _add_evidence(rec.evidence, _abstract_evidence(rec, item["abstract"]))
@@ -326,20 +330,23 @@ def _abstract_evidence(record: CitationRecord, abstract: str) -> Evidence:
 _FULLTEXT_CHUNKS = 3  # claim-relevant chunks fetched per escalated citation (Stage 2)
 
 
-def _escalate_inconclusive(
+def _escalate_to_full_text(
     records: list[CitationRecord], verdicts: list, judge_batch
-) -> tuple[list, set[int]]:
-    """Stage 2: re-judge ``inconclusive`` records against the cited paper's full text.
+) -> tuple[list, dict[int, str]]:
+    """Stage 2: re-judge abstract-uncertain records against the cited paper's full text.
 
-    The abstract could not decide these claims, so fetch the cited arXiv paper's
-    full text (LaTeX source, then PDF), select the few claim-relevant chunks, and
-    re-judge them in one batched call. Returns the (mutated) verdict list plus the
-    set of record positions re-judged on full text (for provenance). Fail-soft: a
-    record with no arXiv id / no fetchable text / a judge error keeps its Stage-1
-    verdict.
+    Escalates the verdicts the abstract can't be trusted on — ``inconclusive``,
+    ``does_not`` (the body often supports a claim the abstract omits), and
+    ``partial`` on a methods/data/results claim — by fetching the cited paper's full
+    text, selecting the few claim-relevant chunks, and re-judging them in one batched
+    call. A clear abstract-level ``supports`` is terminal and is not escalated.
+    Returns the (mutated) verdict list plus ``{pos: section_heading}`` for every record
+    re-judged on full text (for the basis label + provenance). Fail-soft: a record with
+    no id / no fetchable text / a judge error keeps its Stage-1 verdict.
     """
     from ..grounding.fulltext import (
         FullTextResult,
+        _needs_experimental,
         fetch_full_text_from_url,
         fetch_full_text_via_search_with_source,
         fetch_full_text_with_source,
@@ -356,7 +363,19 @@ def _escalate_inconclusive(
         if verdict is None:
             continue
         sc = getattr(verdict.supports_claim, "value", verdict.supports_claim)
-        if sc != SupportsClaim.INCONCLUSIVE.value:
+        # Escalate to full text when the abstract is not enough to be confident:
+        #   - inconclusive: the abstract couldn't decide;
+        #   - does_not: the most consequential verdict — the body often supports a
+        #     claim the abstract never mentions, so confirm before accusing of miscite;
+        #   - partial, but only when the claim is about specific methods/data/results
+        #     (those live in the body); a general/background partial can stand.
+        # A clear abstract-level `supports` is terminal and skips this.
+        escalate = (
+            sc == SupportsClaim.INCONCLUSIVE.value
+            or sc == SupportsClaim.DOES_NOT.value
+            or (sc == SupportsClaim.PARTIAL.value and _needs_experimental(rec.claim.text))
+        )
+        if not escalate:
             continue
         # Full-text source, by precision/cost (each cited paper fetched once):
         #   1. arXiv e-print/HTML/PDF by id;
@@ -408,18 +427,18 @@ def _escalate_inconclusive(
         esc_meta.append((pos, chunks, ftr.source, ftr.url))
 
     if not esc_items:
-        return verdicts, set()
+        return verdicts, {}
     try:
         esc_verdicts = judge_batch(esc_items)
     except Exception:  # noqa: BLE001 — degrade-not-crash: keep the Stage-1 verdicts
-        return verdicts, set()
+        return verdicts, {}
 
-    escalated: set[int] = set()
+    escalated: dict[int, str] = {}  # pos -> top section heading the verdict rests on
     for (pos, chunks, source, url), v2 in zip(esc_meta, esc_verdicts, strict=False):
         if v2 is None:
             continue
         verdicts[pos] = v2
-        escalated.add(pos)
+        escalated[pos] = (chunks[0][0] if chunks else "") or ""
         records[pos].evidence = _add_evidence(
             records[pos].evidence, _fulltext_evidence(records[pos], chunks, source=source, url=url)
         )
