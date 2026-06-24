@@ -189,3 +189,19 @@ def test_verdict_downgrades_clear_contradiction_to_does_not():
         {"supports_claim": "partial", "justification": "the evidence does not mention this specific result"}
     )
     assert SupportsClaim(v2.supports_claim) is SupportsClaim.PARTIAL
+
+
+def test_group_system_reserves_inconclusive_for_insufficient_evidence():
+    """The judge prompt must follow SKILL.md: inconclusive = evidence INSUFFICIENT
+    (couldn't retrieve), does_not = evidence present but off-claim. Guards against
+    silently reverting to the old "absence in the abstract => inconclusive" bias.
+    """
+    from citation_verifier.backends.relevance_judge import _GROUP_SYSTEM
+
+    s = _GROUP_SYSTEM.lower()
+    # does_not broadened beyond explicit contradiction (off-topic/narrower scope).
+    assert "not only on explicit contradiction" in s
+    assert "materially" in s and "different from or narrower" in s
+    # inconclusive reserved for genuinely insufficient evidence, not a soft does_not.
+    assert "insufficient to judge" in s
+    assert "soft 'does_not'" in s
