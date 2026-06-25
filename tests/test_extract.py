@@ -1095,3 +1095,26 @@ def test_ay_entry_boundary_splits_consecutive_authoryear_entries():
     parts = [p.strip() for p in _AY_ENTRY_BOUNDARY.split(joined) if p.strip()]
     assert len(parts) == 2
     assert parts[1].startswith("Gu, T.")
+
+
+def test_merge_baselines_does_not_fuse_across_column_gutter():
+    """Two-column pages put a left-column heading and a right-column reference on the
+    same baseline; merging them ("Acknowledgments Gu, T.; …") then drops the entry via
+    the header filter. A gutter-width gap must split the line; a small gap still joins."""
+    from citation_verifier.extract.pdf_refs import _merge_baselines
+
+    # (text, x0, y0, x1, y1, size) — same baseline, separated by the column gutter
+    across = [
+        ("Acknowledgments", 126.0, 54.8, 210.0, 66.0, 12.0),
+        ("Gu, T.; Liu, K.; and Garg, S. 2019. BadNets.", 320.0, 54.8, 540.0, 66.0, 10.0),
+    ]
+    assert [t[0] for t in _merge_baselines(across)] == [
+        "Acknowledgments",
+        "Gu, T.; Liu, K.; and Garg, S. 2019. BadNets.",
+    ]
+    # genuine same-line fragments (a PyMuPDF mid-line split, small gap) still merge
+    same = [
+        ("Gu, T.; Liu, K.; and", 320.0, 54.8, 410.0, 66.0, 10.0),
+        ("Garg, S. 2019. BadNets.", 414.0, 54.8, 540.0, 66.0, 10.0),
+    ]
+    assert [t[0] for t in _merge_baselines(same)] == ["Gu, T.; Liu, K.; and Garg, S. 2019. BadNets."]
