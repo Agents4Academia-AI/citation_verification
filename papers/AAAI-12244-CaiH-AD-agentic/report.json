@@ -81,9 +81,177 @@
           "url": "https://www.semanticscholar.org/paper/c5f7beb75dd191dfeb90052782ac4ab2c6b8f77f"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.82,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence states speaker recognition is applied to secure access systems, backing the access-control application mention. · source: https://www.semanticscholar.org/paper/c5f7beb75dd191dfeb90052782ac4ab2c6b8f77f",
+      "notes": "(based on abstract only) Evidence describes speaker recognition applied to 'secure access systems', backing the access-control application claim. · source: https://www.semanticscholar.org/paper/c5f7beb75dd191dfeb90052782ac4ab2c6b8f77f",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-0b07efb0cfce",
+      "cite_key": "eberhart2020",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-0b07efb0cfce",
+        "text": "Code — https://github.com/HanboCai/FSMA-ASMA Introduction With the widespread deployment of DNN-based speaker recognition systems in applications such as access control (Korzh et al. 2025) and voice assistants (Eberhart, Bansal, and McMillan 2020; Cai et al. 2023), growing attention has been drawn to their security vulnerabilities.",
+        "section": null,
+        "char_span": [
+          1176,
+          1510
+        ]
+      },
+      "cited_as": {
+        "raw": "Eberhart, Z.; Bansal, A.; and McMillan, C. 2020. A wizard of oz study simulating api usage dialogues with a virtual assistant. IEEE Transactions on Software Engineering, 48: 1883–1904.",
+        "authors": [
+          "Eberhart, Z.",
+          "Bansal, A.",
+          "McMillan, C."
+        ],
+        "title": "A wizard of oz study simulating api usage dialogues with a virtual assistant",
+        "year": 2020,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "A Wizard of Oz Study Simulating API Usage Dialogues With a Virtual Assistant",
+        "authors": [
+          "Zachary Eberhart",
+          "Aakash Bansal",
+          "Collin McMillan"
+        ],
+        "year": 2021,
+        "venue": "IEEE Transactions on Software Engineering",
+        "doi": "10.1109/tse.2020.3040935",
+        "arxiv_id": "2106.12645",
+        "url": "https://arxiv.org/pdf/2106.12645",
+        "url_valid": true,
+        "abstract": "Virtual Assistant technology is rapidly proliferating to improve productivity in a variety of tasks. While several virtual assistants for everyday tasks are well-known (e.g., Siri, Cortana, Alexa), assistants for specialty tasks such as software engineering are rarer. One key reason software engineering assistants are rare is that very few experimental datasets are available and suitable for training the AI that is the bedrock of current virtual assistants. In this paper, we present a set of Wizard of Oz experiments that we designed to build a dataset for creating a virtual assistant. Our targ…"
+      },
+      "metadata_issues": [],
+      "supports_claim": "partial",
+      "priority": "helpful",
+      "severity": "low",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1109/tse.2020.3040935",
+          "quote": "A Wizard of Oz Study Simulating API Usage Dialogues With a Virtual Assistant — Zachary Eberhart, Aakash Bansal, Collin McMillan — 2021",
+          "url": "https://arxiv.org/pdf/2106.12645"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.1109/tse.2020.3040935",
+          "quote": "Virtual Assistant technology is rapidly proliferating to improve productivity in a variety of tasks. While several virtual assistants for everyday tasks are well-known (e.g., Siri, Cortana, Alexa), assistants for specialty tasks such as software engineering are rarer. One key reason software engineering assistants are rare is that very few experimental datasets are available and suitable for training the AI that is the bedrock of current virtual assistants. In this paper, we present a set of Wizard of Oz experiments that we designed to build a dataset for creating a virtual assistant. Our targ…",
+          "url": "https://arxiv.org/pdf/2106.12645"
+        }
+      ],
+      "confidence": 0.55,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) On-topic for virtual/voice assistants (names Siri/Alexa) but the work is a software-engineering assistant dataset, not speaker-recognition deployment. · source: https://arxiv.org/pdf/2106.12645",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-645847e07c65",
+      "cite_key": "cai2023",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-645847e07c65",
+        "text": "Code — https://github.com/HanboCai/FSMA-ASMA Introduction With the widespread deployment of DNN-based speaker recognition systems in applications such as access control (Korzh et al. 2025) and voice assistants (Eberhart, Bansal, and McMillan 2020; Cai et al. 2023), growing attention has been drawn to their security vulnerabilities.",
+        "section": null,
+        "char_span": [
+          1176,
+          1510
+        ]
+      },
+      "cited_as": {
+        "raw": "Cai, H.; Zhang, P.; Dong, H.; Grunske, L.; Ji, S.; and Yuan, T. 2023. Adversarial example-based test case generation for black-box speech recognition systems. Software Testing, Verification and Reliability, 33(5): e1848.",
+        "authors": [
+          "Cai, H.",
+          "Zhang, P.",
+          "Dong, H.",
+          "Grunske, L.",
+          "Ji, S.",
+          "Yuan, T."
+        ],
+        "title": "Adversarial example-based test case generation for black-box speech recognition systems",
+        "year": 2023,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "Adversarial example‐based test case generation for black‐box speech recognition systems",
+        "authors": [
+          "Hanbo Cai",
+          "Pengcheng Zhang",
+          "Hai Dong",
+          "Lars Grunske",
+          "Shunhui Ji",
+          "Tianhao Yuan"
+        ],
+        "year": 2023,
+        "venue": "Software testing, verification & reliability",
+        "doi": "10.1002/stvr.1848",
+        "arxiv_id": null,
+        "url": "https://www.semanticscholar.org/paper/4cccad0bab31fb9ec2e3943d8d4ce2981e88d4e9",
+        "url_valid": true,
+        "abstract": "Test case generation techniques based on adversarial examples are commonly used to enhance the reliability and robustness of image‐based and text‐based machine learning applications. However, efficient techniques for speech recognition systems are still absent. This paper proposes a family of methods that generate targeted adversarial examples for speech recognition systems. All are based on the firefly algorithm (F), and are enhanced with gauss mutations and / or gradient estimation (F‐GM, F‐GE, F‐GMGE) to fit the specific problem of targeted adversarial test case generation. We conduct an ex…"
+      },
+      "metadata_issues": [],
+      "supports_claim": "partial",
+      "priority": "helpful",
+      "severity": "low",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1002/stvr.1848",
+          "quote": "Adversarial example‐based test case generation for black‐box speech recognition systems — Hanbo Cai, Pengcheng Zhang, Hai Dong, Lars Grunske, Shunhui Ji, Tianhao Yuan — 2023",
+          "url": "https://www.semanticscholar.org/paper/4cccad0bab31fb9ec2e3943d8d4ce2981e88d4e9"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.1002/stvr.1848",
+          "quote": "Test case generation techniques based on adversarial examples are commonly used to enhance the reliability and robustness of image‐based and text‐based machine learning applications. However, efficient techniques for speech recognition systems are still absent. This paper proposes a family of methods that generate targeted adversarial examples for speech recognition systems. All are based on the firefly algorithm (F), and are enhanced with gauss mutations and / or gradient estimation (F‐GM, F‐GE, F‐GMGE) to fit the specific problem of targeted adversarial test case generation. We conduct an ex…",
+          "url": "https://www.semanticscholar.org/paper/4cccad0bab31fb9ec2e3943d8d4ce2981e88d4e9"
+        }
+      ],
+      "confidence": 0.55,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) About adversarial examples for speech recognition, related to but not directly establishing voice-assistant deployment of speaker recognition. · source: https://www.semanticscholar.org/paper/4cccad0bab31fb9ec2e3943d8d4ce2981e88d4e9",
       "error": null,
       "labels": null
     },
@@ -164,9 +332,177 @@
           "url": "https://www.semanticscholar.org/paper/7d2a8214781c268055462da03277317815b3abf3"
         }
       ],
-      "confidence": 0.85,
+      "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is about CrowdPicker photo selection for crowdsensing aesthetics, unrelated to shared training datasets. · source: https://www.semanticscholar.org/paper/7d2a8214781c268055462da03277317815b3abf3",
+      "notes": "(based on abstract only) off-topic: cited work is CrowdPicker photo selection for crowdsensing, not shared datasets for model training. · source: https://www.semanticscholar.org/paper/7d2a8214781c268055462da03277317815b3abf3",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-20ef3cf128f5",
+      "cite_key": "yan2024",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-20ef3cf128f5",
+        "text": "However, in the backdoored model, the adversary successfully bypasses authentication by embedding a specific audio trigger, thus gaining unauthorized access (Yan, Lan, and Yan 2024).",
+        "section": null,
+        "char_span": [
+          2700,
+          2882
+        ]
+      },
+      "cited_as": {
+        "raw": "Yan, B.; Lan, J.; and Yan, Z. 2024. Backdoor attacks against voice recognition systems: A survey. ACM Computing Surveys, 57: 1–35.",
+        "authors": [
+          "Yan, B.",
+          "Lan, J.",
+          "Yan, Z."
+        ],
+        "title": "Backdoor attacks against voice recognition systems: A survey",
+        "year": 2024,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "Backdoor Attacks against Voice Recognition Systems: A Survey",
+        "authors": [
+          "Baochen Yan",
+          "Jiahe Lan",
+          "Zheng Yan"
+        ],
+        "year": 2023,
+        "venue": "ACM Computing Surveys",
+        "doi": "10.1145/3701985",
+        "arxiv_id": "2307.13643",
+        "url": "https://dl.acm.org/doi/pdf/10.1145/3701985",
+        "url_valid": true,
+        "abstract": "Voice Recognition Systems (VRSs) employ deep learning for speech recognition and speaker recognition. They have been widely deployed in various real-world applications, from intelligent voice assistance to telephony surveillance and biometric authentication. However, prior research has revealed the vulnerability of VRSs to backdoor attacks, which pose a significant threat to the security and privacy of VRSs. Unfortunately, existing literature lacks a thorough review on this topic. This paper fills this research gap by conducting a comprehensive survey on backdoor attacks against VRSs. We first…"
+      },
+      "metadata_issues": [],
+      "supports_claim": "supports",
+      "priority": "helpful",
+      "severity": "ok",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1145/3701985",
+          "quote": "Backdoor Attacks against Voice Recognition Systems: A Survey — Baochen Yan, Jiahe Lan, Zheng Yan — 2023",
+          "url": "https://dl.acm.org/doi/pdf/10.1145/3701985"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.1145/3701985",
+          "quote": "Voice Recognition Systems (VRSs) employ deep learning for speech recognition and speaker recognition. They have been widely deployed in various real-world applications, from intelligent voice assistance to telephony surveillance and biometric authentication. However, prior research has revealed the vulnerability of VRSs to backdoor attacks, which pose a significant threat to the security and privacy of VRSs. Unfortunately, existing literature lacks a thorough review on this topic. This paper fills this research gap by conducting a comprehensive survey on backdoor attacks against VRSs. We first…",
+          "url": "https://dl.acm.org/doi/pdf/10.1145/3701985"
+        }
+      ],
+      "confidence": 0.72,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) Survey on backdoor attacks against voice recognition/biometric authentication backs the authentication-bypass-via-trigger description. · source: https://dl.acm.org/doi/pdf/10.1145/3701985",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-456ab855e396",
+      "cite_key": "yan2024",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-456ab855e396",
+        "text": "Prior studies have demonstrated that the effectiveness of a backdoor trigger is closely tied to the model’s ability to consistently recognize its features (Yan, Lan, and Yan 2024).",
+        "section": null,
+        "char_span": [
+          4662,
+          4842
+        ]
+      },
+      "cited_as": {
+        "raw": "Yan, B.; Lan, J.; and Yan, Z. 2024. Backdoor attacks against voice recognition systems: A survey. ACM Computing Surveys, 57: 1–35.",
+        "authors": [
+          "Yan, B.",
+          "Lan, J.",
+          "Yan, Z."
+        ],
+        "title": "Backdoor attacks against voice recognition systems: A survey",
+        "year": 2024,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "Backdoor Attacks against Voice Recognition Systems: A Survey",
+        "authors": [
+          "Baochen Yan",
+          "Jiahe Lan",
+          "Zheng Yan"
+        ],
+        "year": 2023,
+        "venue": "ACM Computing Surveys",
+        "doi": "10.1145/3701985",
+        "arxiv_id": "2307.13643",
+        "url": "https://dl.acm.org/doi/pdf/10.1145/3701985",
+        "url_valid": true,
+        "abstract": "Voice Recognition Systems (VRSs) employ deep learning for speech recognition and speaker recognition. They have been widely deployed in various real-world applications, from intelligent voice assistance to telephony surveillance and biometric authentication. However, prior research has revealed the vulnerability of VRSs to backdoor attacks, which pose a significant threat to the security and privacy of VRSs. Unfortunately, existing literature lacks a thorough review on this topic. This paper fills this research gap by conducting a comprehensive survey on backdoor attacks against VRSs. We first…"
+      },
+      "metadata_issues": [],
+      "supports_claim": "inconclusive",
+      "priority": "helpful",
+      "severity": "low",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1145/3701985",
+          "quote": "Backdoor Attacks against Voice Recognition Systems: A Survey — Baochen Yan, Jiahe Lan, Zheng Yan — 2023",
+          "url": "https://dl.acm.org/doi/pdf/10.1145/3701985"
+        },
+        {
+          "kind": "full_text",
+          "source": "arxiv_html §Open Issues",
+          "quote": "Secondly, there is a research gap in the literature regarding non-poisoning backdoor attacks against VRSs. Non-poisoning backdoor attacks refer to modifying model parameters or loss functions of target models, resulting in an infected model. In the computer vision domain, numerous articles are dedicated to studying non-poisoning backdoor attacks, and previous studies have demonstrated their superior flexibility compared to poisoning attacks. However, little research has been conducted on non-poisoning backdoor attacks specifically targeting VRSs. Zhai et al. (Zhai et al . , 2021 ) proposed the…",
+          "url": "https://ar5iv.org/abs/2307.13643"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.1145/3701985",
+          "quote": "Voice Recognition Systems (VRSs) employ deep learning for speech recognition and speaker recognition. They have been widely deployed in various real-world applications, from intelligent voice assistance to telephony surveillance and biometric authentication. However, prior research has revealed the vulnerability of VRSs to backdoor attacks, which pose a significant threat to the security and privacy of VRSs. Unfortunately, existing literature lacks a thorough review on this topic. This paper fills this research gap by conducting a comprehensive survey on backdoor attacks against VRSs. We first…",
+          "url": "https://dl.acm.org/doi/pdf/10.1145/3701985"
+        }
+      ],
+      "confidence": 0.6,
+      "model_tier": "judge",
+      "notes": "(based on full text §Open Issues) On-topic survey of backdoor triggers against voice systems, but the specific claim tying trigger effectiveness to consistent feature recognition is absent from the retrieved excerpts. · source: https://dl.acm.org/doi/pdf/10.1145/3701985",
       "error": null,
       "labels": null
     },
@@ -252,7 +588,183 @@
       ],
       "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract only) A comprehensive review of backdoor attacks on DNNs supports framing them as a prominent security threat. · source: http://arxiv.org/pdf/2007.08745",
+      "notes": "(based on abstract only) Survey on backdoor learning frames backdoor attacks as a new and realistic threat to DNNs. · source: http://arxiv.org/pdf/2007.08745",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-bb0b64d324f4",
+      "cite_key": "chen2025a",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-bb0b64d324f4",
+        "text": "In recent years, backdoor attacks have emerged as one of the most prominent threats to the security of DNNs (Li et al. 2022b; Chen et al. 2025a; Tan et al. 2025).",
+        "section": null,
+        "char_span": [
+          3010,
+          3172
+        ]
+      },
+      "cited_as": {
+        "raw": "Chen, Y.; Li, B.; Yuan, Y.; Qi, L.; Li, Y.; Zhang, T.; Qin, Z.; and Ren, K. 2025a. Taught Well Learned Ill: Towards Distillation-conditional Backdoor Attack. In NeurIPS.",
+        "authors": [
+          "Chen, Y.",
+          "Li, B.",
+          "Yuan, Y.",
+          "Qi, L.",
+          "Li, Y.",
+          "Zhang, T.",
+          "Qin, Z.",
+          "Ren, K."
+        ],
+        "title": "Taught Well Learned Ill: Towards Distillation-conditional Backdoor Attack",
+        "year": 2025,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "Taught Well Learned Ill: Towards Distillation-conditional Backdoor Attack",
+        "authors": [
+          "Yukun Chen",
+          "Boheng Li",
+          "Yuanyuan Yuan",
+          "Leyi Qi",
+          "Yiming Li",
+          "Tianwei Zhang",
+          "Zhan Qin",
+          "Kui Ren"
+        ],
+        "year": 2025,
+        "venue": "arXiv.org",
+        "doi": "10.48550/arxiv.2509.23871",
+        "arxiv_id": "2509.23871",
+        "url": "https://www.semanticscholar.org/paper/bf8f9c394367cfd86cda1817c941241e3bfb5a86",
+        "url_valid": true,
+        "abstract": "Knowledge distillation (KD) is a vital technique for deploying deep neural networks (DNNs) on resource-constrained devices by transferring knowledge from large teacher models to lightweight student models. While teacher models from third-party platforms may undergo security verification (\\eg, backdoor detection), we uncover a novel and critical threat: distillation-conditional backdoor attacks (DCBAs). DCBA injects dormant and undetectable backdoors into teacher models, which become activated in student models via the KD process, even with clean distillation datasets. While the direct extensio…"
+      },
+      "metadata_issues": [],
+      "supports_claim": "supports",
+      "priority": "helpful",
+      "severity": "ok",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.48550/arxiv.2509.23871",
+          "quote": "Taught Well Learned Ill: Towards Distillation-conditional Backdoor Attack — Yukun Chen, Boheng Li, Yuanyuan Yuan, Leyi Qi, Yiming Li, Tianwei Zhang, Zhan Qin, Kui Ren — 2025",
+          "url": "https://www.semanticscholar.org/paper/bf8f9c394367cfd86cda1817c941241e3bfb5a86"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.48550/arxiv.2509.23871",
+          "quote": "Knowledge distillation (KD) is a vital technique for deploying deep neural networks (DNNs) on resource-constrained devices by transferring knowledge from large teacher models to lightweight student models. While teacher models from third-party platforms may undergo security verification (\\eg, backdoor detection), we uncover a novel and critical threat: distillation-conditional backdoor attacks (DCBAs). DCBA injects dormant and undetectable backdoors into teacher models, which become activated in student models via the KD process, even with clean distillation datasets. While the direct extensio…",
+          "url": "https://www.semanticscholar.org/paper/bf8f9c394367cfd86cda1817c941241e3bfb5a86"
+        }
+      ],
+      "confidence": 0.72,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) Presents a novel critical backdoor threat (DCBA) to DNNs, supporting the prominence-of-backdoor-threats claim. · source: https://www.semanticscholar.org/paper/bf8f9c394367cfd86cda1817c941241e3bfb5a86",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-0a40bfcb1fda",
+      "cite_key": "tan2025",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-0a40bfcb1fda",
+        "text": "In recent years, backdoor attacks have emerged as one of the most prominent threats to the security of DNNs (Li et al. 2022b; Chen et al. 2025a; Tan et al. 2025).",
+        "section": null,
+        "char_span": [
+          3010,
+          3172
+        ]
+      },
+      "cited_as": {
+        "raw": "Tan, Z.; Li, D.; Huang, Y.; Yin, J.-L.; and Liu, X. 2025. FeatShield: Isolating Malicious Feature Extractors for Backdoor-Robust Federated Learning. In Proceedings of the 33rd ACM International Conference on Multimedia, 7045– 7054.",
+        "authors": [
+          "Tan, Z.",
+          "Li, D.",
+          "Huang, Y.",
+          "Yin, J.-L.",
+          "Liu, X."
+        ],
+        "title": "FeatShield: Isolating Malicious Feature Extractors for Backdoor-Robust Federated Learning",
+        "year": 2025,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "FeatShield: Isolating Malicious Feature Extractors for Backdoor-Robust Federated Learning",
+        "authors": [
+          "Zhou Tan",
+          "De Li",
+          "Yirui Huang",
+          "Jiali Yin",
+          "Ximeng Liu"
+        ],
+        "year": 2025,
+        "venue": "ACM Multimedia",
+        "doi": "10.1145/3746027.3755742",
+        "arxiv_id": null,
+        "url": "https://www.semanticscholar.org/paper/a2c69cb482a58932695ceef7d95d37ce3269e240",
+        "url_valid": true,
+        "abstract": "Federated learning remains vulnerable to backdoor attacks through malicious parameter updates, with existing defenses limited by homogeneous data assumptions or reliance on gradient anomaly detection. We reveal that FedAvg's critical flaw lies in malicious feature extractor propagation: aggregating poisoned extractors degrades defense accuracy to <70% across five benchmarks, while benign extractors with poisoned headers retain an average of 89.36% defense accuracy. Therefore, we propose FeatShield, a feature-space isolation framework that prevents backdoor propagation via non-aggregated local …"
+      },
+      "metadata_issues": [],
+      "supports_claim": "supports",
+      "priority": "helpful",
+      "severity": "ok",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1145/3746027.3755742",
+          "quote": "FeatShield: Isolating Malicious Feature Extractors for Backdoor-Robust Federated Learning — Zhou Tan, De Li, Yirui Huang, Jiali Yin, Ximeng Liu — 2025",
+          "url": "https://www.semanticscholar.org/paper/a2c69cb482a58932695ceef7d95d37ce3269e240"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.1145/3746027.3755742",
+          "quote": "Federated learning remains vulnerable to backdoor attacks through malicious parameter updates, with existing defenses limited by homogeneous data assumptions or reliance on gradient anomaly detection. We reveal that FedAvg's critical flaw lies in malicious feature extractor propagation: aggregating poisoned extractors degrades defense accuracy to <70% across five benchmarks, while benign extractors with poisoned headers retain an average of 89.36% defense accuracy. Therefore, we propose FeatShield, a feature-space isolation framework that prevents backdoor propagation via non-aggregated local …",
+          "url": "https://www.semanticscholar.org/paper/a2c69cb482a58932695ceef7d95d37ce3269e240"
+        }
+      ],
+      "confidence": 0.72,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) Addresses backdoor attacks (in federated learning) as a vulnerability, backing the general threat claim. · source: https://www.semanticscholar.org/paper/a2c69cb482a58932695ceef7d95d37ce3269e240",
       "error": null,
       "labels": null
     },
@@ -333,9 +845,9 @@
           "url": "https://dl.acm.org/doi/pdf/10.1145/3522783.3529523"
         }
       ],
-      "confidence": 0.55,
+      "confidence": 0.6,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence describes inaudible/ultrasonic injected triggers, loosely matching the additive-noise-pattern grouping. · source: https://dl.acm.org/doi/pdf/10.1145/3522783.3529523",
+      "notes": "(based on abstract only) Uses injected inaudible triggers in ASR, loosely matching 'additive noise patterns' grouping. · source: https://dl.acm.org/doi/pdf/10.1145/3522783.3529523",
       "error": null,
       "labels": null
     },
@@ -418,7 +930,181 @@
       ],
       "confidence": 0.55,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence supports inaudible (ultrasonic) triggers but does not mention voice style transfer. · source: https://dl.acm.org/doi/pdf/10.1145/3522783.3529523",
+      "notes": "(based on abstract only) Evidence confirms inaudible (ultrasonic-type) triggers but does not mention voice style transfer. · source: https://dl.acm.org/doi/pdf/10.1145/3522783.3529523",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-1de245494004",
+      "cite_key": "zhai2021",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-1de245494004",
+        "text": "Some approaches embed additive noise patterns as triggers (Koffas et al. 2022; Zhai et al. 2021), while others exploit environmental background noise (Liu et al. 2022), elements of sound (Cai et al. 2024), or separable and distinctive audio clips to construct backdoors (Xin, Lyu, and Ma 2022; Luo et al. 2022).",
+        "section": null,
+        "char_span": [
+          3551,
+          3862
+        ]
+      },
+      "cited_as": {
+        "raw": "Zhai, T.; Li, Y.; Zhang, Z.; Wu, B.; Jiang, Y.; and Xia, S.- T. 2021. Backdoor attack against speaker verification. In ICASSP.",
+        "authors": [
+          "Zhai, T.",
+          "Li, Y.",
+          "Zhang, Z.",
+          "Wu, B.",
+          "Jiang, Y.",
+          "Xia, S.- T."
+        ],
+        "title": "Backdoor attack against speaker verification",
+        "year": 2021,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "Backdoor Attack Against Speaker Verification",
+        "authors": [
+          "Tongqing Zhai",
+          "Yiming Li",
+          "Ziqi Zhang",
+          "Baoyuan Wu",
+          "Yong Jiang",
+          "Shutao Xia"
+        ],
+        "year": 2020,
+        "venue": "IEEE International Conference on Acoustics, Speech, and Signal Processing",
+        "doi": "10.1109/icassp39728.2021.9413468",
+        "arxiv_id": "2010.11607",
+        "url": "https://arxiv.org/pdf/2010.11607",
+        "url_valid": true,
+        "abstract": "Speaker verification has been widely and successfully adopted in many mission-critical areas for user identification. The training of speaker verification requires a large amount of data, therefore users usually need to adopt third-party data (e.g., data from the Internet or third-party data company). This raises the question of whether adopting untrusted third-party data can pose a security threat. In this paper, we demonstrate that it is possible to inject the hidden backdoor for infecting speaker verification models by poisoning the training data. Specifically, we design a clustering-based …"
+      },
+      "metadata_issues": [],
+      "supports_claim": "partial",
+      "priority": "helpful",
+      "severity": "low",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1109/icassp39728.2021.9413468",
+          "quote": "Backdoor Attack Against Speaker Verification — Tongqing Zhai, Yiming Li, Ziqi Zhang, Baoyuan Wu, Yong Jiang, Shutao Xia — 2020",
+          "url": "https://arxiv.org/pdf/2010.11607"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.1109/icassp39728.2021.9413468",
+          "quote": "Speaker verification has been widely and successfully adopted in many mission-critical areas for user identification. The training of speaker verification requires a large amount of data, therefore users usually need to adopt third-party data (e.g., data from the Internet or third-party data company). This raises the question of whether adopting untrusted third-party data can pose a security threat. In this paper, we demonstrate that it is possible to inject the hidden backdoor for infecting speaker verification models by poisoning the training data. Specifically, we design a clustering-based …",
+          "url": "https://arxiv.org/pdf/2010.11607"
+        }
+      ],
+      "confidence": 0.5,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) Uses a clustering-based trigger on speaker verification; 'additive noise pattern' framing is only loosely supported. · source: https://arxiv.org/pdf/2010.11607",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-2af03f445827",
+      "cite_key": "zhai2021",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-2af03f445827",
+        "text": "(Zhai et al. 2021) proposed the first backdoor attack framework targeting speaker verification, based on clustering techniques.",
+        "section": null,
+        "char_span": [
+          10577,
+          10705
+        ]
+      },
+      "cited_as": {
+        "raw": "Zhai, T.; Li, Y.; Zhang, Z.; Wu, B.; Jiang, Y.; and Xia, S.- T. 2021. Backdoor attack against speaker verification. In ICASSP.",
+        "authors": [
+          "Zhai, T.",
+          "Li, Y.",
+          "Zhang, Z.",
+          "Wu, B.",
+          "Jiang, Y.",
+          "Xia, S.- T."
+        ],
+        "title": "Backdoor attack against speaker verification",
+        "year": 2021,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "Backdoor Attack Against Speaker Verification",
+        "authors": [
+          "Tongqing Zhai",
+          "Yiming Li",
+          "Ziqi Zhang",
+          "Baoyuan Wu",
+          "Yong Jiang",
+          "Shutao Xia"
+        ],
+        "year": 2020,
+        "venue": "IEEE International Conference on Acoustics, Speech, and Signal Processing",
+        "doi": "10.1109/icassp39728.2021.9413468",
+        "arxiv_id": "2010.11607",
+        "url": "https://arxiv.org/pdf/2010.11607",
+        "url_valid": true,
+        "abstract": "Speaker verification has been widely and successfully adopted in many mission-critical areas for user identification. The training of speaker verification requires a large amount of data, therefore users usually need to adopt third-party data (e.g., data from the Internet or third-party data company). This raises the question of whether adopting untrusted third-party data can pose a security threat. In this paper, we demonstrate that it is possible to inject the hidden backdoor for infecting speaker verification models by poisoning the training data. Specifically, we design a clustering-based …"
+      },
+      "metadata_issues": [],
+      "supports_claim": "supports",
+      "priority": "obligatory",
+      "severity": "ok",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1109/icassp39728.2021.9413468",
+          "quote": "Backdoor Attack Against Speaker Verification — Tongqing Zhai, Yiming Li, Ziqi Zhang, Baoyuan Wu, Yong Jiang, Shutao Xia — 2020",
+          "url": "https://arxiv.org/pdf/2010.11607"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.1109/icassp39728.2021.9413468",
+          "quote": "Speaker verification has been widely and successfully adopted in many mission-critical areas for user identification. The training of speaker verification requires a large amount of data, therefore users usually need to adopt third-party data (e.g., data from the Internet or third-party data company). This raises the question of whether adopting untrusted third-party data can pose a security threat. In this paper, we demonstrate that it is possible to inject the hidden backdoor for infecting speaker verification models by poisoning the training data. Specifically, we design a clustering-based …",
+          "url": "https://arxiv.org/pdf/2010.11607"
+        }
+      ],
+      "confidence": 0.85,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) Evidence states a clustering-based backdoor injected into speaker verification via data poisoning, matching the attribution. · source: https://arxiv.org/pdf/2010.11607",
       "error": null,
       "labels": null
     },
@@ -445,7 +1131,7 @@
         ]
       },
       "cited_as": {
-        "raw": "Liu, Q.; Zhou, T.; Cai, Z.; and Tang, Y. 2022. Opportunistic backdoor attacks: Exploring human-imperceptible vulnerabilities on speech recognition systems. In ACM MM, 2390– 2398. ICCD.",
+        "raw": "Liu, Q.; Zhou, T.; Cai, Z.; and Tang, Y. 2022. Opportunistic backdoor attacks: Exploring human-imperceptible vulnerabilities on speech recognition systems. In ACM MM, 2390– 2398.",
         "authors": [
           "Liu, Q.",
           "Zhou, T.",
@@ -499,9 +1185,9 @@
           "url": "https://www.semanticscholar.org/paper/50912e23265aa9f86d493a9f0d03ebf6f33a4e63"
         }
       ],
-      "confidence": 0.8,
+      "confidence": 0.82,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence replaces synthetic triggers with ambient noise, matching environmental-background-noise triggers. · source: https://www.semanticscholar.org/paper/50912e23265aa9f86d493a9f0d03ebf6f33a4e63",
+      "notes": "(based on abstract only) Evidence replaces synthetic triggers with ambient/background noise, matching environmental-noise trigger claim. · source: https://www.semanticscholar.org/paper/50912e23265aa9f86d493a9f0d03ebf6f33a4e63",
       "error": null,
       "labels": null
     },
@@ -528,7 +1214,7 @@
         ]
       },
       "cited_as": {
-        "raw": "Liu, Q.; Zhou, T.; Cai, Z.; and Tang, Y. 2022. Opportunistic backdoor attacks: Exploring human-imperceptible vulnerabilities on speech recognition systems. In ACM MM, 2390– 2398. ICCD.",
+        "raw": "Liu, Q.; Zhou, T.; Cai, Z.; and Tang, Y. 2022. Opportunistic backdoor attacks: Exploring human-imperceptible vulnerabilities on speech recognition systems. In ACM MM, 2390– 2398.",
         "authors": [
           "Liu, Q.",
           "Zhou, T.",
@@ -584,7 +1270,7 @@
       ],
       "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence uses ambient/background noise in daily scenarios as the trigger, matching the natural-environmental-sound claim. · source: https://www.semanticscholar.org/paper/50912e23265aa9f86d493a9f0d03ebf6f33a4e63",
+      "notes": "(based on abstract only) Uses ambient noise in daily scenarios as triggers, supporting natural-environmental-sound trigger claim. · source: https://www.semanticscholar.org/paper/50912e23265aa9f86d493a9f0d03ebf6f33a4e63",
       "error": null,
       "labels": null
     },
@@ -651,9 +1337,9 @@
         "abstract": "Deep neural networks (DNNs) have been widely and successfully adopted and deployed in various applications of speech recognition. Recently, a few works revealed that these models are vulnerable to backdoor attacks, where the adversaries can implant malicious prediction behaviors into victim models by poisoning their training process. In this paper, we revisit poison-only backdoor attacks against speech recognition. We reveal that existing methods are not stealthy since their trigger patterns are perceptible to humans or machine detection. This limitation is mostly because their trigger pattern…"
       },
       "metadata_issues": [],
-      "supports_claim": "partial",
-      "priority": "helpful",
-      "severity": "low",
+      "supports_claim": "supports",
+      "priority": "obligatory",
+      "severity": "ok",
       "compared_against": null,
       "evidence": [
         {
@@ -663,15 +1349,21 @@
           "url": "https://arxiv.org/pdf/2307.08208"
         },
         {
+          "kind": "full_text",
+          "source": "arxiv_html §Abstract",
+          "quote": "This limitation is mostly because their trigger patterns are simple noises or separable and distinctive clips. Motivated by these findings, we propose to exploit elements of sound ( , pitch and timbre) to design more stealthy yet effective poison-only backdoor attacks. Specifically, we insert a short-duration high-pitched signal as the trigger and increase the pitch of remaining audio clips to ‘mask’ it for designing stealthy pitch-based triggers. Recently, there are also a few backdoor attacks against speech recognition. Specifically, Liu et al. [ 42 ] reversed potential training samples of a…",
+          "url": "https://ar5iv.org/abs/2307.08208"
+        },
+        {
           "kind": "abstract",
           "source": "10.1109/tifs.2024.3404885",
           "quote": "Deep neural networks (DNNs) have been widely and successfully adopted and deployed in various applications of speech recognition. Recently, a few works revealed that these models are vulnerable to backdoor attacks, where the adversaries can implant malicious prediction behaviors into victim models by poisoning their training process. In this paper, we revisit poison-only backdoor attacks against speech recognition. We reveal that existing methods are not stealthy since their trigger patterns are perceptible to humans or machine detection. This limitation is mostly because their trigger pattern…",
           "url": "https://arxiv.org/pdf/2307.08208"
         }
       ],
-      "confidence": 0.5,
+      "confidence": 0.92,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence concerns a stealthier speech-recognition backdoor trigger but does not clearly characterize it as 'elements of sound'. · source: https://arxiv.org/pdf/2307.08208",
+      "notes": "(based on full text §Abstract) Abstract explicitly states they exploit elements of sound (pitch and timbre) as triggers, backing the portion attributed to Cai et al. · source: https://arxiv.org/pdf/2307.08208",
       "error": null,
       "labels": null
     },
@@ -738,8 +1430,8 @@
         "abstract": "Deep neural networks (DNNs) have been widely and successfully adopted and deployed in various applications of speech recognition. Recently, a few works revealed that these models are vulnerable to backdoor attacks, where the adversaries can implant malicious prediction behaviors into victim models by poisoning their training process. In this paper, we revisit poison-only backdoor attacks against speech recognition. We reveal that existing methods are not stealthy since their trigger patterns are perceptible to humans or machine detection. This limitation is mostly because their trigger pattern…"
       },
       "metadata_issues": [],
-      "supports_claim": "partial",
-      "priority": "helpful",
+      "supports_claim": "inconclusive",
+      "priority": "obligatory",
       "severity": "low",
       "compared_against": null,
       "evidence": [
@@ -750,15 +1442,325 @@
           "url": "https://arxiv.org/pdf/2307.08208"
         },
         {
+          "kind": "full_text",
+          "source": "arxiv_html §Index Terms:",
+          "quote": "However, recent studies revealed that outsourcing (parts of) training procedures ( , data collection) may also introduce new security risks to DNNs [ 4 ] . Arguably, backdoor attack is one of the most emerging yet threatening threats [ 5 ] . The backdoor adversaries can implant hidden backdoors to victim DNNs by introducing a few poisoned training samples containing adversary-specified trigger patterns. The adversaries can activate the embedded backdoor via triggers during the inference process of backdoored models to maliciously manipulate their predictions. Deep neural networks (DNNs) have b…",
+          "url": "https://ar5iv.org/abs/2307.08208"
+        },
+        {
           "kind": "abstract",
           "source": "10.1109/tifs.2024.3404885",
           "quote": "Deep neural networks (DNNs) have been widely and successfully adopted and deployed in various applications of speech recognition. Recently, a few works revealed that these models are vulnerable to backdoor attacks, where the adversaries can implant malicious prediction behaviors into victim models by poisoning their training process. In this paper, we revisit poison-only backdoor attacks against speech recognition. We reveal that existing methods are not stealthy since their trigger patterns are perceptible to humans or machine detection. This limitation is mostly because their trigger pattern…",
           "url": "https://arxiv.org/pdf/2307.08208"
         }
       ],
-      "confidence": 0.45,
+      "confidence": 0.55,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence notes existing triggers are perceptible but does not address structural complexity or temporal continuity. · source: https://arxiv.org/pdf/2307.08208",
+      "notes": "(based on full text §Index Terms:) On-topic regarding frequency/pitch-based triggers, but the specific claim about limited structural complexity, lack of temporal continuity, and unreliable learnability is not stated in the evidence. · source: https://arxiv.org/pdf/2307.08208",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-962ec4bda5d8",
+      "cite_key": "xin2022",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-962ec4bda5d8",
+        "text": "Some approaches embed additive noise patterns as triggers (Koffas et al. 2022; Zhai et al. 2021), while others exploit environmental background noise (Liu et al. 2022), elements of sound (Cai et al. 2024), or separable and distinctive audio clips to construct backdoors (Xin, Lyu, and Ma 2022; Luo et al. 2022).",
+        "section": null,
+        "char_span": [
+          3551,
+          3862
+        ]
+      },
+      "cited_as": {
+        "raw": "Xin, J.; Lyu, X.; and Ma, J. 2022. Natural backdoor attacks on speech recognition models. In ML4CS.",
+        "authors": [
+          "Xin, J.",
+          "Lyu, X.",
+          "Ma, J."
+        ],
+        "title": "Natural backdoor attacks on speech recognition models",
+        "year": 2022,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "Natural Backdoor Attacks on Speech Recognition Models",
+        "authors": [
+          "Jinwen Xin",
+          "X. Lyu",
+          "Jing Ma"
+        ],
+        "year": 2022,
+        "venue": "International Conference on Machine Learning for Cyber Security",
+        "doi": "10.1007/978-3-031-20096-0_45",
+        "arxiv_id": null,
+        "url": "https://www.semanticscholar.org/paper/b48a2390b9776e193f98941f5a2efdb863cc85c9",
+        "url_valid": true,
+        "abstract": null
+      },
+      "metadata_issues": [],
+      "supports_claim": "inconclusive",
+      "priority": "helpful",
+      "severity": "low",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1007/978-3-031-20096-0_45",
+          "quote": "Natural Backdoor Attacks on Speech Recognition Models — Jinwen Xin, X. Lyu, Jing Ma — 2022",
+          "url": "https://www.semanticscholar.org/paper/b48a2390b9776e193f98941f5a2efdb863cc85c9"
+        }
+      ],
+      "confidence": null,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) no abstract or introduction to judge from · source: https://www.semanticscholar.org/paper/b48a2390b9776e193f98941f5a2efdb863cc85c9",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-c972ebd79967",
+      "cite_key": "xin2022",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-c972ebd79967",
+        "text": "Meanwhile, several studies investigated the use of natural environmental sounds—such as music or background noise—as trigger patterns (Liu et al. 2022; Xin, Lyu, and Ma 2022; Luo et al. 2022).",
+        "section": null,
+        "char_span": [
+          11216,
+          11408
+        ]
+      },
+      "cited_as": {
+        "raw": "Xin, J.; Lyu, X.; and Ma, J. 2022. Natural backdoor attacks on speech recognition models. In ML4CS.",
+        "authors": [
+          "Xin, J.",
+          "Lyu, X.",
+          "Ma, J."
+        ],
+        "title": "Natural backdoor attacks on speech recognition models",
+        "year": 2022,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "Natural Backdoor Attacks on Speech Recognition Models",
+        "authors": [
+          "Jinwen Xin",
+          "X. Lyu",
+          "Jing Ma"
+        ],
+        "year": 2022,
+        "venue": "International Conference on Machine Learning for Cyber Security",
+        "doi": "10.1007/978-3-031-20096-0_45",
+        "arxiv_id": null,
+        "url": "https://www.semanticscholar.org/paper/b48a2390b9776e193f98941f5a2efdb863cc85c9",
+        "url_valid": true,
+        "abstract": null
+      },
+      "metadata_issues": [],
+      "supports_claim": "inconclusive",
+      "priority": "helpful",
+      "severity": "low",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1007/978-3-031-20096-0_45",
+          "quote": "Natural Backdoor Attacks on Speech Recognition Models — Jinwen Xin, X. Lyu, Jing Ma — 2022",
+          "url": "https://www.semanticscholar.org/paper/b48a2390b9776e193f98941f5a2efdb863cc85c9"
+        }
+      ],
+      "confidence": null,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) no abstract or introduction to judge from · source: https://www.semanticscholar.org/paper/b48a2390b9776e193f98941f5a2efdb863cc85c9",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-8ea34774ff67",
+      "cite_key": "luo2022",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-8ea34774ff67",
+        "text": "Some approaches embed additive noise patterns as triggers (Koffas et al. 2022; Zhai et al. 2021), while others exploit environmental background noise (Liu et al. 2022), elements of sound (Cai et al. 2024), or separable and distinctive audio clips to construct backdoors (Xin, Lyu, and Ma 2022; Luo et al. 2022).",
+        "section": null,
+        "char_span": [
+          3551,
+          3862
+        ]
+      },
+      "cited_as": {
+        "raw": "Luo, Y.; Tai, J.; Jia, X.; and Zhang, S. 2022. Practical backdoor attack against speaker recognition system. In ISPEC.",
+        "authors": [
+          "Luo, Y.",
+          "Tai, J.",
+          "Jia, X.",
+          "Zhang, S."
+        ],
+        "title": "Practical backdoor attack against speaker recognition system",
+        "year": 2022,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "Practical Backdoor Attack Against Speaker Recognition System",
+        "authors": [
+          "Yuxiao Luo",
+          "Jianwei Tai",
+          "Xiaoqi Jia",
+          "Shengzhi Zhang"
+        ],
+        "year": 2022,
+        "venue": "Information Security Practice and Experience",
+        "doi": "10.1007/978-3-031-21280-2_26",
+        "arxiv_id": null,
+        "url": "https://www.semanticscholar.org/paper/939ac682cb9c13bd6b146a5e53b0ab3b9234f4b2",
+        "url_valid": true,
+        "abstract": null
+      },
+      "metadata_issues": [],
+      "supports_claim": "inconclusive",
+      "priority": "helpful",
+      "severity": "low",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1007/978-3-031-21280-2_26",
+          "quote": "Practical Backdoor Attack Against Speaker Recognition System — Yuxiao Luo, Jianwei Tai, Xiaoqi Jia, Shengzhi Zhang — 2022",
+          "url": "https://www.semanticscholar.org/paper/939ac682cb9c13bd6b146a5e53b0ab3b9234f4b2"
+        }
+      ],
+      "confidence": null,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) no abstract or introduction to judge from · source: https://www.semanticscholar.org/paper/939ac682cb9c13bd6b146a5e53b0ab3b9234f4b2",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-39d0da7af825",
+      "cite_key": "luo2022",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-39d0da7af825",
+        "text": "Meanwhile, several studies investigated the use of natural environmental sounds—such as music or background noise—as trigger patterns (Liu et al. 2022; Xin, Lyu, and Ma 2022; Luo et al. 2022).",
+        "section": null,
+        "char_span": [
+          11216,
+          11408
+        ]
+      },
+      "cited_as": {
+        "raw": "Luo, Y.; Tai, J.; Jia, X.; and Zhang, S. 2022. Practical backdoor attack against speaker recognition system. In ISPEC.",
+        "authors": [
+          "Luo, Y.",
+          "Tai, J.",
+          "Jia, X.",
+          "Zhang, S."
+        ],
+        "title": "Practical backdoor attack against speaker recognition system",
+        "year": 2022,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "Practical Backdoor Attack Against Speaker Recognition System",
+        "authors": [
+          "Yuxiao Luo",
+          "Jianwei Tai",
+          "Xiaoqi Jia",
+          "Shengzhi Zhang"
+        ],
+        "year": 2022,
+        "venue": "Information Security Practice and Experience",
+        "doi": "10.1007/978-3-031-21280-2_26",
+        "arxiv_id": null,
+        "url": "https://www.semanticscholar.org/paper/939ac682cb9c13bd6b146a5e53b0ab3b9234f4b2",
+        "url_valid": true,
+        "abstract": null
+      },
+      "metadata_issues": [],
+      "supports_claim": "inconclusive",
+      "priority": "helpful",
+      "severity": "low",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1007/978-3-031-21280-2_26",
+          "quote": "Practical Backdoor Attack Against Speaker Recognition System — Yuxiao Luo, Jianwei Tai, Xiaoqi Jia, Shengzhi Zhang — 2022",
+          "url": "https://www.semanticscholar.org/paper/939ac682cb9c13bd6b146a5e53b0ab3b9234f4b2"
+        }
+      ],
+      "confidence": null,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) no abstract or introduction to judge from · source: https://www.semanticscholar.org/paper/939ac682cb9c13bd6b146a5e53b0ab3b9234f4b2",
       "error": null,
       "labels": null
     },
@@ -843,9 +1845,9 @@
           "url": "https://www.semanticscholar.org/paper/a0b37d864bf20ea17cd0b9a2a3c62d96b5e5eb27"
         }
       ],
-      "confidence": 0.5,
+      "confidence": 0.6,
       "model_tier": "judge",
-      "notes": "(based on abstract only) TrojanRoom motivates physical-deployment and inspection-evasion limitations but the abstract does not enumerate them as stated. · source: https://www.semanticscholar.org/paper/a0b37d864bf20ea17cd0b9a2a3c62d96b5e5eb27",
+      "notes": "(based on abstract only) TrojanRoom's physical RIR trigger that bypasses inspection implicitly motivates prior methods' limitations. · source: https://www.semanticscholar.org/paper/a0b37d864bf20ea17cd0b9a2a3c62d96b5e5eb27",
       "error": null,
       "labels": null
     },
@@ -932,7 +1934,7 @@
       ],
       "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence explicitly uses room impulse response as a physical, injection-free trigger mechanism. · source: https://www.semanticscholar.org/paper/a0b37d864bf20ea17cd0b9a2a3c62d96b5e5eb27",
+      "notes": "(based on abstract only) Evidence directly states RIR used as a physical trigger enabling injection-free backdoor activation. · source: https://www.semanticscholar.org/paper/a0b37d864bf20ea17cd0b9a2a3c62d96b5e5eb27",
       "error": null,
       "labels": null
     },
@@ -999,7 +2001,7 @@
         "abstract": "The proposed TrojanRoom utilizes the room impulse response (RIR) as a physical trigger to enable injection-free backdoor activation and demonstrates that TrojanRoom could bypass human inspection and voice liveness detection, as well as resist trigger disruption and backdoor defense."
       },
       "metadata_issues": [],
-      "supports_claim": "does_not",
+      "supports_claim": "inconclusive",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -1017,9 +2019,9 @@
           "url": "https://www.semanticscholar.org/paper/a0b37d864bf20ea17cd0b9a2a3c62d96b5e5eb27"
         }
       ],
-      "confidence": 0.4,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence shows TrojanRoom resists disruption but does not support degradation due to channel distortion or hardware response. · source: https://www.semanticscholar.org/paper/a0b37d864bf20ea17cd0b9a2a3c62d96b5e5eb27",
+      "notes": "(based on abstract only) Evidence does not mention channel distortion or hardware frequency-response degradation of prior methods. · source: https://www.semanticscholar.org/paper/a0b37d864bf20ea17cd0b9a2a3c62d96b5e5eb27",
       "error": null,
       "labels": null
     },
@@ -1102,7 +2104,7 @@
       ],
       "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence shows AM/FM modulation features are important for speech discrimination but does not directly assert their robustness. · source: https://www.semanticscholar.org/paper/2792b295db719109fda39c8814d99f90515ba055",
+      "notes": "(based on abstract only) Shows FM/AM modulation features are discriminative in speech but does not explicitly establish 'inherent robustness'. · source: https://www.semanticscholar.org/paper/2792b295db719109fda39c8814d99f90515ba055",
       "error": null,
       "labels": null
     },
@@ -1159,7 +2161,7 @@
         "abstract": "This paper presents a comparative theoretical study of amplitude, phase, and frequency modulation. In the first part, the fundamental mathematical expressions for the three types of modulation are derived. They are expressed in three different forms: as amplitude equations, side band equations and modulation vector equations. The amplitude equations indicate the envelope of the radio-frequency directly. The side band equations refer to the number, amplitude, and phase of the side bands produced by modulation. In the modulation vector equations, corresponding side bands are combined in pairs to…"
       },
       "metadata_issues": [],
-      "supports_claim": "does_not",
+      "supports_claim": "inconclusive",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -1177,9 +2179,90 @@
           "url": "https://www.semanticscholar.org/paper/c46959b7628cb65cf61fd58e02a2bc5610bf4ef1"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is foundational modulation theory and says nothing about resilience to distortion/compression or physical deployment. · source: https://www.semanticscholar.org/paper/c46959b7628cb65cf61fd58e02a2bc5610bf4ef1",
+      "notes": "(based on abstract only) Theoretical AM/PM/FM comparison; abstract does not state resilience to signal distortion and compression. · source: https://www.semanticscholar.org/paper/c46959b7628cb65cf61fd58e02a2bc5610bf4ef1",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-970341977851",
+      "cite_key": "hanifa2021",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-970341977851",
+        "text": "Related Works Speaker Recognition Speaker Recognition (SR) (Hanifa, Isa, and Mohamad 2021) aims to identify or verify a speaker’s identity based on audio samples, typically formulated as either closed-set identification (CSI) or open-set identification (OSI) tasks.",
+        "section": null,
+        "char_span": [
+          6448,
+          6715
+        ]
+      },
+      "cited_as": {
+        "raw": "Hanifa, R. M.; Isa, K.; and Mohamad, S. 2021. A review on speaker recognition: Technology and challenges. Computers & Electrical Engineering, 90: 107005.",
+        "authors": [
+          "Hanifa, R. M.",
+          "Isa, K.",
+          "Mohamad, S."
+        ],
+        "title": "A review on speaker recognition: Technology and challenges",
+        "year": 2021,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "A review on speaker recognition: Technology and challenges",
+        "authors": [
+          "Rafizah Mohd Hanifa",
+          "K. Isa",
+          "Shamsul Mohamad"
+        ],
+        "year": 2021,
+        "venue": "Computers & electrical engineering",
+        "doi": "10.1016/j.compeleceng.2021.107005",
+        "arxiv_id": null,
+        "url": "https://www.semanticscholar.org/paper/b014a34d54b8c698ad1f734fe60f82b21b4320d4",
+        "url_valid": true,
+        "abstract": "Abstract Voice is a behavioral biometric that conveys information related to a person's traits, such as the speaker's ethnicity, age, gender, and feeling. Speaker recognition deals with recognizing the identity of people based on their voice. Although researchers have been working on speaker recognition in the last eight decades, advancements in technology, such as the Internet of Things (IoT), smart devices, voice assistants, smart homes, and humanoids, have made its usage nowadays trendy. This paper provides a comprehensive review of the literature on speaker recognition. It discusses the ad…"
+      },
+      "metadata_issues": [],
+      "supports_claim": "supports",
+      "priority": "helpful",
+      "severity": "ok",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1016/j.compeleceng.2021.107005",
+          "quote": "A review on speaker recognition: Technology and challenges — Rafizah Mohd Hanifa, K. Isa, Shamsul Mohamad — 2021",
+          "url": "https://www.semanticscholar.org/paper/b014a34d54b8c698ad1f734fe60f82b21b4320d4"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.1016/j.compeleceng.2021.107005",
+          "quote": "Abstract Voice is a behavioral biometric that conveys information related to a person's traits, such as the speaker's ethnicity, age, gender, and feeling. Speaker recognition deals with recognizing the identity of people based on their voice. Although researchers have been working on speaker recognition in the last eight decades, advancements in technology, such as the Internet of Things (IoT), smart devices, voice assistants, smart homes, and humanoids, have made its usage nowadays trendy. This paper provides a comprehensive review of the literature on speaker recognition. It discusses the ad…",
+          "url": "https://www.semanticscholar.org/paper/b014a34d54b8c698ad1f734fe60f82b21b4320d4"
+        }
+      ],
+      "confidence": 0.72,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) Review states speaker recognition identifies people by their voice, backing the definition; CSI/OSI detail not shown but plausibly inside. · source: https://www.semanticscholar.org/paper/b014a34d54b8c698ad1f734fe60f82b21b4320d4",
       "error": null,
       "labels": null
     },
@@ -1264,7 +2347,7 @@
       ],
       "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence introduces the i-vector total variability space via factor analysis for fixed-dimensional speaker representation. · source: https://www.semanticscholar.org/paper/9982d1d7f36d7da865faf74b6a0c5c4f6dd45c8d",
+      "notes": "(based on abstract only) Describes the total-variability low-dimensional speaker representation via factor analysis, i.e., the i-vector method. · source: https://www.semanticscholar.org/paper/9982d1d7f36d7da865faf74b6a0c5c4f6dd45c8d",
       "error": null,
       "labels": null
     },
@@ -1329,9 +2412,9 @@
         "abstract": "In this paper we investigate the use of deep neural networks (DNNs) for a small footprint text-dependent speaker verification task. At development stage, a DNN is trained to classify speakers at the framelevel. During speaker enrollment, the trained DNN is used to extract speaker specific features from the last hidden layer. The average of these speaker features, or d-vector, is taken as the speaker model. At evaluation stage, a d-vector is extracted for each utterance and compared to the enrolled speaker model to make a verification decision. Experimental results show the DNN based speaker ve…"
       },
       "metadata_issues": [],
-      "supports_claim": "does_not",
+      "supports_claim": "partial",
       "priority": "obligatory",
-      "severity": "high",
+      "severity": "medium",
       "compared_against": null,
       "evidence": [
         {
@@ -1349,7 +2432,7 @@
       ],
       "confidence": 0.6,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence confirms the d-vector via a DNN (last hidden layer), but does not support the RNN/LSTM characterization. · source: https://www.semanticscholar.org/paper/576e7eb1131c925179d0dd57f8c25b8adfc2e7bd",
+      "notes": "(based on abstract only) Supports d-vector introduction but evidence describes a frame-level DNN, not the claimed RNN/LSTM architecture. · source: https://www.semanticscholar.org/paper/576e7eb1131c925179d0dd57f8c25b8adfc2e7bd",
       "error": null,
       "labels": null
     },
@@ -1432,9 +2515,90 @@
           "url": "https://www.semanticscholar.org/paper/389cd9824428be98a710f5f4de67121a70c15fd3"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.78,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is the x-vector DNN-embedding paper mapping utterances to fixed-dimensional embeddings, matching the attribution. · source: https://www.semanticscholar.org/paper/389cd9824428be98a710f5f4de67121a70c15fd3",
+      "notes": "(based on abstract only) Evidence introduces x-vector DNN embeddings; TDNN/statistical-pooling specifics not in abstract but core attribution holds. · source: https://www.semanticscholar.org/paper/389cd9824428be98a710f5f4de67121a70c15fd3",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-0d62f6a1efc5",
+      "cite_key": "desplanques2020",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-0d62f6a1efc5",
+        "text": "Building on this architecture, Desplanques et al. (Desplanques, Thienpondt, and Demuynck 2020) introduced ECAPA-TDNN, which incorporates channel attention mechanisms, residual connections, and multi-scale feature aggregation to significantly enhance the model’s robustness and recognition accuracy.",
+        "section": null,
+        "char_span": [
+          8412,
+          8710
+        ]
+      },
+      "cited_as": {
+        "raw": "Desplanques, B.; Thienpondt, J.; and Demuynck, K. 2020. Ecapa-tdnn: Emphasized channel attention, propagation and aggregation in tdnn based speaker verification. arXiv preprint arXiv:2005.07143.",
+        "authors": [
+          "Desplanques, B.",
+          "Thienpondt, J.",
+          "Demuynck, K."
+        ],
+        "title": "Ecapa-tdnn: Emphasized channel attention, propagation and aggregation in tdnn based speaker verification",
+        "year": 2020,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": "2005.07143",
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "arxiv",
+        "match_score": 1.0,
+        "title": "ECAPA-TDNN: Emphasized Channel Attention, Propagation and Aggregation in TDNN Based Speaker Verification",
+        "authors": [
+          "Brecht Desplanques",
+          "Jenthe Thienpondt",
+          "Kris Demuynck"
+        ],
+        "year": 2020,
+        "venue": "Interspeech",
+        "doi": "10.21437/interspeech.2020-2650",
+        "arxiv_id": "2005.07143",
+        "url": "https://biblio.ugent.be/publication/8680078/file/8680892.pdf",
+        "url_valid": true,
+        "abstract": "Current speaker verification techniques rely on a neural network to extract speaker representations. The successful x-vector architecture is a Time Delay Neural Network (TDNN) that applies statistics pooling to project variable-length utterances into fixed-length speaker characterizing embeddings. In this paper, we propose multiple enhancements to this architecture based on recent trends in the related fields of face verification and computer vision. Firstly, the initial frame layers can be restructured into 1-dimensional Res2Net modules with impactful skip connections. Similarly to SE-ResNet,…"
+      },
+      "metadata_issues": [],
+      "supports_claim": "supports",
+      "priority": "obligatory",
+      "severity": "ok",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.21437/interspeech.2020-2650",
+          "quote": "ECAPA-TDNN: Emphasized Channel Attention, Propagation and Aggregation in TDNN Based Speaker Verification — Brecht Desplanques, Jenthe Thienpondt, Kris Demuynck — 2020",
+          "url": "https://biblio.ugent.be/publication/8680078/file/8680892.pdf"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.21437/interspeech.2020-2650",
+          "quote": "Current speaker verification techniques rely on a neural network to extract speaker representations. The successful x-vector architecture is a Time Delay Neural Network (TDNN) that applies statistics pooling to project variable-length utterances into fixed-length speaker characterizing embeddings. In this paper, we propose multiple enhancements to this architecture based on recent trends in the related fields of face verification and computer vision. Firstly, the initial frame layers can be restructured into 1-dimensional Res2Net modules with impactful skip connections. Similarly to SE-ResNet,…",
+          "url": "https://biblio.ugent.be/publication/8680078/file/8680892.pdf"
+        }
+      ],
+      "confidence": 0.85,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) Evidence describes channel attention, Res2Net residual modules, and multi-scale aggregation enhancing x-vector (ECAPA-TDNN). · source: https://biblio.ugent.be/publication/8680078/file/8680892.pdf",
       "error": null,
       "labels": null
     },
@@ -1519,7 +2683,179 @@
       ],
       "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is an end-to-end DNN modeling raw waveforms for speaker verification, matching the RawNet attribution. · source: https://arxiv.org/pdf/1904.08104",
+      "notes": "(based on abstract only) Describes end-to-end DNN on raw waveforms for speaker embeddings, matching the RawNet attribution. · source: https://arxiv.org/pdf/1904.08104",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-66f8bdd54dc7",
+      "cite_key": "jung2020",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-66f8bdd54dc7",
+        "text": "Meanwhile, Jung et al. proposed the RawNet series (Jung et al. 2019, 2020, 2022), adopting an end-to-end architecture that models raw audio waveforms directly, bypassing traditional acoustic features.",
+        "section": null,
+        "char_span": [
+          8711,
+          8911
+        ]
+      },
+      "cited_as": {
+        "raw": "Jung, J.-w.; Kim, S.-b.; Shim, H.-j.; Kim, J.-h.; and Yu, H.-J. 2020. Improved RawNet with Feature Map Scaling for Textindependent Speaker Verification using Raw Waveforms. Interspeech.",
+        "authors": [
+          "Jung, J.-w.",
+          "Kim, S.-b.",
+          "Shim, H.-j.",
+          "Kim, J.-h.",
+          "Yu, H.-J."
+        ],
+        "title": "Improved RawNet with Feature Map Scaling for Textindependent Speaker Verification using Raw Waveforms",
+        "year": 2020,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "crossref",
+        "match_method": "fuzzy_title",
+        "match_score": 0.909,
+        "title": "Improved RawNet with Feature Map Scaling for Text-Independent Speaker Verification Using Raw Waveforms",
+        "authors": [
+          "Jee-weon Jung",
+          "Seung-bin Kim",
+          "Hye-jin Shim",
+          "Ju-ho Kim",
+          "Ha-Jin Yu"
+        ],
+        "year": 2020,
+        "venue": "Interspeech 2020",
+        "doi": "10.21437/interspeech.2020-1011",
+        "arxiv_id": null,
+        "url": "https://doi.org/10.21437/interspeech.2020-1011",
+        "url_valid": true,
+        "abstract": "Recent advances in deep learning have facilitated the design of speaker verification systems that directly input raw waveforms.For example, RawNet [1] extracts speaker embeddings from raw waveforms, which simplifies the process pipeline and demonstrates competitive performance.In this study, we improve RawNet by scaling feature maps using various methods.The proposed mechanism utilizes a scale vector that adopts a sigmoid non-linear function.It refers to a vector with dimensionality equal to the number of filters in a given feature map.Using a scale vector, we propose to scale the feature map …"
+      },
+      "metadata_issues": [],
+      "supports_claim": "supports",
+      "priority": "obligatory",
+      "severity": "ok",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.21437/interspeech.2020-1011",
+          "quote": "Improved RawNet with Feature Map Scaling for Text-Independent Speaker Verification Using Raw Waveforms — Jee-weon Jung, Seung-bin Kim, Hye-jin Shim, Ju-ho Kim, Ha-Jin Yu — 2020",
+          "url": "https://doi.org/10.21437/interspeech.2020-1011"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.21437/interspeech.2020-1011",
+          "quote": "Recent advances in deep learning have facilitated the design of speaker verification systems that directly input raw waveforms.For example, RawNet [1] extracts speaker embeddings from raw waveforms, which simplifies the process pipeline and demonstrates competitive performance.In this study, we improve RawNet by scaling feature maps using various methods.The proposed mechanism utilizes a scale vector that adopts a sigmoid non-linear function.It refers to a vector with dimensionality equal to the number of filters in a given feature map.Using a scale vector, we propose to scale the feature map …",
+          "url": "https://doi.org/10.21437/interspeech.2020-1011"
+        }
+      ],
+      "confidence": 0.85,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) Evidence explicitly names RawNet and improves raw-waveform speaker embedding extraction. · source: https://doi.org/10.21437/interspeech.2020-1011",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-e29172f1d6e0",
+      "cite_key": "jung2022",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-e29172f1d6e0",
+        "text": "Meanwhile, Jung et al. proposed the RawNet series (Jung et al. 2019, 2020, 2022), adopting an end-to-end architecture that models raw audio waveforms directly, bypassing traditional acoustic features.",
+        "section": null,
+        "char_span": [
+          8711,
+          8911
+        ]
+      },
+      "cited_as": {
+        "raw": "Jung, J.-w.; Kim, Y. J.; Heo, H.-S.; Lee, B.-J.; Kwon, Y.; and Chung, J. S. 2022. Pushing the limits of raw waveform speaker recognition. Interspeech.",
+        "authors": [
+          "Jung, J.-w.",
+          "Kim, Y. J.",
+          "Heo, H.-S.",
+          "Lee, B.-J.",
+          "Kwon, Y.",
+          "Chung, J. S."
+        ],
+        "title": "Pushing the limits of raw waveform speaker recognition",
+        "year": 2022,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "Pushing the limits of raw waveform speaker recognition",
+        "authors": [
+          "Jee-weon Jung",
+          "You Jin Kim",
+          "Hee-Soo Heo",
+          "Bong-Jin Lee",
+          "Youngki Kwon",
+          "Joon Son Chung"
+        ],
+        "year": 2022,
+        "venue": "Interspeech",
+        "doi": "10.48550/arxiv.2203.08488",
+        "arxiv_id": "2203.08488",
+        "url": "http://arxiv.org/pdf/2203.08488",
+        "url_valid": true,
+        "abstract": "In recent years, speaker recognition systems based on raw waveform inputs have received increasing attention. However, the performance of such systems are typically inferior to the state-of-the-art handcrafted feature-based counterparts, which demonstrate equal error rates under 1% on the popular VoxCeleb1 test set. This paper proposes a novel speaker recognition model based on raw waveform inputs. The model incorporates recent advances in machine learning and speaker verification, including the Res2Net backbone module and multi-layer feature aggregation. Our best model achieves an equal error…"
+      },
+      "metadata_issues": [],
+      "supports_claim": "supports",
+      "priority": "obligatory",
+      "severity": "ok",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.48550/arxiv.2203.08488",
+          "quote": "Pushing the limits of raw waveform speaker recognition — Jee-weon Jung, You Jin Kim, Hee-Soo Heo, Bong-Jin Lee, Youngki Kwon, Joon Son Chung — 2022",
+          "url": "http://arxiv.org/pdf/2203.08488"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.48550/arxiv.2203.08488",
+          "quote": "In recent years, speaker recognition systems based on raw waveform inputs have received increasing attention. However, the performance of such systems are typically inferior to the state-of-the-art handcrafted feature-based counterparts, which demonstrate equal error rates under 1% on the popular VoxCeleb1 test set. This paper proposes a novel speaker recognition model based on raw waveform inputs. The model incorporates recent advances in machine learning and speaker verification, including the Res2Net backbone module and multi-layer feature aggregation. Our best model achieves an equal error…",
+          "url": "http://arxiv.org/pdf/2203.08488"
+        }
+      ],
+      "confidence": 0.78,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) Raw-waveform speaker recognition model with Res2Net backbone matches the RawNet-series attribution. · source: http://arxiv.org/pdf/2203.08488",
       "error": null,
       "labels": null
     },
@@ -1546,29 +2882,63 @@
         ]
       },
       "cited_as": {
-        "raw": "",
-        "authors": [],
-        "title": null,
-        "year": null,
+        "raw": "Gu, T.; Liu, K.; Dolan-Gavitt, B.; and Garg, S. 2019. Badnets: Evaluating backdooring attacks on deep neural networks. IEEE Access, 7: 47230–47244.",
+        "authors": [
+          "Gu, T.",
+          "Liu, K.",
+          "Dolan-Gavitt, B.",
+          "Garg, S."
+        ],
+        "title": "Badnets: Evaluating backdooring attacks on deep neural networks",
+        "year": 2019,
         "venue": null,
         "doi": null,
         "arxiv_id": null,
         "url": null
       },
       "in_table": false,
-      "exists": "unresolved",
-      "resolved": null,
-      "metadata_issues": [
-        "no reference string available to resolve"
-      ],
-      "supports_claim": "inconclusive",
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "BadNets: Evaluating Backdooring Attacks on Deep Neural Networks",
+        "authors": [
+          "Tianyu Gu",
+          "Kang Liu",
+          "Brendan Dolan-Gavitt",
+          "S. Garg"
+        ],
+        "year": 2019,
+        "venue": "IEEE Access",
+        "doi": "10.1109/access.2019.2909068",
+        "arxiv_id": null,
+        "url": "https://ieeexplore.ieee.org/ielx7/6287639/8600701/08685687.pdf",
+        "url_valid": true,
+        "abstract": "Deep learning-based techniques have achieved state-of-the-art performance on a wide variety of recognition and classification tasks. However, these networks are typically computationally expensive to train, requiring weeks of computation on many GPUs; as a result, many users outsource the training procedure to the cloud or rely on pre-trained models that are then fine-tuned for a specific task. In this paper, we show that the outsourced training introduces new security risks: an adversary can create a maliciously trained network (a backdoored neural network, or a BadNet) that has the state-of-…"
+      },
+      "metadata_issues": [],
+      "supports_claim": "supports",
       "priority": "helpful",
-      "severity": "low",
+      "severity": "ok",
       "compared_against": null,
-      "evidence": [],
-      "confidence": null,
-      "model_tier": "bulk",
-      "notes": "citation hyperlink not matched to a bibliography entry",
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1109/access.2019.2909068",
+          "quote": "BadNets: Evaluating Backdooring Attacks on Deep Neural Networks — Tianyu Gu, Kang Liu, Brendan Dolan-Gavitt, S. Garg — 2019",
+          "url": "https://ieeexplore.ieee.org/ielx7/6287639/8600701/08685687.pdf"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.1109/access.2019.2909068",
+          "quote": "Deep learning-based techniques have achieved state-of-the-art performance on a wide variety of recognition and classification tasks. However, these networks are typically computationally expensive to train, requiring weeks of computation on many GPUs; as a result, many users outsource the training procedure to the cloud or rely on pre-trained models that are then fine-tuned for a specific task. In this paper, we show that the outsourced training introduces new security risks: an adversary can create a maliciously trained network (a backdoored neural network, or a BadNet) that has the state-of-…",
+          "url": "https://ieeexplore.ieee.org/ielx7/6287639/8600701/08685687.pdf"
+        }
+      ],
+      "confidence": 0.7,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) BadNets is the classic poison-label backdoor described in the evidence, supporting the grouping. · source: https://ieeexplore.ieee.org/ielx7/6287639/8600701/08685687.pdf",
       "error": null,
       "labels": null
     },
@@ -1595,29 +2965,241 @@
         ]
       },
       "cited_as": {
-        "raw": "",
-        "authors": [],
-        "title": null,
-        "year": null,
+        "raw": "Gu, T.; Liu, K.; Dolan-Gavitt, B.; and Garg, S. 2019. Badnets: Evaluating backdooring attacks on deep neural networks. IEEE Access, 7: 47230–47244.",
+        "authors": [
+          "Gu, T.",
+          "Liu, K.",
+          "Dolan-Gavitt, B.",
+          "Garg, S."
+        ],
+        "title": "Badnets: Evaluating backdooring attacks on deep neural networks",
+        "year": 2019,
         "venue": null,
         "doi": null,
         "arxiv_id": null,
         "url": null
       },
       "in_table": false,
-      "exists": "unresolved",
-      "resolved": null,
-      "metadata_issues": [
-        "no reference string available to resolve"
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "BadNets: Evaluating Backdooring Attacks on Deep Neural Networks",
+        "authors": [
+          "Tianyu Gu",
+          "Kang Liu",
+          "Brendan Dolan-Gavitt",
+          "S. Garg"
+        ],
+        "year": 2019,
+        "venue": "IEEE Access",
+        "doi": "10.1109/access.2019.2909068",
+        "arxiv_id": null,
+        "url": "https://ieeexplore.ieee.org/ielx7/6287639/8600701/08685687.pdf",
+        "url_valid": true,
+        "abstract": "Deep learning-based techniques have achieved state-of-the-art performance on a wide variety of recognition and classification tasks. However, these networks are typically computationally expensive to train, requiring weeks of computation on many GPUs; as a result, many users outsource the training procedure to the cloud or rely on pre-trained models that are then fine-tuned for a specific task. In this paper, we show that the outsourced training introduces new security risks: an adversary can create a maliciously trained network (a backdoored neural network, or a BadNet) that has the state-of-…"
+      },
+      "metadata_issues": [],
+      "supports_claim": "partial",
+      "priority": "obligatory",
+      "severity": "medium",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1109/access.2019.2909068",
+          "quote": "BadNets: Evaluating Backdooring Attacks on Deep Neural Networks — Tianyu Gu, Kang Liu, Brendan Dolan-Gavitt, S. Garg — 2019",
+          "url": "https://ieeexplore.ieee.org/ielx7/6287639/8600701/08685687.pdf"
+        },
+        {
+          "kind": "full_text",
+          "source": "resolved_url §Amazon’s pre-built virtual machines [11] that include",
+          "quote": "several deep learning frameworks. • Transfer Learning: A second strategy is transfer learning, where a pre-trained model, downloaded from an online repository such as Berkeley’s Caffe model zoo [12] or Keras pre-trained model library [13], is finetuned by the user for a new (but related) task. Prior work has shown that by using the pre-trained weights 47230 2169-3536 2019 IEEE. Translations and content mining are permitted for academic research only. Personal use is also permitted, but republication/redistribution requires IEEE permission. T. Gu et al.: BadNets: Evaluating Backdooring Attacks …",
+          "url": "https://ieeexplore.ieee.org/ielx7/6287639/8600701/08685687.pdf"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.1109/access.2019.2909068",
+          "quote": "Deep learning-based techniques have achieved state-of-the-art performance on a wide variety of recognition and classification tasks. However, these networks are typically computationally expensive to train, requiring weeks of computation on many GPUs; as a result, many users outsource the training procedure to the cloud or rely on pre-trained models that are then fine-tuned for a specific task. In this paper, we show that the outsourced training introduces new security risks: an adversary can create a maliciously trained network (a backdoored neural network, or a BadNet) that has the state-of-…",
+          "url": "https://ieeexplore.ieee.org/ielx7/6287639/8600701/08685687.pdf"
+        }
       ],
-      "supports_claim": "inconclusive",
+      "confidence": 0.62,
+      "model_tier": "judge",
+      "notes": "(based on full text §Amazon’s pre-built virtual machines [11] that include) Evidence shows BadNets evaluated via clean/benign accuracy (drop <1%) and backdoor misclassification success (>90%), matching the protocol concept, but does not explicitly name the BA/ASR metrics. · source: https://ieeexplore.ieee.org/ielx7/6287639/8600701/08685687.pdf",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-265d62f9de20",
+      "cite_key": "qi2023",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-265d62f9de20",
+        "text": "Poison-label attacks (Gu et al. 2019; Qi et al. 2023; Li et al. 2022a) tend to be more effective, as clean-label samples often contain class-consistent robust features that interfere with the model’s ability to learn the trigger pattern (Gao et al. 2023).",
+        "section": null,
+        "char_span": [
+          9457,
+          9712
+        ]
+      },
+      "cited_as": {
+        "raw": "Qi, X.; Xie, T.; Li, Y.; Mahloujifar, S.; and Mittal, P. 2023. Revisiting the assumption of latent separability for backdoor defenses. In The eleventh international conference on learning representations.",
+        "authors": [
+          "Qi, X.",
+          "Xie, T.",
+          "Li, Y.",
+          "Mahloujifar, S.",
+          "Mittal, P."
+        ],
+        "title": "Revisiting the assumption of latent separability for backdoor defenses",
+        "year": 2023,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "Revisiting the Assumption of Latent Separability for Backdoor Defenses",
+        "authors": [
+          "Xiangyu Qi",
+          "Tinghao Xie",
+          "Yiming Li",
+          "Saeed Mahloujifar",
+          "Prateek Mittal"
+        ],
+        "year": 2023,
+        "venue": "International Conference on Learning Representations",
+        "doi": null,
+        "arxiv_id": null,
+        "url": "https://www.semanticscholar.org/paper/c973cd07dc3cd3d768dabb122dce346fb8b44199",
+        "url_valid": true,
+        "abstract": "Adaptive backdoor poisoning attacks are designed to present counter-examples against the assumption of latent separability, which is central to understanding whether the assumption of latent separability provides a reliable foundation for defending against backdoor poisoning attacks."
+      },
+      "metadata_issues": [],
+      "supports_claim": "partial",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
-      "evidence": [],
-      "confidence": null,
-      "model_tier": "bulk",
-      "notes": "citation hyperlink not matched to a bibliography entry",
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "https://www.semanticscholar.org/paper/c973cd07dc3cd3d768dabb122dce346fb8b44199",
+          "quote": "Revisiting the Assumption of Latent Separability for Backdoor Defenses — Xiangyu Qi, Tinghao Xie, Yiming Li, Saeed Mahloujifar, Prateek Mittal — 2023",
+          "url": "https://www.semanticscholar.org/paper/c973cd07dc3cd3d768dabb122dce346fb8b44199"
+        },
+        {
+          "kind": "abstract",
+          "source": "https://www.semanticscholar.org/paper/c973cd07dc3cd3d768dabb122dce346fb8b44199",
+          "quote": "Adaptive backdoor poisoning attacks are designed to present counter-examples against the assumption of latent separability, which is central to understanding whether the assumption of latent separability provides a reliable foundation for defending against backdoor poisoning attacks.",
+          "url": "https://www.semanticscholar.org/paper/c973cd07dc3cd3d768dabb122dce346fb8b44199"
+        }
+      ],
+      "confidence": 0.5,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) Adaptive backdoor poisoning attack work is on-topic but evidence does not confirm the poison-label categorization/effectiveness claim. · source: https://www.semanticscholar.org/paper/c973cd07dc3cd3d768dabb122dce346fb8b44199",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-5e66f2912bc0",
+      "cite_key": "li2022a",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-5e66f2912bc0",
+        "text": "Poison-label attacks (Gu et al. 2019; Qi et al. 2023; Li et al. 2022a) tend to be more effective, as clean-label samples often contain class-consistent robust features that interfere with the model’s ability to learn the trigger pattern (Gao et al. 2023).",
+        "section": null,
+        "char_span": [
+          9457,
+          9712
+        ]
+      },
+      "cited_as": {
+        "raw": "Li, Y.; Bai, Y.; Jiang, Y.; Yang, Y.; Xia, S.-T.; and Li, B. 2022a. Untargeted backdoor watermark: Towards harmless and stealthy dataset copyright protection. NeurIPS, 35: 13238–13250.",
+        "authors": [
+          "Li, Y.",
+          "Bai, Y.",
+          "Jiang, Y.",
+          "Yang, Y.",
+          "Xia, S.-T.",
+          "Li, B."
+        ],
+        "title": "Untargeted backdoor watermark: Towards harmless and stealthy dataset copyright protection",
+        "year": 2022,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "Untargeted Backdoor Watermark: Towards Harmless and Stealthy Dataset Copyright Protection",
+        "authors": [
+          "Yiming Li",
+          "Yang Bai",
+          "Yong Jiang",
+          "Yong Yang",
+          "Shutao Xia",
+          "Bo Li"
+        ],
+        "year": 2022,
+        "venue": "Neural Information Processing Systems",
+        "doi": "10.48550/arxiv.2210.00875",
+        "arxiv_id": "2210.00875",
+        "url": "http://arxiv.org/pdf/2210.00875",
+        "url_valid": true,
+        "abstract": "Deep neural networks (DNNs) have demonstrated their superiority in practice. Arguably, the rapid development of DNNs is largely benefited from high-quality (open-sourced) datasets, based on which researchers and developers can easily evaluate and improve their learning methods. Since the data collection is usually time-consuming or even expensive, how to protect their copyrights is of great significance and worth further exploration. In this paper, we revisit dataset ownership verification. We find that existing verification methods introduced new security risks in DNNs trained on the protecte…"
+      },
+      "metadata_issues": [],
+      "supports_claim": "partial",
+      "priority": "helpful",
+      "severity": "low",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.48550/arxiv.2210.00875",
+          "quote": "Untargeted Backdoor Watermark: Towards Harmless and Stealthy Dataset Copyright Protection — Yiming Li, Yang Bai, Yong Jiang, Yong Yang, Shutao Xia, Bo Li — 2022",
+          "url": "http://arxiv.org/pdf/2210.00875"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.48550/arxiv.2210.00875",
+          "quote": "Deep neural networks (DNNs) have demonstrated their superiority in practice. Arguably, the rapid development of DNNs is largely benefited from high-quality (open-sourced) datasets, based on which researchers and developers can easily evaluate and improve their learning methods. Since the data collection is usually time-consuming or even expensive, how to protect their copyrights is of great significance and worth further exploration. In this paper, we revisit dataset ownership verification. We find that existing verification methods introduced new security risks in DNNs trained on the protecte…",
+          "url": "http://arxiv.org/pdf/2210.00875"
+        }
+      ],
+      "confidence": 0.45,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) Work is about backdoor-based dataset ownership verification; its labeling as a 'poison-label attack' is only loosely supported. · source: http://arxiv.org/pdf/2210.00875",
       "error": null,
       "labels": null
     },
@@ -1641,6 +3223,87 @@
         "char_span": [
           9457,
           9712
+        ]
+      },
+      "cited_as": {
+        "raw": "Gao, Y.; Li, Y.; Zhu, L.; Wu, D.; Jiang, Y.; and Xia, S.- T. 2023. Not all samples are born equal: Towards effective clean-label backdoor attacks. Pattern Recognition, 139: 109512.",
+        "authors": [
+          "Gao, Y.",
+          "Li, Y.",
+          "Zhu, L.",
+          "Wu, D.",
+          "Jiang, Y.",
+          "Xia, S.- T."
+        ],
+        "title": "Not all samples are born equal: Towards effective clean-label backdoor attacks",
+        "year": 2023,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "Not All Samples Are Born Equal: Towards Effective Clean-Label Backdoor Attacks",
+        "authors": [
+          "Yinghua Gao",
+          "Yiming Li",
+          "Linghui Zhu",
+          "Dongxian Wu",
+          "Yong Jiang",
+          "Shutao Xia"
+        ],
+        "year": 2023,
+        "venue": "Pattern Recognition",
+        "doi": "10.1016/j.patcog.2023.109512",
+        "arxiv_id": null,
+        "url": "https://www.semanticscholar.org/paper/0a7430eb302aef9f97082e4cd95a8c626db53a2d",
+        "url_valid": true,
+        "abstract": null
+      },
+      "metadata_issues": [],
+      "supports_claim": "inconclusive",
+      "priority": "helpful",
+      "severity": "low",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1016/j.patcog.2023.109512",
+          "quote": "Not All Samples Are Born Equal: Towards Effective Clean-Label Backdoor Attacks — Yinghua Gao, Yiming Li, Linghui Zhu, Dongxian Wu, Yong Jiang, Shutao Xia — 2023",
+          "url": "https://www.semanticscholar.org/paper/0a7430eb302aef9f97082e4cd95a8c626db53a2d"
+        }
+      ],
+      "confidence": null,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) no abstract or introduction to judge from · source: https://www.semanticscholar.org/paper/0a7430eb302aef9f97082e4cd95a8c626db53a2d",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-37775a6d6d71",
+      "cite_key": "gao2023",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-37775a6d6d71",
+        "text": "However, clean-label attacks (Zhu et al. 2025; Gao et al. 2023) offer stronger stealthiness, as poisoned samples are harder to detect by inspecting label-image consistency.",
+        "section": null,
+        "char_span": [
+          9713,
+          9885
         ]
       },
       "cited_as": {
@@ -1768,7 +3431,7 @@
         "year mismatch: cited 2025 vs 2023"
       ],
       "supports_claim": "supports",
-      "priority": "helpful",
+      "priority": "obligatory",
       "severity": "ok",
       "compared_against": null,
       "evidence": [
@@ -1785,9 +3448,9 @@
           "url": "http://arxiv.org/pdf/2312.04584"
         }
       ],
-      "confidence": 0.75,
+      "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence discusses clean-label stealthiness and detection via image-label relationship consistency. · source: http://arxiv.org/pdf/2312.04584",
+      "notes": "(based on abstract only) Evidence notes poisoned-label attacks are detectable via image-label relationship, motivating stealthier clean-label variants. · source: http://arxiv.org/pdf/2312.04584",
       "error": null,
       "labels": null
     },
@@ -1832,7 +3495,7 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "s2",
+        "source": "arxiv",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "Backdoor Attack in the Physical World",
@@ -1841,13 +3504,13 @@
           "Tongqing Zhai",
           "Yong Jiang",
           "Zhifeng Li",
-          "Shutao Xia"
+          "Shu-Tao Xia"
         ],
         "year": 2021,
-        "venue": "arXiv.org",
+        "venue": "arXiv (preprint)",
         "doi": null,
-        "arxiv_id": "2104.02361",
-        "url": "https://www.semanticscholar.org/paper/1a1b3e71ec50e6d04f158325b44684276141ca49",
+        "arxiv_id": "2104.02361v2",
+        "url": "http://arxiv.org/abs/2104.02361v2",
         "url_valid": true,
         "abstract": "Backdoor attack intends to inject hidden backdoor into the deep neural networks (DNNs), such that the prediction of infected models will be maliciously changed if the hidden backdoor is activated by the attacker-defined trigger. Currently, most existing backdoor attacks adopted the setting of static trigger, $i.e.,$ triggers across the training and testing images follow the same appearance and are located in the same area. In this paper, we revisit this attack paradigm by analyzing trigger characteristics. We demonstrate that this attack paradigm is vulnerable when the trigger in testing image…"
       },
@@ -1859,20 +3522,20 @@
       "evidence": [
         {
           "kind": "metadata",
-          "source": "2104.02361",
-          "quote": "Backdoor Attack in the Physical World — Yiming Li, Tongqing Zhai, Yong Jiang, Zhifeng Li, Shutao Xia — 2021",
-          "url": "https://www.semanticscholar.org/paper/1a1b3e71ec50e6d04f158325b44684276141ca49"
+          "source": "2104.02361v2",
+          "quote": "Backdoor Attack in the Physical World — Yiming Li, Tongqing Zhai, Yong Jiang, Zhifeng Li, Shu-Tao Xia — 2021",
+          "url": "http://arxiv.org/abs/2104.02361v2"
         },
         {
           "kind": "abstract",
-          "source": "2104.02361",
+          "source": "2104.02361v2",
           "quote": "Backdoor attack intends to inject hidden backdoor into the deep neural networks (DNNs), such that the prediction of infected models will be maliciously changed if the hidden backdoor is activated by the attacker-defined trigger. Currently, most existing backdoor attacks adopted the setting of static trigger, $i.e.,$ triggers across the training and testing images follow the same appearance and are located in the same area. In this paper, we revisit this attack paradigm by analyzing trigger characteristics. We demonstrate that this attack paradigm is vulnerable when the trigger in testing image…",
-          "url": "https://www.semanticscholar.org/paper/1a1b3e71ec50e6d04f158325b44684276141ca49"
+          "url": "http://arxiv.org/abs/2104.02361v2"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence shows static-trigger attacks fail under spatial transformations in testing, matching the physical-failure finding. · source: https://www.semanticscholar.org/paper/1a1b3e71ec50e6d04f158325b44684276141ca49",
+      "notes": "(based on abstract only) Evidence states standard backdoor attacks will fail in the physical world and proposes a transformation-based (spatial transformation) enhancement to remain effective physically. · source: http://arxiv.org/abs/2104.02361v2",
       "error": null,
       "labels": null
     },
@@ -1953,96 +3616,9 @@
           "url": "https://arxiv.org/pdf/2211.01806"
         }
       ],
-      "confidence": 0.65,
+      "confidence": 0.98,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence centers on spatial transformations and backdoor (de)activation, consistent with using transformations as physical triggers. · source: https://arxiv.org/pdf/2211.01806",
-      "error": null,
-      "labels": null
-    },
-    {
-      "schema_version": "0.1",
-      "paper_id": "12244-AAAI26.CaiH-AD",
-      "claim_id": "claim-2af03f445827",
-      "cite_key": "zhai2021",
-      "paper": {
-        "paper_id": "12244-AAAI26.CaiH-AD",
-        "title": null,
-        "arxiv_id": null,
-        "doi": null,
-        "source_kind": "pdf",
-        "tex_available": false
-      },
-      "claim": {
-        "claim_id": "claim-2af03f445827",
-        "text": "(Zhai et al. 2021) proposed the first backdoor attack framework targeting speaker verification, based on clustering techniques.",
-        "section": null,
-        "char_span": [
-          10577,
-          10705
-        ]
-      },
-      "cited_as": {
-        "raw": "Zhai, T.; Li, Y.; Zhang, Z.; Wu, B.; Jiang, Y.; and Xia, S.- T. 2021. Backdoor attack against speaker verification. In ICASSP.",
-        "authors": [
-          "Zhai, T.",
-          "Li, Y.",
-          "Zhang, Z.",
-          "Wu, B.",
-          "Jiang, Y.",
-          "Xia, S.- T."
-        ],
-        "title": "Backdoor attack against speaker verification",
-        "year": 2021,
-        "venue": null,
-        "doi": null,
-        "arxiv_id": null,
-        "url": null
-      },
-      "in_table": false,
-      "exists": "yes",
-      "resolved": {
-        "source": "s2",
-        "match_method": "fuzzy_title",
-        "match_score": 1.0,
-        "title": "Backdoor Attack Against Speaker Verification",
-        "authors": [
-          "Tongqing Zhai",
-          "Yiming Li",
-          "Ziqi Zhang",
-          "Baoyuan Wu",
-          "Yong Jiang",
-          "Shutao Xia"
-        ],
-        "year": 2020,
-        "venue": "IEEE International Conference on Acoustics, Speech, and Signal Processing",
-        "doi": "10.1109/icassp39728.2021.9413468",
-        "arxiv_id": "2010.11607",
-        "url": "https://arxiv.org/pdf/2010.11607",
-        "url_valid": true,
-        "abstract": "Speaker verification has been widely and successfully adopted in many mission-critical areas for user identification. The training of speaker verification requires a large amount of data, therefore users usually need to adopt third-party data (e.g., data from the Internet or third-party data company). This raises the question of whether adopting untrusted third-party data can pose a security threat. In this paper, we demonstrate that it is possible to inject the hidden backdoor for infecting speaker verification models by poisoning the training data. Specifically, we design a clustering-based …"
-      },
-      "metadata_issues": [],
-      "supports_claim": "supports",
-      "priority": "obligatory",
-      "severity": "ok",
-      "compared_against": null,
-      "evidence": [
-        {
-          "kind": "metadata",
-          "source": "10.1109/icassp39728.2021.9413468",
-          "quote": "Backdoor Attack Against Speaker Verification — Tongqing Zhai, Yiming Li, Ziqi Zhang, Baoyuan Wu, Yong Jiang, Shutao Xia — 2020",
-          "url": "https://arxiv.org/pdf/2010.11607"
-        },
-        {
-          "kind": "abstract",
-          "source": "10.1109/icassp39728.2021.9413468",
-          "quote": "Speaker verification has been widely and successfully adopted in many mission-critical areas for user identification. The training of speaker verification requires a large amount of data, therefore users usually need to adopt third-party data (e.g., data from the Internet or third-party data company). This raises the question of whether adopting untrusted third-party data can pose a security threat. In this paper, we demonstrate that it is possible to inject the hidden backdoor for infecting speaker verification models by poisoning the training data. Specifically, we design a clustering-based …",
-          "url": "https://arxiv.org/pdf/2010.11607"
-        }
-      ],
-      "confidence": 0.85,
-      "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence describes the first clustering-based backdoor injection into speaker verification models. · source: https://arxiv.org/pdf/2010.11607",
+      "notes": "(based on abstract only) Abstract states they use spatial transformations (rotation and translation) with specific parameters as trigger patterns, verified under physical settings, directly backing the claim. · source: https://arxiv.org/pdf/2211.01806",
       "error": null,
       "labels": null
     },
@@ -2069,15 +3645,18 @@
         ]
       },
       "cited_as": {
-        "raw": "Ye, Z.; Yan, D.; Dong, L.; and Shen, K. 2024. Breaking speaker recognition with paddingback. In ICASSP. 38",
+        "raw": "Ye, Z.; Zhang, W.; Ren, Y.; Kang, X.; Yan, D.; Ma, B.; and Wang, S. 2025. Speed Master: Quick or Slow Play to Attack Speaker Recognition. In AAAI.",
         "authors": [
           "Ye, Z.",
+          "Zhang, W.",
+          "Ren, Y.",
+          "Kang, X.",
           "Yan, D.",
-          "Dong, L.",
-          "Shen, K."
+          "Ma, B.",
+          "Wang, S."
         ],
-        "title": "Breaking speaker recognition with paddingback",
-        "year": 2024,
+        "title": "Speed Master: Quick or Slow Play to Attack Speaker Recognition",
+        "year": 2025,
         "venue": null,
         "doi": null,
         "arxiv_id": null,
@@ -2089,43 +3668,46 @@
         "source": "s2",
         "match_method": "fuzzy_title",
         "match_score": 1.0,
-        "title": "Breaking Speaker Recognition with Paddingback",
+        "title": "Speed Master: Quick or Slow Play to Attack Speaker Recognition",
         "authors": [
           "Zhe Ye",
+          "Wenjie Zhang",
+          "Ying Ren",
+          "Xiangui Kang",
           "Diqun Yan",
-          "Li Dong",
-          "Kailai Shen"
+          "Bin Ma",
+          "Shiqi Wang"
         ],
-        "year": 2023,
-        "venue": "IEEE International Conference on Acoustics, Speech, and Signal Processing",
-        "doi": "10.1109/icassp48485.2024.10448169",
-        "arxiv_id": "2308.04179",
-        "url": "http://arxiv.org/pdf/2308.04179",
+        "year": 2025,
+        "venue": "AAAI Conference on Artificial Intelligence",
+        "doi": "10.1609/aaai.v39i21.34367",
+        "arxiv_id": null,
+        "url": "https://doi.org/10.1609/aaai.v39i21.34367",
         "url_valid": true,
-        "abstract": "Machine Learning as a Service (MLaaS) has gained popularity due to advancements in Deep Neural Networks (DNNs). However, untrusted third-party platforms have raised concerns about AI security, particularly in backdoor attacks. Recent research has shown that speech backdoors can utilize transformations as triggers, similar to image backdoors. However, human ears can easily be aware of these transformations, leading to suspicion. In this paper, we propose PaddingBack, an inaudible backdoor attack that utilizes malicious operations to generate poisoned samples, rendering them indistinguishable fr…"
+        "abstract": "Backdoor attacks pose a significant threat during the model's training phase. Attackers craft pre-defined triggers to break deep neural networks, ensuring the model accurately classifies clean samples during inference yet erroneously classifies samples added with these triggers. Recent studies have shown that speaker recognition systems trained on large-scale data are susceptible to backdoor attacks. Existing attackers employ unnoticed ambient sounds as triggers. However, these sounds are not inherently part of the training samples themselves. In essence, triggers can be designed to maintain a…"
       },
       "metadata_issues": [],
-      "supports_claim": "partial",
+      "supports_claim": "inconclusive",
       "priority": "obligatory",
-      "severity": "medium",
+      "severity": "low",
       "compared_against": null,
       "evidence": [
         {
           "kind": "metadata",
-          "source": "10.1109/icassp48485.2024.10448169",
-          "quote": "Breaking Speaker Recognition with Paddingback — Zhe Ye, Diqun Yan, Li Dong, Kailai Shen — 2023",
-          "url": "http://arxiv.org/pdf/2308.04179"
+          "source": "10.1609/aaai.v39i21.34367",
+          "quote": "Speed Master: Quick or Slow Play to Attack Speaker Recognition — Zhe Ye, Wenjie Zhang, Ying Ren, Xiangui Kang, Diqun Yan, Bin Ma, Shiqi Wang — 2025",
+          "url": "https://doi.org/10.1609/aaai.v39i21.34367"
         },
         {
           "kind": "abstract",
-          "source": "10.1109/icassp48485.2024.10448169",
-          "quote": "Machine Learning as a Service (MLaaS) has gained popularity due to advancements in Deep Neural Networks (DNNs). However, untrusted third-party platforms have raised concerns about AI security, particularly in backdoor attacks. Recent research has shown that speech backdoors can utilize transformations as triggers, similar to image backdoors. However, human ears can easily be aware of these transformations, leading to suspicion. In this paper, we propose PaddingBack, an inaudible backdoor attack that utilizes malicious operations to generate poisoned samples, rendering them indistinguishable fr…",
-          "url": "http://arxiv.org/pdf/2308.04179"
+          "source": "10.1609/aaai.v39i21.34367",
+          "quote": "Backdoor attacks pose a significant threat during the model's training phase. Attackers craft pre-defined triggers to break deep neural networks, ensuring the model accurately classifies clean samples during inference yet erroneously classifies samples added with these triggers. Recent studies have shown that speaker recognition systems trained on large-scale data are susceptible to backdoor attacks. Existing attackers employ unnoticed ambient sounds as triggers. However, these sounds are not inherently part of the training samples themselves. In essence, triggers can be designed to maintain a…",
+          "url": "https://doi.org/10.1609/aaai.v39i21.34367"
         }
       ],
-      "confidence": 0.35,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence (PaddingBack) is an operation-based inaudible speaker-recognition attack but describes padding, not altering speaking rate. · source: http://arxiv.org/pdf/2308.04179",
+      "notes": "(based on abstract only) On-topic speaker-recognition backdoor abstract but does not mention altering the speaker's speaking rate. · source: https://doi.org/10.1609/aaai.v39i21.34367",
       "error": null,
       "labels": null
     },
@@ -2152,7 +3734,7 @@
         ]
       },
       "cited_as": {
-        "raw": "Ye, Z.; Yan, D.; Dong, L.; and Shen, K. 2024. Breaking speaker recognition with paddingback. In ICASSP. 38",
+        "raw": "Ye, Z.; Yan, D.; Dong, L.; and Shen, K. 2024. Breaking speaker recognition with paddingback. In ICASSP.",
         "authors": [
           "Ye, Z.",
           "Yan, D.",
@@ -2206,9 +3788,94 @@
           "url": "http://arxiv.org/pdf/2308.04179"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence (PaddingBack) supports the padding-operation trigger for speaker recognition; the phase-perturbation part is a separate work. · source: http://arxiv.org/pdf/2308.04179",
+      "notes": "(based on abstract only) Evidence (PaddingBack) confirms a padding-operation-based trigger for speaker recognition. · source: http://arxiv.org/pdf/2308.04179",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-e9e9b5c3860a",
+      "cite_key": "ye2023",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-e9e9b5c3860a",
+        "text": "(Ye et al. 2024, 2023) proposed two novel trigger designs tailored for speaker recognition: one based on padding operations and the other on phase perturbation.",
+        "section": null,
+        "char_span": [
+          10819,
+          10979
+        ]
+      },
+      "cited_as": {
+        "raw": "Ye, Z.; Yan, D.; Dong, L.; Deng, J.; and Yu, S. 2023. Stealthy backdoor attack against speaker recognition using phaseinjection hidden trigger. IEEE Signal Processing Letters, 30: 1057–1061.",
+        "authors": [
+          "Ye, Z.",
+          "Yan, D.",
+          "Dong, L.",
+          "Deng, J.",
+          "Yu, S."
+        ],
+        "title": "Stealthy backdoor attack against speaker recognition using phaseinjection hidden trigger",
+        "year": 2023,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 0.901,
+        "title": "Stealthy Backdoor Attack Against Speaker Recognition Using Phase-Injection Hidden Trigger",
+        "authors": [
+          "Zhe Ye",
+          "Diqun Yan",
+          "Li Dong",
+          "Jiacheng Deng",
+          "Shui Yu"
+        ],
+        "year": 2023,
+        "venue": "IEEE Signal Processing Letters",
+        "doi": "10.1109/lsp.2023.3293429",
+        "arxiv_id": null,
+        "url": "https://www.semanticscholar.org/paper/b5877d9717d2aaba9b19f961ecf2b145af8f332c",
+        "url_valid": true,
+        "abstract": "Deep learning has achieved significant breakthroughs in speaker recognition, driven by continual advancements in foundation models. However, malicious third-party platforms have introduced a severe security concern through backdoor attacks, in which attackers can manipulate a model to output a specific label by implanting a trigger. Existing speech backdoor attack methods typically utilize fixed and unnoticeable perturbations as triggers, but these may still be audible and thus detected during training and inference stages. To overcome this limitation, we propose a novel backdoor attack paradi…"
+      },
+      "metadata_issues": [],
+      "supports_claim": "inconclusive",
+      "priority": "obligatory",
+      "severity": "low",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1109/lsp.2023.3293429",
+          "quote": "Stealthy Backdoor Attack Against Speaker Recognition Using Phase-Injection Hidden Trigger — Zhe Ye, Diqun Yan, Li Dong, Jiacheng Deng, Shui Yu — 2023",
+          "url": "https://www.semanticscholar.org/paper/b5877d9717d2aaba9b19f961ecf2b145af8f332c"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.1109/lsp.2023.3293429",
+          "quote": "Deep learning has achieved significant breakthroughs in speaker recognition, driven by continual advancements in foundation models. However, malicious third-party platforms have introduced a severe security concern through backdoor attacks, in which attackers can manipulate a model to output a specific label by implanting a trigger. Existing speech backdoor attack methods typically utilize fixed and unnoticeable perturbations as triggers, but these may still be audible and thus detected during training and inference stages. To overcome this limitation, we propose a novel backdoor attack paradi…",
+          "url": "https://www.semanticscholar.org/paper/b5877d9717d2aaba9b19f961ecf2b145af8f332c"
+        }
+      ],
+      "confidence": 0.5,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) Confirms a novel speaker-recognition backdoor paradigm but does not specify the phase-perturbation trigger in the abstract. · source: https://www.semanticscholar.org/paper/b5877d9717d2aaba9b19f961ecf2b145af8f332c",
       "error": null,
       "labels": null
     },
@@ -2235,7 +3902,7 @@
         ]
       },
       "cited_as": {
-        "raw": "Zhang, T.; Phan, H.; Tang, Z.; Shi, C.; Wang, Y.; Yuan, B.; and Chen, Y. 2024. Inaudible backdoor attack via stealthy frequency trigger injection in audio spectrogram. In Mobi- Com.",
+        "raw": "Zhang, T.; Phan, H.; Tang, Z.; Shi, C.; Wang, Y.; Yuan, B.; and Chen, Y. 2024. Inaudible backdoor attack via stealthy frequency trigger injection in audio spectrogram. In Mobi-Com.",
         "authors": [
           "Zhang, T.",
           "Phan, H.",
@@ -2255,12 +3922,12 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "s2",
+        "source": "crossref",
         "match_method": "fuzzy_title",
         "match_score": 1.0,
         "title": "Inaudible Backdoor Attack via Stealthy Frequency Trigger Injection in Audio Spectrogram",
         "authors": [
-          "Tian-Di Zhang",
+          "Tianfang Zhang",
           "Huy Phan",
           "Zijie Tang",
           "Cong Shi",
@@ -2269,35 +3936,35 @@
           "Yingying Chen"
         ],
         "year": 2024,
-        "venue": "ACM/IEEE International Conference on Mobile Computing and Networking",
+        "venue": "Proceedings of the 30th Annual International Conference on Mobile Computing and Networking",
         "doi": "10.1145/3636534.3649345",
         "arxiv_id": null,
-        "url": "https://dl.acm.org/doi/pdf/10.1145/3636534.3649345",
+        "url": "https://doi.org/10.1145/3636534.3649345",
         "url_valid": true,
         "abstract": "Deep learning-enabled Voice User Interfaces (VUIs) have surpassed human-level performance in acoustic perception tasks. However, the significant cost associated with training these models compels users to rely on third-party data or outsource training services. Such emerging trends have drawn substantial attention to training-phase attacks, particularly backdoor attacks. Such attacks implant hidden trigger patterns (e.g., tones, environmental sounds) into the model during training, thereby manipulating the model's predictions in the inference phase. However, existing backdoor attacks can be ea…"
       },
       "metadata_issues": [],
-      "supports_claim": "partial",
+      "supports_claim": "inconclusive",
       "priority": "obligatory",
-      "severity": "medium",
+      "severity": "low",
       "compared_against": null,
       "evidence": [
         {
           "kind": "metadata",
           "source": "10.1145/3636534.3649345",
-          "quote": "Inaudible Backdoor Attack via Stealthy Frequency Trigger Injection in Audio Spectrogram — Tian-Di Zhang, Huy Phan, Zijie Tang, Cong Shi, Yan Wang, Bo Yuan, Yingying Chen — 2024",
-          "url": "https://dl.acm.org/doi/pdf/10.1145/3636534.3649345"
+          "quote": "Inaudible Backdoor Attack via Stealthy Frequency Trigger Injection in Audio Spectrogram — Tianfang Zhang, Huy Phan, Zijie Tang, Cong Shi, Yan Wang, Bo Yuan, Yingying Chen — 2024",
+          "url": "https://doi.org/10.1145/3636534.3649345"
         },
         {
           "kind": "abstract",
           "source": "10.1145/3636534.3649345",
           "quote": "Deep learning-enabled Voice User Interfaces (VUIs) have surpassed human-level performance in acoustic perception tasks. However, the significant cost associated with training these models compels users to rely on third-party data or outsource training services. Such emerging trends have drawn substantial attention to training-phase attacks, particularly backdoor attacks. Such attacks implant hidden trigger patterns (e.g., tones, environmental sounds) into the model during training, thereby manipulating the model's predictions in the inference phase. However, existing backdoor attacks can be ea…",
-          "url": "https://dl.acm.org/doi/pdf/10.1145/3636534.3649345"
+          "url": "https://doi.org/10.1145/3636534.3649345"
         }
       ],
-      "confidence": 0.45,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is a stealthy VUI backdoor attack but the abstract does not confirm an inaudible frequency-domain mechanism. · source: https://dl.acm.org/doi/pdf/10.1145/3636534.3649345",
+      "notes": "(based on abstract only) On-topic VUI backdoor abstract but the inaudible frequency-domain trigger specifics are not confirmed. · source: https://doi.org/10.1145/3636534.3649345",
       "error": null,
       "labels": null
     },
@@ -2370,9 +4037,9 @@
         "abstract": "Deep learning models have become key enablers of voice user interfaces. With the growing trend of adopting outsourced training of these models, backdoor attacks, stealthy yet effective training-phase attacks, have gained increasing attention. They inject hidden trigger patterns through training set poisoning and overwrite the model's predictions in the inference phase. Research in backdoor attacks has been focusing on image classification tasks, while there have been few studies in the audio domain. In this work, we explore the severity of audio-domain backdoor attacks and demonstrate their fe…"
       },
       "metadata_issues": [],
-      "supports_claim": "partial",
+      "supports_claim": "inconclusive",
       "priority": "obligatory",
-      "severity": "medium",
+      "severity": "low",
       "compared_against": null,
       "evidence": [
         {
@@ -2388,9 +4055,90 @@
           "url": "https://doi.org/10.1145/3495243.3560531"
         }
       ],
-      "confidence": 0.45,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence demonstrates audio-domain backdoor feasibility but the abstract does not confirm an optimization-based trigger strategy. · source: https://doi.org/10.1145/3495243.3560531",
+      "notes": "(based on abstract only) On-topic audio-domain backdoor abstract but does not state an optimization-based trigger-generation strategy. · source: https://doi.org/10.1145/3495243.3560531",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-d93d0920dec6",
+      "cite_key": "cai2025",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-d93d0920dec6",
+        "text": "However, trigger patterns based solely on static or localized frequency perturbations often suffer from limited structural complexity and lack temporal continuity, making them difficult for models to learn reliably (Cai et al. 2024, 2025).",
+        "section": null,
+        "char_span": [
+          13668,
+          13907
+        ]
+      },
+      "cited_as": {
+        "raw": "Cai, H.; Zhang, P.; Xiao, Y.; Ji, S.; Xiao, M.; and Cheng, L. 2025. Clean-label backdoor attack based on robust feature attenuation for speech recognition. Expert Systems with Applications, 127546.",
+        "authors": [
+          "Cai, H.",
+          "Zhang, P.",
+          "Xiao, Y.",
+          "Ji, S.",
+          "Xiao, M.",
+          "Cheng, L."
+        ],
+        "title": "Clean-label backdoor attack based on robust feature attenuation for speech recognition",
+        "year": 2025,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "Clean-label backdoor attack based on robust feature attenuation for speech recognition",
+        "authors": [
+          "Hanbo Cai",
+          "Pengcheng Zhang",
+          "Yan Xiao",
+          "Shunhui Ji",
+          "Ming-Ming Xiao",
+          "Letian Cheng"
+        ],
+        "year": 2025,
+        "venue": "Expert systems with applications",
+        "doi": "10.1016/j.eswa.2025.127546",
+        "arxiv_id": null,
+        "url": "https://www.semanticscholar.org/paper/e49551a6e221197558aa0c75e3580d8d718a0d2e",
+        "url_valid": true,
+        "abstract": null
+      },
+      "metadata_issues": [],
+      "supports_claim": "inconclusive",
+      "priority": "helpful",
+      "severity": "low",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1016/j.eswa.2025.127546",
+          "quote": "Clean-label backdoor attack based on robust feature attenuation for speech recognition — Hanbo Cai, Pengcheng Zhang, Yan Xiao, Shunhui Ji, Ming-Ming Xiao, Letian Cheng — 2025",
+          "url": "https://www.semanticscholar.org/paper/e49551a6e221197558aa0c75e3580d8d718a0d2e"
+        }
+      ],
+      "confidence": null,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) no abstract or introduction to judge from · source: https://www.semanticscholar.org/paper/e49551a6e221197558aa0c75e3580d8d718a0d2e",
       "error": null,
       "labels": null
     },
@@ -2465,9 +4213,9 @@
           "url": "https://doi.org/10.1016/j.joto.2016.08.001"
         }
       ],
-      "confidence": 0.5,
+      "confidence": 0.55,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence shows the amplitude temporal envelope conveys speech information in human perception, but not specifically for speaker-recognition models. · source: https://doi.org/10.1016/j.joto.2016.08.001",
+      "notes": "(based on abstract only) Confirms temporal envelope (amplitude modulation) conveys speech information, but in human perception, not speaker-recognition models. · source: https://doi.org/10.1016/j.joto.2016.08.001",
       "error": null,
       "labels": null
     },
@@ -2548,7 +4296,7 @@
           "url": "https://doi.org/10.1016/j.csl.2019.101027"
         }
       ],
-      "confidence": 0.9,
+      "confidence": 0.85,
       "model_tier": "judge",
       "notes": "(based on abstract only) Evidence introduces the large-scale VoxCeleb speaker-recognition dataset used as a benchmark. · source: https://doi.org/10.1016/j.csl.2019.101027",
       "error": null,
@@ -2631,9 +4379,9 @@
           "url": "http://www.clsp.jhu.edu/%7Eguoguo/papers/icassp2015_librispeech.pdf"
         }
       ],
-      "confidence": 0.95,
+      "confidence": 0.92,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence introduces the LibriSpeech corpus, the cited benchmark dataset. · source: http://www.clsp.jhu.edu/%7Eguoguo/papers/icassp2015_librispeech.pdf",
+      "notes": "(based on abstract only) Evidence introduces the LibriSpeech corpus, matching the benchmark dataset claim. · source: http://www.clsp.jhu.edu/%7Eguoguo/papers/icassp2015_librispeech.pdf",
       "error": null,
       "labels": null
     },
@@ -2718,9 +4466,519 @@
           "url": "http://arxiv.org/pdf/2204.02152"
         }
       ],
+      "confidence": 0.82,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) Evidence is the UTokyo-SaruLab (UTMOS) MOS prediction system used for objective evaluation. · source: http://arxiv.org/pdf/2204.02152",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-0781918cca60",
+      "cite_key": "liu2017",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-0781918cca60",
+        "text": "We evaluate several representative, deployable defenses as benchmarks (Liu, Xie, and Srivastava 2017; Liu, Dolan- Gavitt, and Garg 2018; Gao et al. 2019), while noting that many emerging methods also merit systematic evaluation in future work (Chen et al. 2025b; Yi et al. 2025; Xu et al. 2024; Li et al. 2024; Hou et al. 2024, 2025).",
+        "section": null,
+        "char_span": [
+          27388,
+          27722
+        ]
+      },
+      "cited_as": {
+        "raw": "Liu, Y.; Xie, Y.; and Srivastava, A. 2017. Neural trojans. In ICCD.",
+        "authors": [
+          "Liu, Y.",
+          "Xie, Y.",
+          "Srivastava, A."
+        ],
+        "title": "Neural trojans",
+        "year": 2017,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "Neural Trojans",
+        "authors": [
+          "Yuntao Liu",
+          "Yang Xie",
+          "Ankur Srivastava"
+        ],
+        "year": 2017,
+        "venue": "ICCD",
+        "doi": "10.1109/iccd.2017.16",
+        "arxiv_id": "1710.00942",
+        "url": "https://www.semanticscholar.org/paper/7c26be77602ae649c1f7397d521d1aff79a10d5e",
+        "url_valid": true,
+        "abstract": "While neural networks demonstrate stronger capabilities in pattern recognition nowadays, they are also becoming larger and deeper. As a result, the effort needed to train a network also increases dramatically. In many cases, it is more practical to use a neural network intellectual property (IP) that an IP vendor has already trained. As we do not know about the training process, there can be security threats in the neural IP: the IP vendor (attacker) may embed hidden malicious functionality, i.e neural Trojans, into the neural IP. We show that this is an effective attack and provide three miti…"
+      },
+      "metadata_issues": [],
+      "supports_claim": "supports",
+      "priority": "helpful",
+      "severity": "ok",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1109/iccd.2017.16",
+          "quote": "Neural Trojans — Yuntao Liu, Yang Xie, Ankur Srivastava — 2017",
+          "url": "https://www.semanticscholar.org/paper/7c26be77602ae649c1f7397d521d1aff79a10d5e"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.1109/iccd.2017.16",
+          "quote": "While neural networks demonstrate stronger capabilities in pattern recognition nowadays, they are also becoming larger and deeper. As a result, the effort needed to train a network also increases dramatically. In many cases, it is more practical to use a neural network intellectual property (IP) that an IP vendor has already trained. As we do not know about the training process, there can be security threats in the neural IP: the IP vendor (attacker) may embed hidden malicious functionality, i.e neural Trojans, into the neural IP. We show that this is an effective attack and provide three miti…",
+          "url": "https://www.semanticscholar.org/paper/7c26be77602ae649c1f7397d521d1aff79a10d5e"
+        }
+      ],
+      "confidence": 0.7,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) Neural Trojan work provides mitigation/defense techniques, supporting its use as a defense benchmark. · source: https://www.semanticscholar.org/paper/7c26be77602ae649c1f7397d521d1aff79a10d5e",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-7ecb428af0da",
+      "cite_key": "liu2017",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-7ecb428af0da",
+        "text": "As a representative backdoor removal technique, fine-tuning (Liu, Xie, and Srivastava 2017) aims to eliminate backdoors by retraining the model on a small set of local benign samples, motivated by the catastrophic forgetting property of deep neural networks.",
+        "section": null,
+        "char_span": [
+          27754,
+          28012
+        ]
+      },
+      "cited_as": {
+        "raw": "Liu, Y.; Xie, Y.; and Srivastava, A. 2017. Neural trojans. In ICCD.",
+        "authors": [
+          "Liu, Y.",
+          "Xie, Y.",
+          "Srivastava, A."
+        ],
+        "title": "Neural trojans",
+        "year": 2017,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "Neural Trojans",
+        "authors": [
+          "Yuntao Liu",
+          "Yang Xie",
+          "Ankur Srivastava"
+        ],
+        "year": 2017,
+        "venue": "ICCD",
+        "doi": "10.1109/iccd.2017.16",
+        "arxiv_id": "1710.00942",
+        "url": "https://www.semanticscholar.org/paper/7c26be77602ae649c1f7397d521d1aff79a10d5e",
+        "url_valid": true,
+        "abstract": "While neural networks demonstrate stronger capabilities in pattern recognition nowadays, they are also becoming larger and deeper. As a result, the effort needed to train a network also increases dramatically. In many cases, it is more practical to use a neural network intellectual property (IP) that an IP vendor has already trained. As we do not know about the training process, there can be security threats in the neural IP: the IP vendor (attacker) may embed hidden malicious functionality, i.e neural Trojans, into the neural IP. We show that this is an effective attack and provide three miti…"
+      },
+      "metadata_issues": [],
+      "supports_claim": "inconclusive",
+      "priority": "obligatory",
+      "severity": "low",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1109/iccd.2017.16",
+          "quote": "Neural Trojans — Yuntao Liu, Yang Xie, Ankur Srivastava — 2017",
+          "url": "https://www.semanticscholar.org/paper/7c26be77602ae649c1f7397d521d1aff79a10d5e"
+        },
+        {
+          "kind": "full_text",
+          "source": "arxiv_html §II-C Exploratory Attack",
+          "quote": "Recent studies on the exploratory attacks against neural networks have revealed the vulnerabilities of neural networks to adversarial samples. For such an adversarial input, the output of the neural network is different from what a human would perceive when provided the same input. It has been shown that, with a small deviation from a legitimate input, the adversarial test sample could result in a misclassification [ 18 , 17 , 19 ] . In [ 18 ] , Goodfellow et al. proposed the fast gradient sign method for generating adversarial samples. Y. Uchida, Y. Nagai, S. Sakazawa, and S. Satoh, “Embeddin…",
+          "url": "https://ar5iv.org/abs/1710.00942"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.1109/iccd.2017.16",
+          "quote": "While neural networks demonstrate stronger capabilities in pattern recognition nowadays, they are also becoming larger and deeper. As a result, the effort needed to train a network also increases dramatically. In many cases, it is more practical to use a neural network intellectual property (IP) that an IP vendor has already trained. As we do not know about the training process, there can be security threats in the neural IP: the IP vendor (attacker) may embed hidden malicious functionality, i.e neural Trojans, into the neural IP. We show that this is an effective attack and provide three miti…",
+          "url": "https://www.semanticscholar.org/paper/7c26be77602ae649c1f7397d521d1aff79a10d5e"
+        }
+      ],
+      "confidence": 0.55,
+      "model_tier": "judge",
+      "notes": "(based on full text §II-C Exploratory Attack) On-topic neural Trojans paper, but the retrieved abstract/excerpts do not mention fine-tuning on benign samples or catastrophic forgetting as a removal technique. · source: https://www.semanticscholar.org/paper/7c26be77602ae649c1f7397d521d1aff79a10d5e",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-e187720819a6",
+      "cite_key": "liu2018",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-e187720819a6",
+        "text": "We evaluate several representative, deployable defenses as benchmarks (Liu, Xie, and Srivastava 2017; Liu, Dolan- Gavitt, and Garg 2018; Gao et al. 2019), while noting that many emerging methods also merit systematic evaluation in future work (Chen et al. 2025b; Yi et al. 2025; Xu et al. 2024; Li et al. 2024; Hou et al. 2024, 2025).",
+        "section": null,
+        "char_span": [
+          27388,
+          27722
+        ]
+      },
+      "cited_as": {
+        "raw": "Liu, K.; Dolan-Gavitt, B.; and Garg, S. 2018. Fine-pruning: Defending against backdooring attacks on deep neural networks. In RAID, 273–294.",
+        "authors": [
+          "Liu, K.",
+          "Dolan-Gavitt, B.",
+          "Garg, S."
+        ],
+        "title": "Fine-pruning: Defending against backdooring attacks on deep neural networks",
+        "year": 2018,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "Fine-Pruning: Defending Against Backdooring Attacks on Deep Neural Networks",
+        "authors": [
+          "Kang Liu",
+          "Brendan Dolan-Gavitt",
+          "S. Garg"
+        ],
+        "year": 2018,
+        "venue": "International Symposium on Recent Advances in Intrusion Detection",
+        "doi": "10.1007/978-3-030-00470-5_13",
+        "arxiv_id": "1805.12185",
+        "url": "https://www.semanticscholar.org/paper/790ec1befba47991e8fd50a24d13be6094253f93",
+        "url_valid": true,
+        "abstract": "Deep neural networks (DNNs) provide excellent performance across a wide range of classification tasks, but their training requires high computational resources and is often outsourced to third parties. Recent work has shown that outsourced training introduces the risk that a malicious trainer will return a backdoored DNN that behaves normally on most inputs but causes targeted misclassifications or degrades the accuracy of the network when a trigger known only to the attacker is present. In this paper, we provide the first effective defenses against backdoor attacks on DNNs. We implement three…"
+      },
+      "metadata_issues": [],
+      "supports_claim": "supports",
+      "priority": "helpful",
+      "severity": "ok",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1007/978-3-030-00470-5_13",
+          "quote": "Fine-Pruning: Defending Against Backdooring Attacks on Deep Neural Networks — Kang Liu, Brendan Dolan-Gavitt, S. Garg — 2018",
+          "url": "https://www.semanticscholar.org/paper/790ec1befba47991e8fd50a24d13be6094253f93"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.1007/978-3-030-00470-5_13",
+          "quote": "Deep neural networks (DNNs) provide excellent performance across a wide range of classification tasks, but their training requires high computational resources and is often outsourced to third parties. Recent work has shown that outsourced training introduces the risk that a malicious trainer will return a backdoored DNN that behaves normally on most inputs but causes targeted misclassifications or degrades the accuracy of the network when a trigger known only to the attacker is present. In this paper, we provide the first effective defenses against backdoor attacks on DNNs. We implement three…",
+          "url": "https://www.semanticscholar.org/paper/790ec1befba47991e8fd50a24d13be6094253f93"
+        }
+      ],
+      "confidence": 0.75,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) Evidence provides effective defenses against backdoor attacks, supporting its role as a defense benchmark. · source: https://www.semanticscholar.org/paper/790ec1befba47991e8fd50a24d13be6094253f93",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-e9e0060392d4",
+      "cite_key": "liu2018",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-e9e0060392d4",
+        "text": "As another representative backdoor removal defense, model pruning (Liu, Dolan- Gavitt, and Garg 2018) aims to remove backdoors by eliminating neurons inactive on benign inputs, assuming backdoor and benign neurons are largely separable.",
+        "section": null,
+        "char_span": [
+          28383,
+          28619
+        ]
+      },
+      "cited_as": {
+        "raw": "Liu, K.; Dolan-Gavitt, B.; and Garg, S. 2018. Fine-pruning: Defending against backdooring attacks on deep neural networks. In RAID, 273–294.",
+        "authors": [
+          "Liu, K.",
+          "Dolan-Gavitt, B.",
+          "Garg, S."
+        ],
+        "title": "Fine-pruning: Defending against backdooring attacks on deep neural networks",
+        "year": 2018,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "Fine-Pruning: Defending Against Backdooring Attacks on Deep Neural Networks",
+        "authors": [
+          "Kang Liu",
+          "Brendan Dolan-Gavitt",
+          "S. Garg"
+        ],
+        "year": 2018,
+        "venue": "International Symposium on Recent Advances in Intrusion Detection",
+        "doi": "10.1007/978-3-030-00470-5_13",
+        "arxiv_id": "1805.12185",
+        "url": "https://www.semanticscholar.org/paper/790ec1befba47991e8fd50a24d13be6094253f93",
+        "url_valid": true,
+        "abstract": "Deep neural networks (DNNs) provide excellent performance across a wide range of classification tasks, but their training requires high computational resources and is often outsourced to third parties. Recent work has shown that outsourced training introduces the risk that a malicious trainer will return a backdoored DNN that behaves normally on most inputs but causes targeted misclassifications or degrades the accuracy of the network when a trigger known only to the attacker is present. In this paper, we provide the first effective defenses against backdoor attacks on DNNs. We implement three…"
+      },
+      "metadata_issues": [],
+      "supports_claim": "supports",
+      "priority": "obligatory",
+      "severity": "ok",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1007/978-3-030-00470-5_13",
+          "quote": "Fine-Pruning: Defending Against Backdooring Attacks on Deep Neural Networks — Kang Liu, Brendan Dolan-Gavitt, S. Garg — 2018",
+          "url": "https://www.semanticscholar.org/paper/790ec1befba47991e8fd50a24d13be6094253f93"
+        },
+        {
+          "kind": "full_text",
+          "source": "arxiv_html §Introduction",
+          "quote": "In this paper, we propose and evaluate defenses against backdoor attacks on deep neural networks (DNN). We first successfully replicate three recently proposed backdoor attacks on traffic sign [ 18 ] , speech [ 27 ] , and face [ 10 ] recognition. Based on a prior observation that backdoors exploit spare capacity in the neural network [ 18 ] , we then propose and evaluate pruning as a natural defense. The pruning defense reduces the size of the backdoored network by eliminating neurons that are dormant on clean inputs, consequently disabling backdoor behaviour. The intuition behind this attack …",
+          "url": "https://ar5iv.org/abs/1805.12185"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.1007/978-3-030-00470-5_13",
+          "quote": "Deep neural networks (DNNs) provide excellent performance across a wide range of classification tasks, but their training requires high computational resources and is often outsourced to third parties. Recent work has shown that outsourced training introduces the risk that a malicious trainer will return a backdoored DNN that behaves normally on most inputs but causes targeted misclassifications or degrades the accuracy of the network when a trigger known only to the attacker is present. In this paper, we provide the first effective defenses against backdoor attacks on DNNs. We implement three…",
+          "url": "https://www.semanticscholar.org/paper/790ec1befba47991e8fd50a24d13be6094253f93"
+        }
+      ],
+      "confidence": 0.93,
+      "model_tier": "judge",
+      "notes": "(based on full text §Introduction) Evidence states the pruning defense eliminates neurons dormant on clean inputs to disable backdoor behaviour, directly backing the claim. · source: https://www.semanticscholar.org/paper/790ec1befba47991e8fd50a24d13be6094253f93",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-2e3325fb38ce",
+      "cite_key": "gao2019",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-2e3325fb38ce",
+        "text": "We evaluate several representative, deployable defenses as benchmarks (Liu, Xie, and Srivastava 2017; Liu, Dolan- Gavitt, and Garg 2018; Gao et al. 2019), while noting that many emerging methods also merit systematic evaluation in future work (Chen et al. 2025b; Yi et al. 2025; Xu et al. 2024; Li et al. 2024; Hou et al. 2024, 2025).",
+        "section": null,
+        "char_span": [
+          27388,
+          27722
+        ]
+      },
+      "cited_as": {
+        "raw": "Gao, Y.; Xu, C.; Wang, D.; Chen, S.; Ranasinghe, D. C.; and Nepal, S. 2019. Strip: A defence against trojan attacks on deep neural networks. In ACSAC.",
+        "authors": [
+          "Gao, Y.",
+          "Xu, C.",
+          "Wang, D.",
+          "Chen, S.",
+          "Ranasinghe, D. C.",
+          "Nepal, S."
+        ],
+        "title": "Strip: A defence against trojan attacks on deep neural networks",
+        "year": 2019,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "STRIP: a defence against trojan attacks on deep neural networks",
+        "authors": [
+          "Yansong Gao",
+          "Chang Xu",
+          "Derui Wang",
+          "Shiping Chen",
+          "D. Ranasinghe",
+          "S. Nepal"
+        ],
+        "year": 2019,
+        "venue": "Asia-Pacific Computer Systems Architecture Conference",
+        "doi": "10.1145/3359789.3359790",
+        "arxiv_id": "1902.06531",
+        "url": "https://www.semanticscholar.org/paper/63aa6b35e392e26c94ae252623863b4934c0a958",
+        "url_valid": true,
+        "abstract": "A recent trojan attack on deep neural network (DNN) models is one insidious variant of data poisoning attacks. Trojan attacks exploit an effective backdoor created in a DNN model by leveraging the difficulty in interpretability of the learned model to misclassify any inputs signed with the attacker's chosen trojan trigger. Since the trojan trigger is a secret guarded and exploited by the attacker, detecting such trojan inputs is a challenge, especially at run-time when models are in active operation. This work builds STRong Intentional Perturbation (STRIP) based run-time trojan attack detectio…"
+      },
+      "metadata_issues": [],
+      "supports_claim": "supports",
+      "priority": "obligatory",
+      "severity": "ok",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1145/3359789.3359790",
+          "quote": "STRIP: a defence against trojan attacks on deep neural networks — Yansong Gao, Chang Xu, Derui Wang, Shiping Chen, D. Ranasinghe, S. Nepal — 2019",
+          "url": "https://www.semanticscholar.org/paper/63aa6b35e392e26c94ae252623863b4934c0a958"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.1145/3359789.3359790",
+          "quote": "A recent trojan attack on deep neural network (DNN) models is one insidious variant of data poisoning attacks. Trojan attacks exploit an effective backdoor created in a DNN model by leveraging the difficulty in interpretability of the learned model to misclassify any inputs signed with the attacker's chosen trojan trigger. Since the trojan trigger is a secret guarded and exploited by the attacker, detecting such trojan inputs is a challenge, especially at run-time when models are in active operation. This work builds STRong Intentional Perturbation (STRIP) based run-time trojan attack detectio…",
+          "url": "https://www.semanticscholar.org/paper/63aa6b35e392e26c94ae252623863b4934c0a958"
+        }
+      ],
       "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is the UTMOS MOS-prediction system used for objective evaluation. · source: http://arxiv.org/pdf/2204.02152",
+      "notes": "(based on abstract only) Evidence confirms STRIP is a run-time trojan-input detection method, backing its listing as a representative deployable defense benchmark. · source: https://www.semanticscholar.org/paper/63aa6b35e392e26c94ae252623863b4934c0a958",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-c00a6d848bc9",
+      "cite_key": "gao2019",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-c00a6d848bc9",
+        "text": "The Resistance to STRIP. As a representative black-box detection method based on predicted logits, STRIP (Gao et al. 2019) introduces perturbations to test samples by superimposing them with various other samples, and then examines the entropy of the model’s predictions to detect potential backdoors.",
+        "section": null,
+        "char_span": [
+          28919,
+          29220
+        ]
+      },
+      "cited_as": {
+        "raw": "Gao, Y.; Xu, C.; Wang, D.; Chen, S.; Ranasinghe, D. C.; and Nepal, S. 2019. Strip: A defence against trojan attacks on deep neural networks. In ACSAC.",
+        "authors": [
+          "Gao, Y.",
+          "Xu, C.",
+          "Wang, D.",
+          "Chen, S.",
+          "Ranasinghe, D. C.",
+          "Nepal, S."
+        ],
+        "title": "Strip: A defence against trojan attacks on deep neural networks",
+        "year": 2019,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "STRIP: a defence against trojan attacks on deep neural networks",
+        "authors": [
+          "Yansong Gao",
+          "Chang Xu",
+          "Derui Wang",
+          "Shiping Chen",
+          "D. Ranasinghe",
+          "S. Nepal"
+        ],
+        "year": 2019,
+        "venue": "Asia-Pacific Computer Systems Architecture Conference",
+        "doi": "10.1145/3359789.3359790",
+        "arxiv_id": "1902.06531",
+        "url": "https://www.semanticscholar.org/paper/63aa6b35e392e26c94ae252623863b4934c0a958",
+        "url_valid": true,
+        "abstract": "A recent trojan attack on deep neural network (DNN) models is one insidious variant of data poisoning attacks. Trojan attacks exploit an effective backdoor created in a DNN model by leveraging the difficulty in interpretability of the learned model to misclassify any inputs signed with the attacker's chosen trojan trigger. Since the trojan trigger is a secret guarded and exploited by the attacker, detecting such trojan inputs is a challenge, especially at run-time when models are in active operation. This work builds STRong Intentional Perturbation (STRIP) based run-time trojan attack detectio…"
+      },
+      "metadata_issues": [],
+      "supports_claim": "supports",
+      "priority": "obligatory",
+      "severity": "ok",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1145/3359789.3359790",
+          "quote": "STRIP: a defence against trojan attacks on deep neural networks — Yansong Gao, Chang Xu, Derui Wang, Shiping Chen, D. Ranasinghe, S. Nepal — 2019",
+          "url": "https://www.semanticscholar.org/paper/63aa6b35e392e26c94ae252623863b4934c0a958"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.1145/3359789.3359790",
+          "quote": "A recent trojan attack on deep neural network (DNN) models is one insidious variant of data poisoning attacks. Trojan attacks exploit an effective backdoor created in a DNN model by leveraging the difficulty in interpretability of the learned model to misclassify any inputs signed with the attacker's chosen trojan trigger. Since the trojan trigger is a secret guarded and exploited by the attacker, detecting such trojan inputs is a challenge, especially at run-time when models are in active operation. This work builds STRong Intentional Perturbation (STRIP) based run-time trojan attack detectio…",
+          "url": "https://www.semanticscholar.org/paper/63aa6b35e392e26c94ae252623863b4934c0a958"
+        }
+      ],
+      "confidence": 0.6,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) Evidence confirms STRIP is intentional-perturbation-based run-time detection; the entropy/superimposing specifics are not in the truncated abstract but the core method matches. · source: https://www.semanticscholar.org/paper/63aa6b35e392e26c94ae252623863b4934c0a958",
       "error": null,
       "labels": null
     },
@@ -2807,17 +5065,17 @@
           "url": "https://www.semanticscholar.org/paper/038ff6678bdea50a3f9f73101336e455066bf95e"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is a backdoor pre-processing defense method, matching its listing as an emerging method to evaluate. · source: https://www.semanticscholar.org/paper/038ff6678bdea50a3f9f73101336e455066bf95e",
+      "notes": "(based on abstract only) Evidence shows a pre-processing/BTI-based backdoor defense, consistent with being cited as an emerging defense method for future evaluation. · source: https://www.semanticscholar.org/paper/038ff6678bdea50a3f9f73101336e455066bf95e",
       "error": null,
       "labels": null
     },
     {
       "schema_version": "0.1",
       "paper_id": "12244-AAAI26.CaiH-AD",
-      "claim_id": "claim-c00a6d848bc9",
-      "cite_key": "gao2019",
+      "claim_id": "claim-e3db1fe96bd9",
+      "cite_key": "yi2025",
       "paper": {
         "paper_id": "12244-AAAI26.CaiH-AD",
         "title": null,
@@ -2827,26 +5085,27 @@
         "tex_available": false
       },
       "claim": {
-        "claim_id": "claim-c00a6d848bc9",
-        "text": "The Resistance to STRIP. As a representative black-box detection method based on predicted logits, STRIP (Gao et al. 2019) introduces perturbations to test samples by superimposing them with various other samples, and then examines the entropy of the model’s predictions to detect potential backdoors.",
+        "claim_id": "claim-e3db1fe96bd9",
+        "text": "We evaluate several representative, deployable defenses as benchmarks (Liu, Xie, and Srivastava 2017; Liu, Dolan- Gavitt, and Garg 2018; Gao et al. 2019), while noting that many emerging methods also merit systematic evaluation in future work (Chen et al. 2025b; Yi et al. 2025; Xu et al. 2024; Li et al. 2024; Hou et al. 2024, 2025).",
         "section": null,
         "char_span": [
-          28919,
-          29220
+          27388,
+          27722
         ]
       },
       "cited_as": {
-        "raw": "Gao, Y.; Xu, C.; Wang, D.; Chen, S.; Ranasinghe, D. C.; and Nepal, S. 2019. Strip: A defence against trojan attacks on deep neural networks. In ACSAC. 37 nets: Evaluating backdooring attacks on deep neural networks. IEEE Access, 7: 47230–47244.",
+        "raw": "Yi, B.; Huang, T.; Chen, S.; Li, T.; Liu, Z.; Chu, Z.; and Li, Y. 2025. Probe before you talk: Towards black-box defense against backdoor unalignment for large language models. In ICLR.",
         "authors": [
-          "Gao, Y.",
-          "Xu, C.",
-          "Wang, D.",
+          "Yi, B.",
+          "Huang, T.",
           "Chen, S.",
-          "Ranasinghe, D. C.",
-          "Nepal, S."
+          "Li, T.",
+          "Liu, Z.",
+          "Chu, Z.",
+          "Li, Y."
         ],
-        "title": "Strip: A defence against trojan attacks on deep neural networks",
-        "year": 2019,
+        "title": "Probe before you talk: Towards black-box defense against backdoor unalignment for large language models",
+        "year": 2025,
         "venue": null,
         "doi": null,
         "arxiv_id": null,
@@ -2858,45 +5117,392 @@
         "source": "s2",
         "match_method": "fuzzy_title",
         "match_score": 1.0,
-        "title": "STRIP: a defence against trojan attacks on deep neural networks",
+        "title": "Probe before You Talk: Towards Black-box Defense against Backdoor Unalignment for Large Language Models",
         "authors": [
-          "Yansong Gao",
-          "Chang Xu",
-          "Derui Wang",
-          "Shiping Chen",
-          "D. Ranasinghe",
-          "S. Nepal"
+          "Biao Yi",
+          "Tiansheng Huang",
+          "Sishuo Chen",
+          "Tong Li",
+          "Zheli Liu",
+          "Zhixuan Chu",
+          "Yiming Li"
         ],
-        "year": 2019,
-        "venue": "Asia-Pacific Computer Systems Architecture Conference",
-        "doi": "10.1145/3359789.3359790",
-        "arxiv_id": "1902.06531",
-        "url": "https://www.semanticscholar.org/paper/63aa6b35e392e26c94ae252623863b4934c0a958",
+        "year": 2025,
+        "venue": "International Conference on Learning Representations",
+        "doi": "10.48550/arxiv.2506.16447",
+        "arxiv_id": "2506.16447",
+        "url": "https://www.semanticscholar.org/paper/2a5fab120f3be06a8e473dbc90fcc6a4e06c95b1",
         "url_valid": true,
-        "abstract": "A recent trojan attack on deep neural network (DNN) models is one insidious variant of data poisoning attacks. Trojan attacks exploit an effective backdoor created in a DNN model by leveraging the difficulty in interpretability of the learned model to misclassify any inputs signed with the attacker's chosen trojan trigger. Since the trojan trigger is a secret guarded and exploited by the attacker, detecting such trojan inputs is a challenge, especially at run-time when models are in active operation. This work builds STRong Intentional Perturbation (STRIP) based run-time trojan attack detectio…"
+        "abstract": "Backdoor unalignment attacks against Large Language Models (LLMs) enable the stealthy compromise of safety alignment using a hidden trigger while evading normal safety auditing. These attacks pose significant threats to the applications of LLMs in the real-world Large Language Model as a Service (LLMaaS) setting, where the deployed model is a fully black-box system that can only interact through text. Furthermore, the sample-dependent nature of the attack target exacerbates the threat. Instead of outputting a fixed label, the backdoored LLM follows the semantics of any malicious command with t…"
       },
       "metadata_issues": [],
       "supports_claim": "supports",
-      "priority": "obligatory",
+      "priority": "helpful",
       "severity": "ok",
       "compared_against": null,
       "evidence": [
         {
           "kind": "metadata",
-          "source": "10.1145/3359789.3359790",
-          "quote": "STRIP: a defence against trojan attacks on deep neural networks — Yansong Gao, Chang Xu, Derui Wang, Shiping Chen, D. Ranasinghe, S. Nepal — 2019",
-          "url": "https://www.semanticscholar.org/paper/63aa6b35e392e26c94ae252623863b4934c0a958"
+          "source": "10.48550/arxiv.2506.16447",
+          "quote": "Probe before You Talk: Towards Black-box Defense against Backdoor Unalignment for Large Language Models — Biao Yi, Tiansheng Huang, Sishuo Chen, Tong Li, Zheli Liu, Zhixuan Chu, Yiming Li — 2025",
+          "url": "https://www.semanticscholar.org/paper/2a5fab120f3be06a8e473dbc90fcc6a4e06c95b1"
         },
         {
           "kind": "abstract",
-          "source": "10.1145/3359789.3359790",
-          "quote": "A recent trojan attack on deep neural network (DNN) models is one insidious variant of data poisoning attacks. Trojan attacks exploit an effective backdoor created in a DNN model by leveraging the difficulty in interpretability of the learned model to misclassify any inputs signed with the attacker's chosen trojan trigger. Since the trojan trigger is a secret guarded and exploited by the attacker, detecting such trojan inputs is a challenge, especially at run-time when models are in active operation. This work builds STRong Intentional Perturbation (STRIP) based run-time trojan attack detectio…",
-          "url": "https://www.semanticscholar.org/paper/63aa6b35e392e26c94ae252623863b4934c0a958"
+          "source": "10.48550/arxiv.2506.16447",
+          "quote": "Backdoor unalignment attacks against Large Language Models (LLMs) enable the stealthy compromise of safety alignment using a hidden trigger while evading normal safety auditing. These attacks pose significant threats to the applications of LLMs in the real-world Large Language Model as a Service (LLMaaS) setting, where the deployed model is a fully black-box system that can only interact through text. Furthermore, the sample-dependent nature of the attack target exacerbates the threat. Instead of outputting a fixed label, the backdoored LLM follows the semantics of any malicious command with t…",
+          "url": "https://www.semanticscholar.org/paper/2a5fab120f3be06a8e473dbc90fcc6a4e06c95b1"
         }
       ],
-      "confidence": 0.9,
+      "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence describes STRIP superimposing perturbations and using prediction entropy to detect trojan inputs, matching the claim. · source: https://www.semanticscholar.org/paper/63aa6b35e392e26c94ae252623863b4934c0a958",
+      "notes": "(based on abstract only) Evidence shows yi2025 is a backdoor defense/triggered-sample-detection method, matching the claim's grouping of it as an emerging defense meriting evaluation. · source: https://www.semanticscholar.org/paper/2a5fab120f3be06a8e473dbc90fcc6a4e06c95b1",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-a6da1ea81eeb",
+      "cite_key": "xu2024",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-a6da1ea81eeb",
+        "text": "We evaluate several representative, deployable defenses as benchmarks (Liu, Xie, and Srivastava 2017; Liu, Dolan- Gavitt, and Garg 2018; Gao et al. 2019), while noting that many emerging methods also merit systematic evaluation in future work (Chen et al. 2025b; Yi et al. 2025; Xu et al. 2024; Li et al. 2024; Hou et al. 2024, 2025).",
+        "section": null,
+        "char_span": [
+          27388,
+          27722
+        ]
+      },
+      "cited_as": {
+        "raw": "Xu, X.; Huang, K.; Li, Y.; Qin, Z.; and Ren, K. 2024. Towards reliable and efficient backdoor trigger inversion via decoupling benign features. In ICLR.",
+        "authors": [
+          "Xu, X.",
+          "Huang, K.",
+          "Li, Y.",
+          "Qin, Z.",
+          "Ren, K."
+        ],
+        "title": "Towards reliable and efficient backdoor trigger inversion via decoupling benign features",
+        "year": 2024,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "Towards Reliable and Efficient Backdoor Trigger Inversion via Decoupling Benign Features",
+        "authors": [
+          "Xiong Xu",
+          "Kunzhe Huang",
+          "Yiming Li",
+          "Zhan Qin",
+          "Kui Ren"
+        ],
+        "year": 2024,
+        "venue": "International Conference on Learning Representations",
+        "doi": null,
+        "arxiv_id": null,
+        "url": "https://www.semanticscholar.org/paper/f8036a0dbeb67c3523a59173a8c3feda12702d66",
+        "url_valid": true,
+        "abstract": "This method consists of two main steps, including decoupling benign features and trigger inversion by minimizing the differences between benign samples and their generated poisoned version in decoupled benign features while maximizing the differences in remaining backdoor features."
+      },
+      "metadata_issues": [],
+      "supports_claim": "supports",
+      "priority": "helpful",
+      "severity": "ok",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "https://www.semanticscholar.org/paper/f8036a0dbeb67c3523a59173a8c3feda12702d66",
+          "quote": "Towards Reliable and Efficient Backdoor Trigger Inversion via Decoupling Benign Features — Xiong Xu, Kunzhe Huang, Yiming Li, Zhan Qin, Kui Ren — 2024",
+          "url": "https://www.semanticscholar.org/paper/f8036a0dbeb67c3523a59173a8c3feda12702d66"
+        },
+        {
+          "kind": "abstract",
+          "source": "https://www.semanticscholar.org/paper/f8036a0dbeb67c3523a59173a8c3feda12702d66",
+          "quote": "This method consists of two main steps, including decoupling benign features and trigger inversion by minimizing the differences between benign samples and their generated poisoned version in decoupled benign features while maximizing the differences in remaining backdoor features.",
+          "url": "https://www.semanticscholar.org/paper/f8036a0dbeb67c3523a59173a8c3feda12702d66"
+        }
+      ],
+      "confidence": 0.75,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) Evidence describes a trigger-inversion/feature-decoupling backdoor defense, consistent with citation as an emerging defense method. · source: https://www.semanticscholar.org/paper/f8036a0dbeb67c3523a59173a8c3feda12702d66",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-b33b16f71be6",
+      "cite_key": "li2024",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-b33b16f71be6",
+        "text": "We evaluate several representative, deployable defenses as benchmarks (Liu, Xie, and Srivastava 2017; Liu, Dolan- Gavitt, and Garg 2018; Gao et al. 2019), while noting that many emerging methods also merit systematic evaluation in future work (Chen et al. 2025b; Yi et al. 2025; Xu et al. 2024; Li et al. 2024; Hou et al. 2024, 2025).",
+        "section": null,
+        "char_span": [
+          27388,
+          27722
+        ]
+      },
+      "cited_as": {
+        "raw": "Li, B.; Cai, Y.; Li, H.; Xue, F.; Li, Z.; and Li, Y. 2024. Nearest is not dearest: Towards practical defense against quantization-conditioned backdoor attacks. In CVPR, 24523–24533.",
+        "authors": [
+          "Li, B.",
+          "Cai, Y.",
+          "Li, H.",
+          "Xue, F.",
+          "Li, Z.",
+          "Li, Y."
+        ],
+        "title": "Nearest is not dearest: Towards practical defense against quantization-conditioned backdoor attacks",
+        "year": 2024,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "Nearest is Not Dearest: Towards Practical Defense Against Quantization-Conditioned Backdoor Attacks",
+        "authors": [
+          "Boheng Li",
+          "Yishuo Cai",
+          "Haowei Li",
+          "Feng Xue",
+          "Zhifeng Li",
+          "Yiming Li"
+        ],
+        "year": 2024,
+        "venue": "Computer Vision and Pattern Recognition",
+        "doi": "10.1109/cvpr52733.2024.02315",
+        "arxiv_id": "2405.12725",
+        "url": "https://arxiv.org/pdf/2405.12725",
+        "url_valid": true,
+        "abstract": "Model quantization is widely used to compress and ac-celerate deep neural networks. However, recent studies have revealed the feasibility of weaponizing model quan-tization via implanting quantization-conditioned backdoors (QCBs). These special backdoors stay dormant on released full-precision models but will come into effect after stan-dard quantization. Due to the peculiarity of QCBs, existing defenses have minor effects on reducing their threats or are even infeasible. In this paper, we conduct the first in-depth analysis of QCBs. We reveal that the activation of existing QCBs primarily ste…"
+      },
+      "metadata_issues": [],
+      "supports_claim": "supports",
+      "priority": "helpful",
+      "severity": "ok",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1109/cvpr52733.2024.02315",
+          "quote": "Nearest is Not Dearest: Towards Practical Defense Against Quantization-Conditioned Backdoor Attacks — Boheng Li, Yishuo Cai, Haowei Li, Feng Xue, Zhifeng Li, Yiming Li — 2024",
+          "url": "https://arxiv.org/pdf/2405.12725"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.1109/cvpr52733.2024.02315",
+          "quote": "Model quantization is widely used to compress and ac-celerate deep neural networks. However, recent studies have revealed the feasibility of weaponizing model quan-tization via implanting quantization-conditioned backdoors (QCBs). These special backdoors stay dormant on released full-precision models but will come into effect after stan-dard quantization. Due to the peculiarity of QCBs, existing defenses have minor effects on reducing their threats or are even infeasible. In this paper, we conduct the first in-depth analysis of QCBs. We reveal that the activation of existing QCBs primarily ste…",
+          "url": "https://arxiv.org/pdf/2405.12725"
+        }
+      ],
+      "confidence": 0.78,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) Evidence is an analysis/defense of quantization-conditioned backdoors, on-topic as an emerging backdoor method for future evaluation. · source: https://arxiv.org/pdf/2405.12725",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-1db937c3c59b",
+      "cite_key": "hou2024",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-1db937c3c59b",
+        "text": "We evaluate several representative, deployable defenses as benchmarks (Liu, Xie, and Srivastava 2017; Liu, Dolan- Gavitt, and Garg 2018; Gao et al. 2019), while noting that many emerging methods also merit systematic evaluation in future work (Chen et al. 2025b; Yi et al. 2025; Xu et al. 2024; Li et al. 2024; Hou et al. 2024, 2025).",
+        "section": null,
+        "char_span": [
+          27388,
+          27722
+        ]
+      },
+      "cited_as": {
+        "raw": "Hou, L.; Feng, R.; Hua, Z.; Luo, W.; Zhang, L. Y.; and Li, Y. 2024. Ibd-psc: Input-level backdoor detection via parameter-oriented scaling consistency. In ICML.",
+        "authors": [
+          "Hou, L.",
+          "Feng, R.",
+          "Hua, Z.",
+          "Luo, W.",
+          "Zhang, L. Y.",
+          "Li, Y."
+        ],
+        "title": "Ibd-psc: Input-level backdoor detection via parameter-oriented scaling consistency",
+        "year": 2024,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "s2",
+        "match_method": "fuzzy_title",
+        "match_score": 1.0,
+        "title": "IBD-PSC: Input-level Backdoor Detection via Parameter-oriented Scaling Consistency",
+        "authors": [
+          "Linshan Hou",
+          "Ruili Feng",
+          "Zhongyun Hua",
+          "Wei Luo",
+          "L. Zhang",
+          "Yiming Li"
+        ],
+        "year": 2024,
+        "venue": "International Conference on Machine Learning",
+        "doi": "10.48550/arxiv.2405.09786",
+        "arxiv_id": "2405.09786",
+        "url": "https://www.semanticscholar.org/paper/4696ec65c7f9067d638ab2209214ba732307a8aa",
+        "url_valid": true,
+        "abstract": "Deep neural networks (DNNs) are vulnerable to backdoor attacks, where adversaries can maliciously trigger model misclassifications by implanting a hidden backdoor during model training. This paper proposes a simple yet effective input-level backdoor detection (dubbed IBD-PSC) as a `firewall' to filter out malicious testing images. Our method is motivated by an intriguing phenomenon, i.e., parameter-oriented scaling consistency (PSC), where the prediction confidences of poisoned samples are significantly more consistent than those of benign ones when amplifying model parameters. In particular, …"
+      },
+      "metadata_issues": [],
+      "supports_claim": "supports",
+      "priority": "helpful",
+      "severity": "ok",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.48550/arxiv.2405.09786",
+          "quote": "IBD-PSC: Input-level Backdoor Detection via Parameter-oriented Scaling Consistency — Linshan Hou, Ruili Feng, Zhongyun Hua, Wei Luo, L. Zhang, Yiming Li — 2024",
+          "url": "https://www.semanticscholar.org/paper/4696ec65c7f9067d638ab2209214ba732307a8aa"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.48550/arxiv.2405.09786",
+          "quote": "Deep neural networks (DNNs) are vulnerable to backdoor attacks, where adversaries can maliciously trigger model misclassifications by implanting a hidden backdoor during model training. This paper proposes a simple yet effective input-level backdoor detection (dubbed IBD-PSC) as a `firewall' to filter out malicious testing images. Our method is motivated by an intriguing phenomenon, i.e., parameter-oriented scaling consistency (PSC), where the prediction confidences of poisoned samples are significantly more consistent than those of benign ones when amplifying model parameters. In particular, …",
+          "url": "https://www.semanticscholar.org/paper/4696ec65c7f9067d638ab2209214ba732307a8aa"
+        }
+      ],
+      "confidence": 0.82,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) Evidence presents IBD-PSC input-level backdoor detection, consistent with being cited as an emerging defense method. · source: https://www.semanticscholar.org/paper/4696ec65c7f9067d638ab2209214ba732307a8aa",
+      "error": null,
+      "labels": null
+    },
+    {
+      "schema_version": "0.1",
+      "paper_id": "12244-AAAI26.CaiH-AD",
+      "claim_id": "claim-7ff68d133017",
+      "cite_key": "hou2025",
+      "paper": {
+        "paper_id": "12244-AAAI26.CaiH-AD",
+        "title": null,
+        "arxiv_id": null,
+        "doi": null,
+        "source_kind": "pdf",
+        "tex_available": false
+      },
+      "claim": {
+        "claim_id": "claim-7ff68d133017",
+        "text": "We evaluate several representative, deployable defenses as benchmarks (Liu, Xie, and Srivastava 2017; Liu, Dolan- Gavitt, and Garg 2018; Gao et al. 2019), while noting that many emerging methods also merit systematic evaluation in future work (Chen et al. 2025b; Yi et al. 2025; Xu et al. 2024; Li et al. 2024; Hou et al. 2024, 2025).",
+        "section": null,
+        "char_span": [
+          27388,
+          27722
+        ]
+      },
+      "cited_as": {
+        "raw": "Hou, L.; Luo, W.; Hua, Z.; Chen, S.; Zhang, L. Y.; and Li, Y. 2025. Flare: Towards universal dataset purification against backdoor attacks. IEEE Transactions on Information Forensics and Security.",
+        "authors": [
+          "Hou, L.",
+          "Luo, W.",
+          "Hua, Z.",
+          "Chen, S.",
+          "Zhang, L. Y.",
+          "Li, Y."
+        ],
+        "title": "Flare: Towards universal dataset purification against backdoor attacks",
+        "year": 2025,
+        "venue": null,
+        "doi": null,
+        "arxiv_id": null,
+        "url": null
+      },
+      "in_table": false,
+      "exists": "yes",
+      "resolved": {
+        "source": "crossref",
+        "match_method": "fuzzy_title",
+        "match_score": 0.946,
+        "title": "FLARE: Toward Universal Dataset Purification Against Backdoor Attacks",
+        "authors": [
+          "Linshan Hou",
+          "Wei Luo",
+          "Zhongyun Hua",
+          "Songhua Chen",
+          "Leo Yu Zhang",
+          "Yiming Li"
+        ],
+        "year": 2025,
+        "venue": "IEEE Transactions on Information Forensics and Security",
+        "doi": "10.1109/tifs.2025.3581719",
+        "arxiv_id": null,
+        "url": "https://doi.org/10.1109/tifs.2025.3581719",
+        "url_valid": true,
+        "abstract": "Deep neural networks (DNNs) are susceptible to backdoor attacks, where adversaries poison datasets with adversary-specified triggers to implant hidden backdoors, enabling malicious manipulation of model predictions. Dataset purification serves as a proactive defense by removing malicious training samples to prevent backdoor injection at its source. We first reveal that the current advanced purification methods rely on a latent assumption that the backdoor connections between triggers and target labels in backdoor attacks are simpler to learn than the benign features. We demonstrate that this a…"
+      },
+      "metadata_issues": [],
+      "supports_claim": "supports",
+      "priority": "helpful",
+      "severity": "ok",
+      "compared_against": null,
+      "evidence": [
+        {
+          "kind": "metadata",
+          "source": "10.1109/tifs.2025.3581719",
+          "quote": "FLARE: Toward Universal Dataset Purification Against Backdoor Attacks — Linshan Hou, Wei Luo, Zhongyun Hua, Songhua Chen, Leo Yu Zhang, Yiming Li — 2025",
+          "url": "https://doi.org/10.1109/tifs.2025.3581719"
+        },
+        {
+          "kind": "abstract",
+          "source": "10.1109/tifs.2025.3581719",
+          "quote": "Deep neural networks (DNNs) are susceptible to backdoor attacks, where adversaries poison datasets with adversary-specified triggers to implant hidden backdoors, enabling malicious manipulation of model predictions. Dataset purification serves as a proactive defense by removing malicious training samples to prevent backdoor injection at its source. We first reveal that the current advanced purification methods rely on a latent assumption that the backdoor connections between triggers and target labels in backdoor attacks are simpler to learn than the benign features. We demonstrate that this a…",
+          "url": "https://doi.org/10.1109/tifs.2025.3581719"
+        }
+      ],
+      "confidence": 0.82,
+      "model_tier": "judge",
+      "notes": "(based on abstract only) Evidence describes a dataset-purification backdoor defense, on-topic as an emerging defense method meriting future evaluation. · source: https://doi.org/10.1109/tifs.2025.3581719",
       "error": null,
       "labels": null
     }
