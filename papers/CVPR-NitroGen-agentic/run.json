@@ -1,0 +1,31 @@
+{
+  "paper_id": "Magne_NitroGen_An_Open_Foundation_Model_for_Generalist_Gaming_Agents_CVPR_2026_paper",
+  "backend": "agentic",
+  "usage": {
+    "backend": "agentic",
+    "model": "bulk=claude-haiku-4-5-20251001;judge=claude-opus-4-8",
+    "input_tokens": 13046,
+    "output_tokens": 34438,
+    "total_tokens": 47484,
+    "cache_read_tokens": 16113,
+    "cache_creation_tokens": 62789,
+    "cost_usd": 1.5328435,
+    "num_turns": 3,
+    "tool_calls": 88,
+    "wall_seconds": 574.8668147949502,
+    "by_tier": {
+      "bulk": {
+        "input_tokens": 5306,
+        "output_tokens": 1408,
+        "cost_usd": 0.012346
+      },
+      "judge": {
+        "input_tokens": 7740,
+        "output_tokens": 33030,
+        "cost_usd": 1.5204975
+      }
+    }
+  },
+  "num_records": 88,
+  "num_errors": 0
+}

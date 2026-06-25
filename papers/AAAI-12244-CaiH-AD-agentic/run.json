@@ -1,0 +1,31 @@
+{
+  "paper_id": "12244-AAAI26.CaiH-AD",
+  "backend": "agentic",
+  "usage": {
+    "backend": "agentic",
+    "model": "bulk=claude-haiku-4-5-20251001;judge=claude-opus-4-8",
+    "input_tokens": 3992,
+    "output_tokens": 15146,
+    "total_tokens": 19138,
+    "cache_read_tokens": 16113,
+    "cache_creation_tokens": 10398,
+    "cost_usd": 0.5004205,
+    "num_turns": 1,
+    "tool_calls": 35,
+    "wall_seconds": 231.4812986610923,
+    "by_tier": {
+      "bulk": {
+        "input_tokens": 1412,
+        "output_tokens": 560,
+        "cost_usd": 0.0042120000000000005
+      },
+      "judge": {
+        "input_tokens": 2580,
+        "output_tokens": 14586,
+        "cost_usd": 0.49620850000000005
+      }
+    }
+  },
+  "num_records": 35,
+  "num_errors": 0
+}

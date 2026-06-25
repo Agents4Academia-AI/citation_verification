@@ -317,9 +317,11 @@ $('#theme').addEventListener('click', () => {
 paintTheme();
 
 const drop = $('#drop'), fileIn = $('#file');
-drop.addEventListener('click', () => fileIn.click());
+// NOTE: #drop is a <label> wrapping #file, so a click already opens the picker
+// natively — do NOT also call fileIn.click() here (that double-fires and the
+// dialog reopens after you pick a file).
 fileIn.addEventListener('change', () => { picked = fileIn.files[0] || null;
-  $('#droptext').textContent = picked ? ('📄 ' + picked.name) : 'Drop a PDF here, or click to choose a file'; });
+  $('#droptext').textContent = picked ? ('📄 ' + picked.name) : 'Drop a PDF or a LaTeX .zip here, or click to choose a file'; });
 ['dragover','dragenter'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('hot'); }));
 ['dragleave','drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('hot'); }));
 drop.addEventListener('drop', ev => { picked = ev.dataTransfer.files[0] || null;
@@ -330,19 +332,38 @@ $('#arxiv').addEventListener('keydown', e => { if (e.key === 'Enter') start(); }
 
 function fmt(s){ const m = Math.floor(s/60), x = Math.floor(s%60); return m + ':' + String(x).padStart(2,'0'); }
 
+// POST /verify via XHR so we get real UPLOAD progress (fetch can't report it).
+function postVerify(fd, onUp){
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/verify');
+    xhr.upload.addEventListener('progress', e => { if (e.lengthComputable) onUp(e.loaded / e.total); });
+    xhr.addEventListener('load', () => {
+      try { resolve(JSON.parse(xhr.responseText)); } catch (e) { reject(new Error('bad response')); }
+    });
+    xhr.addEventListener('error', () => reject(new Error('network error')));
+    xhr.send(fd);
+  });
+}
+
 async function start(){
   const arxiv = $('#arxiv').value.trim();
-  if (!arxiv && !picked){ alert('Paste an arXiv link or choose a PDF.'); return; }
+  if (!arxiv && !picked){ alert('Paste an arXiv/PDF link or choose a file.'); return; }
   $('#go').disabled = true; $('#out').innerHTML = ''; $('#prog').classList.remove('hidden');
-  setBar(4, 'Uploading…');
+  setBar(2, picked ? 'Uploading…' : 'Submitting…');
 
   const fd = new FormData();
   if (picked) fd.append('file', picked); else fd.append('arxiv', arxiv);
   let r;
-  try { r = await (await fetch('/verify', {method:'POST', body:fd})).json(); }
-  catch(e){ return fail('upload failed: ' + e); }
+  try {
+    r = await postVerify(fd, frac => {
+      const pct = Math.round(frac * 100);                       // real upload % for a file
+      if (picked) setBar(pct, 'Uploading ' + (picked.name || 'file') + '… ' + pct + '%');
+    });
+  } catch(e){ return fail('upload failed: ' + e.message); }
   if (r.error) return fail(r.error);
 
+  setBar(6, 'Starting verification…');   // upload done; the long verify phase begins
   t0 = Date.now();
   timer = setInterval(() => {
     const el = (Date.now()-t0)/1000; $('#time').textContent = fmt(el);
