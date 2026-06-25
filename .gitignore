@@ -73,6 +73,18 @@ papers/*/
 !papers/ICML-For_testing-agentic/*
 !papers/Springer-s12559-023-10236-2-agentic/
 !papers/Springer-s12559-023-10236-2-agentic/*
+!papers/CVPR-NitroGen-agentic/
+!papers/CVPR-NitroGen-agentic/*
+!papers/ICCV-GigaTok-agentic/
+!papers/ICCV-GigaTok-agentic/*
+!papers/ECCV-2404.02697v2-agentic/
+!papers/ECCV-2404.02697v2-agentic/*
+!papers/ACL-2025.acl-long.816-agentic/
+!papers/ACL-2025.acl-long.816-agentic/*
+!papers/EMNLP-2025.emnlp-main.329-agentic/
+!papers/EMNLP-2025.emnlp-main.329-agentic/*
+!papers/AAAI-12244-CaiH-AD-agentic/
+!papers/AAAI-12244-CaiH-AD-agentic/*
 
 # Generated reports written to the repo root (e.g. report-<id>.md/json).
 report-*.md
