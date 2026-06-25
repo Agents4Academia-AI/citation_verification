@@ -51,6 +51,10 @@
 | no (fabricated) | 0 |  | does not | 4 |
 | **total refs** | **29** |  | inconclusive | 3 |
 
+*"inconclusive" = relevance could not be determined (an abstention, not a refutation) — by cause:*
+- reference unresolved — no verified paper to judge against: **2**
+- abstract is on-topic, but the specific claim isn't stated in it: **1**
+
 ### Fix before submission
 - `variani2014` — Variani, E. et al., Deep neural networks for small footprint text-dependent speaker verification, 2014: high — (based on abstract only) Evidence confirms the d-vector via a DNN (last hidden layer), but does not support the RNN/LSTM characterization. · source: https://www.semanticscholar.org/paper/576e7eb1131c925179d0dd57f8c25b8adfc2e7bd
 

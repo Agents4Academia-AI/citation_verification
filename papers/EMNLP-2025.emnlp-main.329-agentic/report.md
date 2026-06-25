@@ -59,6 +59,9 @@
 | no (fabricated) | 0 |  | does not | 1 |
 | **total refs** | **32** |  | inconclusive | 3 |
 
+*"inconclusive" = relevance could not be determined (an abstention, not a refutation) — by cause:*
+- reference unresolved — no verified paper to judge against: **3**
+
 ### Fix before submission
 - `openai2025` — OpenAI. 2025, OpenAI o3-mini, 2025: high — (based on full text §ChatGPT-4o on the Japanese Medical Licensing Examination:) Evidence is a clinical pneumonia-management comparison study, not OpenAI's o3 release, and says nothing about o3 emulating System 2 reasoning. · source: https://www.semanticscholar.org/paper/b1a145ef277c4f470c6e4ed3aaf172d5732e30ba
 

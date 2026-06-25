@@ -197,6 +197,12 @@
 | no (fabricated) | 0 |  | does not | 1 |
 | **total refs** | **70** |  | inconclusive | 42 |
 
+*"inconclusive" = relevance could not be determined (an abstention, not a refutation) — by cause:*
+- cited in a table/figure — relevance not assessed by design: **33**
+- reference unresolved — no verified paper to judge against: **1**
+- full text checked — the specific claim still wasn't confirmed: **3**
+- abstract is on-topic, but the specific claim isn't stated in it: **5**
+
 ### Fix before submission
 - `ref-69` — Lei Zhu et al., Scaling the codebook size of vqgan to 100,000 with a utilization rate of 99%, 2024: high — (based on full text §Related Work) Evidence describes VQGAN-LC (a large-codebook quantizer), not ViTok or de-prioritizing VAE scaling for diffusion. · source: http://arxiv.org/abs/2406.11837v1
 

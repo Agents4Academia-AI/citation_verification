@@ -136,6 +136,10 @@
 | no (fabricated) | 0 |  | does not | 0 |
 | **total refs** | **70** |  | inconclusive | 9 |
 
+*"inconclusive" = relevance could not be determined (an abstention, not a refutation) — by cause:*
+- reference unresolved — no verified paper to judge against: **3**
+- abstract is on-topic, but the specific claim isn't stated in it: **6**
+
 ## Run
 
 - Backend: `agentic` · model `bulk=claude-haiku-4-5-20251001;judge=claude-opus-4-8`

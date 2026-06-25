@@ -230,6 +230,33 @@ def _scope_line(records: list[CitationRecord]) -> str:
     return f"**Scope:** {n} (claim, citation) {pairs}{where}."
 
 
+def _inconclusive_breakdown(records: list[CitationRecord]) -> list[tuple[str, int]]:
+    """Bucket the ``inconclusive`` rows by WHY, so the count isn't misread as
+    "bad citations". Inconclusive is an abstention, not a refutation — and most are
+    benign (a citation sitting in a table/figure, which is not assessed for relevance
+    by design). Returns ``[(reason, count), …]`` in a fixed order, omitting empties.
+    """
+    labels = {
+        "table": "cited in a table/figure — relevance not assessed by design",
+        "unresolved": "reference unresolved — no verified paper to judge against",
+        "fulltext": "full text checked — the specific claim still wasn't confirmed",
+        "abstract": "abstract is on-topic, but the specific claim isn't stated in it",
+    }
+    counts: Counter = Counter()
+    for r in records:
+        if _enum_value(r.supports_claim) != SupportsClaim.INCONCLUSIVE.value:
+            continue
+        if r.in_table:
+            counts["table"] += 1
+        elif _enum_value(r.exists) != Exists.YES.value:
+            counts["unresolved"] += 1
+        elif "full text" in (r.notes or ""):
+            counts["fulltext"] += 1
+        else:
+            counts["abstract"] += 1
+    return [(labels[k], counts[k]) for k in ("table", "unresolved", "fulltext", "abstract") if counts[k]]
+
+
 def render_summary(records: list[CitationRecord]) -> str:
     """Render counts + a 'Fix before submission' list of high-severity rows.
 
@@ -270,6 +297,14 @@ def render_summary(records: list[CitationRecord]) -> str:
         f"| no (fabricated) | {ex.get(Exists.NO.value, 0)} |  | does not | {sc.get(SupportsClaim.DOES_NOT.value, 0)} |",
         f"| **total refs** | **{refs}** |  | inconclusive | {sc.get(SupportsClaim.INCONCLUSIVE.value, 0)} |",
     ]
+    breakdown = _inconclusive_breakdown(records)
+    if breakdown:
+        lines += [
+            "",
+            '*"inconclusive" = relevance could not be determined (an abstention, not a '
+            "refutation) — by cause:*",
+            *[f"- {label}: **{cnt}**" for label, cnt in breakdown],
+        ]
     if high:
         lines += ["", "### Fix before submission"]
         for r in high:
