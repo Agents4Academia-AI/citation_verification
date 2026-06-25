@@ -1118,3 +1118,72 @@ def test_merge_baselines_does_not_fuse_across_column_gutter():
         ("Garg, S. 2019. BadNets.", 414.0, 54.8, 540.0, 66.0, 10.0),
     ]
     assert [t[0] for t in _merge_baselines(same)] == ["Gu, T.; Liu, K.; and Garg, S. 2019. BadNets."]
+
+
+def test_split_author_title_single_hyphenated_given_name():
+    """A lone given-name-first author with a hyphenated first name ("Chin-Yew Lin. 2004.
+    ROUGE: …") must split — else the whole reference lands in authors[0] and the citation
+    "(Lin, 2004)" binds to the wrong same-surname paper."""
+    from citation_verifier.extract.pdf import _split_author_title
+
+    a, t = _split_author_title(
+        "Chin-Yew Lin. 2004. ROUGE: A package for automatic evaluation of summaries. In Text Summ."
+    )
+    assert a == ["Chin-Yew Lin"] and t == "ROUGE: A package for automatic evaluation of summaries"
+    a, t = _split_author_title("Wen-tau Yih. 2011. Learning discriminative projections. In ACL.")
+    assert a == ["Wen-tau Yih"] and t == "Learning discriminative projections"
+
+
+def test_bind_author_year_rejects_large_year_gap_same_surname():
+    """A unique same-surname ref binds across small (arXiv-vs-published) year drift but
+    NOT a large gap — "lin2004" (ROUGE) must not bind the bib's only Lin, "Zeming Lin
+    2022" (a different author). Unresolved beats a wrong-paper bind."""
+    from citation_verifier.extract.pdf import _bind_author_year
+    from citation_verifier.schema import CitedAs
+
+    only_zeming = {"a": CitedAs(authors=["Zeming Lin", "Halil Akin"], title="Evolutionary-scale prediction", year=2022)}
+    assert _bind_author_year("lin2004", only_zeming) is None
+    # small drift (arXiv 2018 vs cited 2019) still binds on a unique surname
+    assert _bind_author_year("devlin2019", {"a": CitedAs(authors=["Jacob Devlin"], title="BERT", year=2018)}) is not None
+    # unknown year: no gap to judge -> still binds
+    assert _bind_author_year("chase2023", {"a": CitedAs(authors=["Harrison Chase"], title="LangChain", year=None)}) is not None
+
+
+def test_title_from_cuts_leaked_venue_after_question_mark():
+    """A "?"-ending title followed by " In <Venue>" (no period) must drop the venue but
+    keep the "?"; a "? <Subtitle>" (no "In") must NOT be cut."""
+    from citation_verifier.extract.pdf import _title_from
+
+    assert _title_from(
+        "How attentive are graph attention networks? In International Conference on Learning Representations"
+    ) == "How attentive are graph attention networks?"
+    assert _title_from("Is BERT really robust? A strong baseline for language attack") == (
+        "Is BERT really robust? A strong baseline for language attack"
+    )
+
+
+def test_split_author_title_org_and_etal_year_anchor():
+    """Single-token org authors ("OpenAI. 2024. …", "xAI. 2025. …") and an "et al. YEAR."
+    run split on the year anchor — else the year/venue leaks into a field."""
+    from citation_verifier.extract.pdf import _split_author_title
+
+    assert _split_author_title(
+        "OpenAI. 2024. GPT-4 technical report. arXiv preprint arXiv:2303.08774."
+    ) == (["OpenAI"], "GPT-4 technical report")
+    a, t = _split_author_title("xAI. 2025. Grok 3 Beta — The Age of Reasoning Agents. Technical report.")
+    assert a == ["xAI"] and t == "Grok 3 Beta — The Age of Reasoning Agents"
+    a, t = _split_author_title(
+        "Yubo Wang et al. 2024. MMLU-Pro. In Conference on Neural Information Processing Systems."
+    )
+    assert a == ["Yubo Wang"] and t == "MMLU-Pro"
+    # multi-author GNF + venue leak: authors stay clean, title cut at the venue marker
+    a, t = _split_author_title(
+        "Shaked Brody, Uri Alon, and Eran Yahav. 2022. How attentive are graph attention "
+        "networks? In International Conference on Learning Representations."
+    )
+    assert a == ["Shaked Brody", "Uri Alon", "Eran Yahav"]
+    assert t == "How attentive are graph attention networks?"
+    # a Vancouver / numbered ref (year at the end, no "Author. YEAR. Title") is untouched
+    assert _split_author_title("Radford A, Wu J. Language models are unsupervised. OpenAI Blog. 2019")[0] == [
+        "Radford A", "Wu J",
+    ]
