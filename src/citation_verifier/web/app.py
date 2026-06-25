@@ -247,17 +247,17 @@ _INDEX_HTML = r"""<!doctype html>
 <body>
 <div class="wrap">
   <h1>Citation Verifier</h1>
-  <p class="sub">Upload a paper PDF or paste an arXiv link — checks every reference exists, has correct metadata, and actually supports the claim it's attached to. <span style="opacity:.7">auth: {{AUTH}}</span></p>
+  <p class="sub">Upload a PDF or a LaTeX source .zip, or paste an arXiv link / PDF URL — checks every reference exists, has correct metadata, and actually supports the claim it's attached to. <span style="opacity:.7">auth: {{AUTH}}</span></p>
 
   <div class="card" id="form">
     <div class="row">
-      <input id="arxiv" type="text" placeholder="arXiv link or id  —  e.g. https://arxiv.org/abs/2310.06825 or 2310.06825" />
+      <input id="arxiv" type="text" placeholder="arXiv link/id, or a PDF URL  —  e.g. https://arxiv.org/abs/2310.06825" />
       <button id="go">Verify</button>
     </div>
     <div class="or">— OR —</div>
     <label class="drop" id="drop">
-      <input id="file" type="file" accept="application/pdf,.pdf" class="hidden"/>
-      <span id="droptext">Drop a PDF here, or click to choose a file</span>
+      <input id="file" type="file" accept="application/pdf,.pdf,.zip,.gz,.tgz,.tar" class="hidden"/>
+      <span id="droptext">Drop a PDF or a LaTeX .zip here, or click to choose a file</span>
     </label>
   </div>
 

@@ -3,8 +3,11 @@ ingest.py — normalize an input into an on-disk :class:`PaperSource`.
 
 Accepts any of:
   - a local ``.pdf`` path,
-  - a bare arXiv id (``1706.03762``, ``2310.06825v2``),
-  - an arXiv abs/pdf URL (``https://arxiv.org/abs/2310.06825``).
+  - a local LaTeX/source archive (``.zip`` / ``.tar.gz``) — unzipped into
+    ``work_dir/tex`` so the more-accurate LaTeX extractor reads its ``.bbl``/``.bib``,
+  - a bare arXiv id (``1706.03762``, ``2310.06825v2``) or an arXiv abs/pdf URL,
+  - any other http(s) URL — downloaded, then routed by content (a PDF to the PDF
+    extractor; a LaTeX source archive to the LaTeX extractor).
 
 It computes a stable ``paper_id``, makes the per-paper artifact dir
 ``papers/<paper_id>/``, and downloads the PDF there when the input is an arXiv
@@ -96,6 +99,101 @@ def _probe_tex_available(arxiv_id: str) -> bool:
         return False
 
 
+_ARCHIVE_EXTS = (".zip", ".tar.gz", ".tgz", ".tar")
+
+
+def _is_http_url(value: str) -> bool:
+    return bool(re.match(r"https?://", value.strip(), re.IGNORECASE))
+
+
+def _extract_archive(archive: Path, dest: Path) -> bool:
+    """Extract a ``.zip`` or ``.tar(.gz)`` into ``dest``, skipping path-traversal
+    members (zip-slip guard). Fail-soft: returns ``True`` on success, else ``False``."""
+    import tarfile
+    import zipfile
+
+    dest.mkdir(parents=True, exist_ok=True)
+    droot = dest.resolve()
+    try:
+        if zipfile.is_zipfile(archive):
+            with zipfile.ZipFile(archive) as zf:
+                for name in zf.namelist():
+                    if (droot / name).resolve().is_relative_to(droot):
+                        zf.extract(name, dest)
+            return True
+        if tarfile.is_tarfile(archive):
+            with tarfile.open(archive) as tf:
+                for m in tf.getmembers():
+                    if (droot / m.name).resolve().is_relative_to(droot):
+                        tf.extract(m, dest)  # noqa: S202 — guarded by is_relative_to
+            return True
+    except Exception:  # noqa: BLE001 — corrupt archive / OS error: degrade
+        return False
+    return False
+
+
+def _ingest_arxiv(arxiv_id: str, papers_dir: Path) -> PaperSource:
+    """Download the arXiv PDF + probe LaTeX availability (the original arXiv path)."""
+    work_dir = papers_dir / arxiv_id
+    work_dir.mkdir(parents=True, exist_ok=True)
+    pdf_dest = work_dir / f"{arxiv_id}.pdf"
+    pdf_path: str | None = str(pdf_dest) if pdf_dest.exists() else None
+    if pdf_path is None and _download(f"https://arxiv.org/pdf/{arxiv_id}", pdf_dest):
+        pdf_path = str(pdf_dest)
+    tex_available = _probe_tex_available(arxiv_id)
+    return PaperSource(
+        paper_id=arxiv_id,
+        kind="arxiv_latex" if tex_available else "arxiv_pdf",
+        pdf_path=pdf_path,
+        tex_available=tex_available,
+        arxiv_id=arxiv_id,
+        work_dir=str(work_dir),
+    )
+
+
+def _ingest_archive(archive: Path, papers_dir: Path) -> PaperSource:
+    """A local LaTeX/source archive (.zip/.tar.gz): unzip into ``work_dir/tex`` so
+    the (more accurate) LaTeX extractor reads its ``.bbl``/``.bib`` + ``\\cite`` sites."""
+    paper_id = _safe_paper_id(str(archive))
+    work_dir = papers_dir / paper_id
+    tex_dir = work_dir / "tex"
+    has_tex = _extract_archive(archive, tex_dir) and any(tex_dir.rglob("*.tex"))
+    return PaperSource(
+        paper_id=paper_id,
+        kind="latex" if has_tex else "pdf",
+        tex_dir=str(tex_dir) if has_tex else None,
+        tex_available=has_tex,
+        work_dir=str(work_dir),
+    )
+
+
+def _ingest_url(url: str, papers_dir: Path) -> PaperSource:
+    """A generic http(s) URL: download, then route by content — a PDF goes to the PDF
+    extractor; a LaTeX source archive (zip/tar) goes to the LaTeX extractor."""
+    paper_id = "url-" + hashlib.sha1(url.encode("utf-8")).hexdigest()[:12]
+    work_dir = papers_dir / paper_id
+    work_dir.mkdir(parents=True, exist_ok=True)
+    dest = work_dir / "download"
+    if not _download(url, dest):
+        raise ValueError(f"could not download: {url!r}")
+    with open(dest, "rb") as fh:
+        head = fh.read(5)
+    if head[:4] == b"%PDF":
+        pdf = work_dir / f"{paper_id}.pdf"
+        dest.replace(pdf)
+        return PaperSource(
+            paper_id=paper_id, kind="pdf", pdf_path=str(pdf),
+            tex_available=False, work_dir=str(work_dir),
+        )
+    tex_dir = work_dir / "tex"
+    if _extract_archive(dest, tex_dir) and any(tex_dir.rglob("*.tex")):
+        return PaperSource(
+            paper_id=paper_id, kind="latex", tex_dir=str(tex_dir),
+            tex_available=True, work_dir=str(work_dir),
+        )
+    raise ValueError(f"URL did not return a PDF or a LaTeX source archive: {url!r}")
+
+
 def ingest(source: str, *, settings: Settings | None = None) -> PaperSource:
     """Normalize ``source`` into an on-disk :class:`PaperSource`.
 
@@ -113,45 +211,36 @@ def ingest(source: str, *, settings: Settings | None = None) -> PaperSource:
     """
     settings = settings or load_settings()
     papers_dir = Path(settings.papers_dir)
+    src = source.strip()
+    low = src.lower()
+    candidate = Path(src)
 
-    candidate = Path(source)
-    is_local_pdf = source.lower().endswith(".pdf") and candidate.exists()
-
-    if is_local_pdf:
-        paper_id = _safe_paper_id(source)
+    # 1) Local PDF.
+    if low.endswith(".pdf") and candidate.exists():
+        paper_id = _safe_paper_id(src)
         work_dir = papers_dir / paper_id
         work_dir.mkdir(parents=True, exist_ok=True)
         return PaperSource(
-            paper_id=paper_id,
-            kind="pdf",
-            pdf_path=str(candidate.resolve()),
-            tex_available=False,
-            work_dir=str(work_dir),
+            paper_id=paper_id, kind="pdf", pdf_path=str(candidate.resolve()),
+            tex_available=False, work_dir=str(work_dir),
         )
 
-    arxiv_id = parse_arxiv_id(source)
-    if arxiv_id is None:
-        raise ValueError(
-            f"Could not parse an arXiv id and no local PDF exists at: {source!r}"
-        )
+    # 2) Local LaTeX/source archive (.zip/.tar.gz) -> the more accurate LaTeX path.
+    if candidate.exists() and low.endswith(_ARCHIVE_EXTS):
+        return _ingest_archive(candidate, papers_dir)
 
-    paper_id = arxiv_id
-    work_dir = papers_dir / paper_id
-    work_dir.mkdir(parents=True, exist_ok=True)
+    # 3) arXiv: a bare id, or any arxiv.org URL (checked before the generic-URL
+    #    branch so an arXiv link still gets the LaTeX-preferred path).
+    if not _is_http_url(src) or "arxiv.org" in low:
+        arxiv_id = parse_arxiv_id(src)
+        if arxiv_id is not None:
+            return _ingest_arxiv(arxiv_id, papers_dir)
 
-    pdf_dest = work_dir / f"{arxiv_id}.pdf"
-    pdf_path: str | None = str(pdf_dest) if pdf_dest.exists() else None
-    if pdf_path is None:
-        if _download(f"https://arxiv.org/pdf/{arxiv_id}", pdf_dest):
-            pdf_path = str(pdf_dest)
+    # 4) Any other http(s) URL -> download and route by content (PDF / LaTeX archive).
+    if _is_http_url(src):
+        return _ingest_url(src, papers_dir)
 
-    tex_available = _probe_tex_available(arxiv_id)
-
-    return PaperSource(
-        paper_id=paper_id,
-        kind="arxiv_latex" if tex_available else "arxiv_pdf",
-        pdf_path=pdf_path,
-        tex_available=tex_available,
-        arxiv_id=arxiv_id,
-        work_dir=str(work_dir),
+    raise ValueError(
+        f"Unrecognized input: {source!r} — expected a local PDF or .zip/.tar.gz, "
+        "an arXiv id/URL, or an http(s) PDF URL"
     )

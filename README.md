@@ -27,7 +27,7 @@ places becomes N rows (it can be obligatory in one spot, background in another).
 Each pair flows through a deterministic pipeline:
 
 ```
-arXiv id / URL / PDF
+arXiv id/URL · PDF (local file or URL) · LaTeX source .zip/.tar.gz
   → ingest       → PaperSource (paper_id, work_dir, tex_available?)
   → extract      → LaTeX .bbl/.bib + \cite sites (PDF fallback) → record stubs
   → correctness  → resolve DOI > arXiv-id > fuzzy-title; validate URL → exists, metadata_issues
@@ -75,6 +75,8 @@ make smoke                        # tests + run_eval on the in-repo smoke gold
 uv pip install -e '.[llm]'
 cverify 1706.03762 --out papers/1706.03762        # 'agentic' is the default backend
 cverify https://arxiv.org/abs/2005.14165 --format json
+cverify https://some.site/paper.pdf               # any PDF URL — downloaded, then parsed
+cverify path/to/source.zip                        # a LaTeX source .zip/.tar.gz — uses the (more accurate) LaTeX path
 
 # 4. Check one reference against the grounding sources (no LLM, no key)
 python -m citation_verifier.grounding.paper_lookup "Vaswani et al. Attention Is All You Need 2017"
