@@ -101,6 +101,19 @@ page. It runs the same `run_verification` pipeline and auth as the CLI (Claude
 Code subscription, or `ANTHROPIC_API_KEY`). Host/port: `CVERIFY_WEB_HOST` /
 `CVERIFY_WEB_PORT` (default `127.0.0.1:8000`).
 
+**Custom port.** Set `CVERIFY_WEB_PORT` (and `CVERIFY_WEB_HOST`) in the shell.
+They're read from the process environment, so use an inline prefix or `export` —
+**not** `.env`:
+
+```bash
+CVERIFY_WEB_PORT=9000 cverify-web            # → http://127.0.0.1:9000  (this run only)
+export CVERIFY_WEB_PORT=9000 && cverify-web  # → for the whole shell session
+```
+
+On a **remote server**, the SSH tunnel's *server-side* port must match the one
+`cverify-web` listens on (the local side can be anything):
+`ssh -L 9000:localhost:9000 <user>@<server>`.
+
 **Viewing it from your laptop when the code runs on a remote server.** The server
 listens on `127.0.0.1` only, so reach it over an SSH tunnel rather than exposing
 the port:
