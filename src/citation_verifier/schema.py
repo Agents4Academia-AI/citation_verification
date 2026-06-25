@@ -58,6 +58,12 @@ class SupportsClaim(str, Enum):
     PARTIAL = "partial"
     DOES_NOT = "does_not"
     INCONCLUSIVE = "inconclusive"
+    # A citation sitting in a results table/figure is not a prose claim — it carries
+    # NO relevance verdict (existence/metadata are still checked). Distinct from
+    # ``inconclusive`` (an attempted-but-undetermined judgement): a skipped row is
+    # excluded from the supports/partial/does_not/inconclusive distribution and listed
+    # in a separate report appendix. Severity derives to ``ok``.
+    SKIPPED = "skipped"
 
 
 class Priority(str, Enum):

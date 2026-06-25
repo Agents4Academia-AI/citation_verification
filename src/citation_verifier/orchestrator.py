@@ -64,6 +64,13 @@ def finalize_severity(records: list[CitationRecord]) -> None:
         records: The records to finalize (mutated in place).
     """
     for rec in records:
+        # A table/figure citation site is not a prose claim — it carries no relevance
+        # verdict. Normalize it to SKIPPED (not the misleading "inconclusive") so it is
+        # excluded from the supports/partial/does_not/inconclusive distribution. Done
+        # here so it covers every backend (the agentic one filters in_table out of the
+        # judge, leaving the schema default otherwise).
+        if rec.in_table:
+            rec.supports_claim = SupportsClaim.SKIPPED
         sev = rec.severity
         sev_val = getattr(sev, "value", sev)
         tier = getattr(rec.model_tier, "value", rec.model_tier)

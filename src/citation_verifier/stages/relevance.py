@@ -164,10 +164,11 @@ def _fill_relevance(
     # Always set a priority (coarse heuristic; a judge may override below).
     record.priority = _infer_priority(record.claim.text)
 
-    # A table citation is a table cell/caption, not a prose claim — do not judge
-    # its relevance; leave inconclusive (the extraction note explains why).
+    # A table/figure citation is a table cell/caption, not a prose claim — do not judge
+    # its relevance. SKIPPED (not "inconclusive"): no verdict, excluded from the
+    # distribution and listed in a separate report appendix.
     if record.in_table:
-        record.supports_claim = SupportsClaim.INCONCLUSIVE
+        record.supports_claim = SupportsClaim.SKIPPED
         return record
 
     abstract = _retrieve_abstract(record, resolver)
@@ -226,7 +227,7 @@ def fill_relevance_batch(
     for rec in records:
         if rec.in_table:
             rec.priority = _infer_priority(rec.claim.text)
-            rec.supports_claim = SupportsClaim.INCONCLUSIVE
+            rec.supports_claim = SupportsClaim.SKIPPED  # table/figure: no verdict, see appendix
     if not judged:
         return records
 

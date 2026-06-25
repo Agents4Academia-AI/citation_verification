@@ -90,6 +90,12 @@ For each reference decide **Exists?** = `yes` / `no` / `unresolved`, then list
 - `does not` — the paper does not support, or even contradicts, the claim.
   Serious. *(Machine token: `does_not`.)*
 - `inconclusive` — you could not retrieve enough of the cited paper to judge.
+- `skipped` — the citation sits in a results **table or figure**, not a prose
+  claim, so it carries **no** relevance verdict (existence/metadata are still
+  checked). Distinct from `inconclusive` (an attempted-but-undetermined judgement):
+  a `skipped` row is **excluded from the supports/partial/does_not/inconclusive
+  distribution** and listed in a separate report appendix. Set from `in_table`, not
+  judged by the model.
 
 ### Constructing the relevance justification (STEP 2)
 
@@ -153,9 +159,11 @@ high-severity items in priority order.
 | Column            | Machine tokens (schema)                         | Rendered strings (table)                    |
 |-------------------|-------------------------------------------------|---------------------------------------------|
 | Exists?           | `yes` / `no` / `unresolved`                     | yes / no / unresolved                       |
-| Supports claim?   | `supports` / `partial` / `does_not` / `inconclusive` | supports / partial / **does not** / inconclusive |
+| Supports claim?   | `supports` / `partial` / `does_not` / `inconclusive` / `skipped` | supports / partial / **does not** / inconclusive / skipped |
 
 Only `does_not` differs between token and rendered string (`does_not` -> `does not`).
+`skipped` (table/figure citation sites — no relevance verdict) renders only in the
+report's "Skipped" appendix, never in the main table or the verdict distribution.
 
 `priority` (`obligatory` / `helpful`) and `severity` (`high` / `medium` / `low` /
 `ok`) remain schema enums but are no longer per-row columns: severity is shown in

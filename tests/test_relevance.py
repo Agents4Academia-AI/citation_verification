@@ -153,7 +153,7 @@ def _table_stub() -> CitationRecord:
 
 
 def test_fill_relevance_skips_table_citations():
-    """A table citation stays inconclusive and never reaches the judge."""
+    """A table/figure citation is SKIPPED (no verdict) and never reaches the judge."""
     called = []
 
     def judge(**kwargs):
@@ -162,7 +162,7 @@ def test_fill_relevance_skips_table_citations():
 
     out = fill_relevance(_table_stub(), resolver=_NullResolver(), judge=judge)
     assert not called
-    assert SupportsClaim(out.supports_claim) is SupportsClaim.INCONCLUSIVE
+    assert SupportsClaim(out.supports_claim) is SupportsClaim.SKIPPED
 
 
 def test_fill_relevance_batch_excludes_table_citations_from_the_judge():
@@ -173,7 +173,7 @@ def test_fill_relevance_batch_excludes_table_citations_from_the_judge():
         return [RelevanceVerdict(supports_claim="supports", priority="obligatory")]
 
     out = fill_relevance_batch([table, prose], resolver=_NullResolver(), judge_batch=judge_batch)
-    assert SupportsClaim(out[0].supports_claim) is SupportsClaim.INCONCLUSIVE  # table untouched
+    assert SupportsClaim(out[0].supports_claim) is SupportsClaim.SKIPPED  # table skipped, no verdict
     assert SupportsClaim(out[1].supports_claim) is SupportsClaim.SUPPORTS
 
 
