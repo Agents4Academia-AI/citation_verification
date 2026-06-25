@@ -1143,7 +1143,7 @@ class PdfExtractor:
                 # The hyperlink path skipped table detection (only the [n] path ran it),
                 # so table-row citations were judged as prose. Apply the same gate here.
                 in_table = bool(_TABLE_CAPTION_RE.match(claim_text)) or _looks_like_table_dump(claim_text)
-                notes = None if matched else "citation hyperlink not matched to a bibliography entry"
+                notes = None if matched else "citation not matched to a bibliography entry"
                 if in_table:
                     notes = f"{notes}; {TABLE_NOTE}" if notes else TABLE_NOTE
                 records.append(

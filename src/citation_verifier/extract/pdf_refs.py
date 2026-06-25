@@ -181,9 +181,9 @@ def _layout_lines(pdf_path) -> list[_Line]:
                         size = max((s.get("size", 0) for s in ln["spans"]), default=0.0)
                         raw.append((text, x0, y0, x1, y1, size))
                     for text, x0, y0, _x1, _y1, size in _merge_baselines(raw):
-                        if y0 < 55:  # running header
+                        if y0 < 48:  # running header (venue banner sits ~y36; body starts ~y52+)
                             continue
-                        if re.fullmatch(r"\d+", text) and y0 > h - 60:  # page-number footer
+                        if re.fullmatch(r"\d+", text) and y0 > h - 76:  # page-number footer
                             continue
                         out.append(_Line(pi, text, x0, y0, size, 0 if x0 < w * 0.5 else 1))
         out.sort(key=lambda z: (z.page, z.col, round(z.y0), z.x0))
@@ -192,8 +192,16 @@ def _layout_lines(pdf_path) -> list[_Line]:
         return []
 
 
-def _merge_baselines(raw, y_tol: float = 1.5):
-    """Merge line fragments that share a baseline (PyMuPDF splits long lines/URLs)."""
+def _merge_baselines(raw, y_tol: float = 1.5, gap_tol: float = 24.0):
+    """Merge line fragments that share a baseline (PyMuPDF splits long lines/URLs).
+
+    Fragments separated by a wide horizontal gap (a column gutter) are NOT merged:
+    on a two-column page a left-column line and a right-column line can share a
+    baseline, and merging them fuses a heading into a reference
+    ("Acknowledgments Gu, T.; …"), which then trips the running-header filter and
+    drops the entry. Splitting each baseline group at gutter-width gaps keeps the
+    long-line/URL re-joining (small gaps) while keeping columns apart.
+    """
     raw = sorted(raw, key=lambda z: (z[2], z[1]))
     groups: list[list] = []
     for r in raw:
@@ -203,19 +211,28 @@ def _merge_baselines(raw, y_tol: float = 1.5):
                 break
         else:
             groups.append([r])
+
+    def _combine(run: list) -> tuple:
+        return (
+            _clean(" ".join(i[0] for i in run)),
+            min(i[1] for i in run),
+            min(i[2] for i in run),
+            max(i[3] for i in run),
+            max(i[4] for i in run),
+            max(i[5] for i in run),
+        )
+
     merged = []
     for g in groups:
-        g = sorted(g, key=lambda z: z[1])
-        merged.append(
-            (
-                _clean(" ".join(i[0] for i in g)),
-                min(i[1] for i in g),
-                min(i[2] for i in g),
-                max(i[3] for i in g),
-                max(i[4] for i in g),
-                max(i[5] for i in g),
-            )
-        )
+        g = sorted(g, key=lambda z: z[1])  # left to right
+        run = [g[0]]
+        for prev, cur in zip(g, g[1:], strict=False):
+            if cur[1] - prev[3] > gap_tol:  # a column gutter — don't merge across it
+                merged.append(_combine(run))
+                run = [cur]
+            else:
+                run.append(cur)
+        merged.append(_combine(run))
     return merged
 
 
