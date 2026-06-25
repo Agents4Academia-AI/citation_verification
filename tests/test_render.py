@@ -141,3 +141,42 @@ def test_explanation_cell_has_note_and_link_but_no_severity_word(render) -> None
     explanation = row.split("|")[-2].strip()
     assert explanation == "source: https://doi.org/10.1/x"  # the note + link only
     assert "low" not in explanation and "ok" not in explanation  # no severity word
+
+
+def test_summary_breaks_down_inconclusive_by_cause() -> None:
+    """A flat 'inconclusive N' is misleading — the summary must split it by cause so a
+    benign table/figure citation isn't read as a bad one."""
+    from citation_verifier.render import render_summary
+    from citation_verifier.schema import (
+        CitationRecord,
+        CitedAs,
+        Claim,
+        Exists,
+        SupportsClaim,
+    )
+
+    def rec(key, exists, support, *, in_table=False, notes=None):
+        return CitationRecord(
+            paper_id="p", claim_id="c-" + key, cite_key=key,
+            claim=Claim(claim_id="c-" + key, text="A claim."),
+            cited_as=CitedAs(raw="ref", title="T", year=2020),
+            exists=exists, supports_claim=support, in_table=in_table, notes=notes,
+        )
+
+    records = [
+        rec("t1", Exists.YES, SupportsClaim.INCONCLUSIVE, in_table=True),
+        rec("u1", Exists.UNRESOLVED, SupportsClaim.INCONCLUSIVE),
+        rec("f1", Exists.YES, SupportsClaim.INCONCLUSIVE, notes="(based on full text §X) ..."),
+        rec("a1", Exists.YES, SupportsClaim.INCONCLUSIVE, notes="(based on abstract only) ..."),
+        rec("s1", Exists.YES, SupportsClaim.SUPPORTS),
+    ]
+    out = render_summary(records)
+    assert "an abstention, not a refutation" in out  # the de-misleading gloss
+    assert "table/figure" in out  # the dominant benign cause is surfaced
+    assert "reference unresolved" in out
+    assert "full text checked" in out
+    assert "abstract is on-topic" in out
+
+    # No inconclusive rows -> no breakdown block at all.
+    plain = render_summary([rec("s1", Exists.YES, SupportsClaim.SUPPORTS)])
+    assert "an abstention" not in plain
