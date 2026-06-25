@@ -61,22 +61,18 @@ papers/*
 !papers/.gitkeep
 papers/*.pdf
 papers/*/
-# Exception: one full agentic run kept as a tracked demo example (report.md +
-# report.json + run.json). The rest of papers/ stays ignored. Re-include the
-# dir before its files — papers/*/ excludes the parent, and git cannot re-add a
-# file whose parent dir is still excluded.
-!papers/s12559-023-10236-2-agentic/
-!papers/s12559-023-10236-2-agentic/*
-# Second tracked demo: an author-year PDF (citation sites recovered via hyperlinks).
-!papers/For_testing-agentic/
-!papers/For_testing-agentic/*
-# Two more tracked example reports, verified end-to-end on the latest pipeline
-# (PDF parsing fixes + opus-4-8 relevance): a hyperlinked author-year paper and a
-# numbered-citation paper.
-!papers/13781_LLMs_Get_Lost_In_Multi_T-agentic/
-!papers/13781_LLMs_Get_Lost_In_Multi_T-agentic/*
-!papers/6514_Does_Reinforcement_Learni-agentic/
-!papers/6514_Does_Reinforcement_Learni-agentic/*
+# Tracked example reports, each prefixed with the paper's venue/template so we can see
+# which templates we've verified end-to-end (the rest of papers/ stays ignored).
+# Re-include each dir before its files — papers/*/ excludes the parent, and git cannot
+# re-add a file whose parent dir is still excluded.
+!papers/ICLR-13781_LLMs_Get_Lost_In_Multi_T-agentic/
+!papers/ICLR-13781_LLMs_Get_Lost_In_Multi_T-agentic/*
+!papers/NeurIPS-6514_Does_Reinforcement_Learni-agentic/
+!papers/NeurIPS-6514_Does_Reinforcement_Learni-agentic/*
+!papers/ICML-For_testing-agentic/
+!papers/ICML-For_testing-agentic/*
+!papers/Springer-s12559-023-10236-2-agentic/
+!papers/Springer-s12559-023-10236-2-agentic/*
 
 # Generated reports written to the repo root (e.g. report-<id>.md/json).
 report-*.md

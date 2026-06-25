@@ -43,7 +43,7 @@ def client(monkeypatch):
 def test_page_serves(client):
     r = client.get("/")
     assert r.status_code == 200
-    assert "Citation Verifier" in r.text
+    assert "RefWarden" in r.text  # product display name
     assert "/events/" in r.text  # the SSE wiring is in the page
 
 
