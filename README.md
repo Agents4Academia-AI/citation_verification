@@ -82,12 +82,44 @@ python -m citation_verifier.grounding.paper_lookup "Vaswani et al. Attention Is 
 # 5. Discord bot (slash command /check <arxiv>) — see docs/DISCORD_BOT.md
 uv pip install -e '.[bot]'
 cverify-bot                       # reads DISCORD_BOT_TOKEN from .env
+
+# 6. Web UI (upload a PDF or paste an arXiv link; progress bar + report in the browser)
+uv pip install -e '.[web]'
+cverify-web                       # serves http://127.0.0.1:8000  (see "Web UI" below)
 ```
 
 The **keyless floor** — schema + render + eval + Crossref/arXiv grounding +
 open-access full-text — runs with no API keys, no `claude-agent-sdk`, and degrades
 softly offline. Keyed sources and the LLM backends turn on only when their keys are
 present.
+
+### Web UI (`cverify-web`)
+
+A browser front-end: drop a PDF or paste an arXiv link, watch the progress bar
+(stage + live citation count + elapsed time), and read the rendered report in the
+page. It runs the same `run_verification` pipeline and auth as the CLI (Claude
+Code subscription, or `ANTHROPIC_API_KEY`). Host/port: `CVERIFY_WEB_HOST` /
+`CVERIFY_WEB_PORT` (default `127.0.0.1:8000`).
+
+**Viewing it from your laptop when the code runs on a remote server.** The server
+listens on `127.0.0.1` only, so reach it over an SSH tunnel rather than exposing
+the port:
+
+```bash
+# on the server
+cverify-web                                   # listens on 127.0.0.1:8000
+
+# on your laptop (a second terminal): forward local 8000 -> the server's 8000
+ssh -L 8000:localhost:8000 <user>@<server>
+# then open http://localhost:8000 in your local browser
+```
+
+- Already connected over SSH? Run the `ssh -L ...` in a second local terminal, or
+  add `LocalForward 8000 localhost:8000` to your `~/.ssh/config` host entry.
+- VS Code / Cursor Remote-SSH forwards the port automatically (or use the Ports
+  panel -> forward `8000`).
+- Direct access (only if you control the firewall): `CVERIFY_WEB_HOST=0.0.0.0
+  cverify-web`, then `http://<server-ip>:8000` — less secure; prefer the tunnel.
 
 ### Environment variables (keys & contacts)
 
