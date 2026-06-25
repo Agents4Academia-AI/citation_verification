@@ -22,8 +22,14 @@ from citation_verifier.web.app import create_app  # noqa: E402
 
 def _fake_result():
     rec = SimpleNamespace(cite_key="ref-1", exists="yes", supports_claim="supports", severity="ok")
+    # a pydantic-like .model_dump so the JSON download path is exercised
+    rec.model_dump = lambda mode="json": {
+        "cite_key": "ref-1", "exists": "yes", "supports_claim": "supports", "severity": "ok",
+    }
     usage = SimpleNamespace(cost_usd=0.12, wall_seconds=3.4)
-    return SimpleNamespace(records=[rec], usage=usage, errors=[])
+    return SimpleNamespace(
+        paper_id="2310.06825", backend="agentic", records=[rec], usage=usage, errors=[]
+    )
 
 
 @pytest.fixture
@@ -76,3 +82,22 @@ def test_pdf_upload_flow(client):
 
 def test_unknown_job_is_404(client):
     assert client.get("/events/nope").status_code == 404
+
+
+def test_download_md_and_json_after_report(client):
+    jid = client.post("/verify", data={"arxiv": "https://arxiv.org/abs/2310.06825"}).json()["job_id"]
+    assert client.get(f"/events/{jid}").status_code == 200  # drain the SSE stream; worker finishes
+
+    md = client.get(f"/download/{jid}?fmt=md")
+    assert md.status_code == 200
+    assert 'attachment; filename="2310.06825-report.md"' in md.headers["content-disposition"]
+    assert "Report" in md.text  # the rendered markdown
+
+    js = client.get(f"/download/{jid}?fmt=json")
+    assert js.status_code == 200
+    assert js.headers["content-type"].startswith("application/json")
+    assert '"records"' in js.text and '"ref-1"' in js.text
+
+
+def test_download_unknown_job_is_404(client):
+    assert client.get("/download/nope").status_code == 404

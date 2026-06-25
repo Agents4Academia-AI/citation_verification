@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import json
 import queue
+import re
 import threading
 import time
 import uuid
@@ -23,7 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, File, Form, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 
 from ..config import apply_auth, load_settings
 from ..ingest import parse_arxiv_id
@@ -38,9 +39,35 @@ class _Job:
     started: float = field(default_factory=time.monotonic)
     q: queue.Queue[dict] = field(default_factory=queue.Queue)
     done: bool = False
+    report_md: str | None = None    # rendered Markdown report, kept for download
+    report_json: str | None = None  # canonical report.json text, kept for download
 
 
 _JOBS: dict[str, _Job] = {}
+
+
+def _records_json(result: Any) -> str | None:
+    """Serialize the canonical ``report.json`` (matches ``orchestrator._write_report``).
+
+    Best-effort: returns ``None`` if the records can't be dumped (e.g. a test stub
+    without ``model_dump``), so the Markdown download still works.
+    """
+    try:
+        payload = {
+            "paper_id": getattr(result, "paper_id", None),
+            "backend": getattr(result, "backend", None),
+            "records": [r.model_dump(mode="json") for r in result.records],
+            "errors": list(getattr(result, "errors", []) or []),
+        }
+        return json.dumps(payload, ensure_ascii=False, indent=2)
+    except Exception:  # noqa: BLE001 — download is best-effort; Markdown still available
+        return None
+
+
+def _safe_name(label: str) -> str:
+    """A filesystem-safe stem for the download filename (from the job label)."""
+    stem = re.sub(r"[^A-Za-z0-9._-]+", "-", label or "report").strip("-._")
+    return stem or "report"
 
 
 # ── rendering helpers ────────────────────────────────────────────────────────
@@ -89,14 +116,19 @@ def _run_job(job: _Job, source: str, settings: Any) -> None:
             resume=False,
             progress_cb=lambda ev: job.q.put(ev),
         )
+        md = render_report(result)
+        # Keep the report artifacts so the page can offer file downloads.
+        job.report_md = md
+        job.report_json = _records_json(result)
         job.q.put(
             {
                 "stage": "report",
-                "html": _md_to_html(render_report(result)),
+                "html": _md_to_html(md),
                 "summary": _summary(result.records),
                 "cost_usd": round(result.usage.cost_usd, 4),
                 "wall_s": round(result.usage.wall_seconds, 1),
                 "errors": result.errors,
+                "downloads": {"md": True, "json": job.report_json is not None},
             }
         )
     except Exception as exc:  # noqa: BLE001 — surface any failure to the page
@@ -145,6 +177,25 @@ def create_app(settings: Any | None = None):
         _JOBS[job.job_id] = job
         threading.Thread(target=_run_job, args=(job, source, settings), daemon=True).start()
         return {"job_id": job.job_id, "label": label}
+
+    @app.get("/download/{job_id}")
+    def download(job_id: str, fmt: str = "md"):
+        """Download a finished job's report as a file (``fmt=md`` | ``fmt=json``)."""
+        job = _JOBS.get(job_id)
+        if job is None or job.report_md is None:
+            return JSONResponse({"error": "no result available for this job"}, status_code=404)
+        if fmt.lower() == "json":
+            if job.report_json is None:
+                return JSONResponse({"error": "JSON report unavailable"}, status_code=404)
+            body, media, ext = job.report_json, "application/json; charset=utf-8", "json"
+        else:
+            body, media, ext = job.report_md, "text/markdown; charset=utf-8", "md"
+        filename = f"{_safe_name(job.label)}-report.{ext}"
+        return Response(
+            content=body,
+            media_type=media,
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
 
     @app.get("/events/{job_id}")
     async def events(job_id: str):
@@ -250,6 +301,12 @@ _INDEX_HTML = r"""<!doctype html>
   .chip { background:var(--soft); border:1px solid var(--line); border-radius:99px;
           padding:6px 13px; font-size:13px; color:var(--mut); }
   .chip b { color:var(--fg); font-weight:600; }
+  .dl { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+  .dlbtn { display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 14px;
+           border:1px solid var(--line2); background:var(--card); color:var(--fg);
+           border-radius:8px; font-size:13.5px; font-weight:600; text-decoration:none;
+           cursor:pointer; transition:.15s; }
+  .dlbtn:hover { border-color:var(--acc); color:var(--acc); }
   .report { background:var(--card); border:1px solid var(--line); border-radius:14px;
             padding:4px 24px 22px; overflow-x:auto; box-shadow:0 1px 3px rgba(16,24,40,.05); }
   .report table { border-collapse:collapse; width:100%; font-size:13px; margin:12px 0; }
@@ -303,7 +360,7 @@ _INDEX_HTML = r"""<!doctype html>
 
 <script>
 const $ = s => document.querySelector(s);
-let es, t0, timer, etaS = 0, picked = null;
+let es, t0, timer, etaS = 0, picked = null, curJob = null;
 
 // Theme toggle (top-right): label shows the mode you'll switch TO; choice persists.
 const root = document.documentElement;
@@ -370,6 +427,7 @@ async function start(){
     if (etaS) setWidth(Math.min(92, 12 + 80*el/etaS));   // soft moving bar during verify
   }, 250);
 
+  curJob = r.job_id;
   es = new EventSource('/events/' + r.job_id);
   es.onmessage = ev => onEvent(JSON.parse(ev.data));
   es.addEventListener('end', () => { es.close(); clearInterval(timer); $('#go').disabled = false; });
@@ -403,7 +461,10 @@ function showReport(ev){
   chips += chip('cost', '$'+(ev.cost_usd??0));
   chips += chip('time', fmt(ev.wall_s||0));
   let errs = (ev.errors&&ev.errors.length) ? `<p class="err">⚠ ${ev.errors.length} note(s): ${ev.errors.join(' · ')}</p>` : '';
-  $('#out').innerHTML = `<div class="chips">${chips}</div>${errs}<div class="report">${ev.html}</div>`;
+  const avail = ev.downloads ? Object.keys(ev.downloads).filter(k => ev.downloads[k]) : ['md','json'];
+  const dlbar = curJob ? `<div class="dl">` + avail.map(f =>
+    `<a class="dlbtn" href="/download/${curJob}?fmt=${f}" download>⬇ Download ${f.toUpperCase()}</a>`).join('') + `</div>` : '';
+  $('#out').innerHTML = `<div class="chips">${chips}</div>${dlbar}${errs}<div class="report">${ev.html}</div>`;
 }
 
 function fail(msg){ clearInterval(timer); $('#go').disabled = false;

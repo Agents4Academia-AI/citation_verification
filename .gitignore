@@ -85,6 +85,10 @@ papers/*/
 !papers/EMNLP-2025.emnlp-main.329-agentic/*
 !papers/AAAI-12244-CaiH-AD-agentic/
 !papers/AAAI-12244-CaiH-AD-agentic/*
+!papers/UAI-yu21a-agentic/
+!papers/UAI-yu21a-agentic/*
+!papers/NeurIPS-main_leaplab-agentic/
+!papers/NeurIPS-main_leaplab-agentic/*
 
 # Generated reports written to the repo root (e.g. report-<id>.md/json).
 report-*.md
