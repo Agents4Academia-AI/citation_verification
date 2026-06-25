@@ -57,6 +57,19 @@ def test_author_issue_clears_abbreviations_but_keeps_real_mismatch():
     assert _author_issue(["Smith J", "Jones A"], ["Adams B", "Clark C"]) is not None
 
 
+def test_author_issue_suppresses_org_vs_individual():
+    # An organization / "* Team" author against a listed individual (or vice versa)
+    # is a benign attribution discrepancy, not a metadata error — no first-author
+    # mismatch warning. (Suppresses the warning only; the resolver gate is untouched.)
+    assert _author_issue(["Tom Brown", "Benjamin Mann"], ["OpenAI"]) is None
+    assert _author_issue(["OpenAI"], ["Tom Brown"]) is None
+    assert _author_issue(["DeepSeek-AI"], ["Daya Guo"]) is None
+    assert _author_issue(["An Yang", "Baosong Yang"], ["Qwen Team"]) is None
+    assert _author_issue(["Gemini Team"], ["Rohan Anil"]) is None
+    # but two genuinely different PEOPLE (no org on either side) still flag
+    assert _author_issue(["George Kingsley Zipf"], ["Y. Chao"]) is not None
+
+
 def test_name_key_total_on_all_initials_fragment():
     # A despaced reference can orphan an all-initials fragment ("S. R." from
     # "Bowman, S. R."); _name_key must stay total (no surname to key on), never
@@ -99,30 +112,54 @@ def _resolved(authors, title, year, method):
     )
 
 
-def test_fuzzy_match_is_weak_rules():
+def test_reject_bad_fuzzy_match_rules():
     from citation_verifier.schema import MatchMethod
-    from citation_verifier.stages.correctness import _fuzzy_match_is_weak
+    from citation_verifier.stages.correctness import _reject_bad_fuzzy_match
+
+    def reject(rec, cand):
+        return _reject_bad_fuzzy_match(rec.cited_as, cand)
 
     cited = _rec(["Naidoo V"], "AI-powered chatbots for healthcare: A systematic review", 2021)
-    # author wrong + year wrong + generic title -> weak
+    # author wrong + year wrong + generic title -> reject
     both = _resolved(["Małgorzata Pieścik-Lech"], "Systematic Review", 2017, MatchMethod.FUZZY_TITLE)
-    assert _fuzzy_match_is_weak(cited, both) is True
+    assert reject(cited, both)
     # author wrong, year OK, but the resolved title drops the distinctive content
-    # (the real Naidoo -> "Systematic review" by Mubarak collision) -> weak
+    # (the real Naidoo -> "Systematic review" by Mubarak collision) -> reject
     generic = _resolved(["Mubarak A"], "Systematic review", 2021, MatchMethod.FUZZY_TITLE)
-    assert _fuzzy_match_is_weak(cited, generic) is True
+    assert reject(cited, generic)
     # author wrong but the title FULLY covers the cited title -> trust it (likely a
-    # cited-author slip on the right paper), stays non-weak
+    # cited-author slip on the right paper)
     sametitle = _resolved(
         ["Mubarak A"], "AI-powered chatbots for healthcare: A systematic review", 2021,
         MatchMethod.FUZZY_TITLE,
     )
-    assert _fuzzy_match_is_weak(cited, sametitle) is False
-    # author matches (abbreviated form) -> always trusted, never weak
+    assert reject(cited, sametitle) is None
+    # author matches (abbreviated form), candidate title contained -> trusted
     au_ok = _resolved(["V Naidoo"], "Systematic Review", 2017, MatchMethod.FUZZY_TITLE)
-    assert _fuzzy_match_is_weak(cited, au_ok) is False
-    # no first author to anchor on -> cannot judge, not weak
-    assert _fuzzy_match_is_weak(_rec([], "t", 2021), both) is False
+    assert reject(cited, au_ok) is None
+    # no cited first author to anchor on (candidate has authors) -> not rejected here
+    assert reject(_rec([], "t", 2021), both) is None
+
+    # Real false-positives from the 6514 / 13781 reports must now reject:
+    # Sutton & Barto textbook (1998) mis-resolved to a 1992 chapter — the FIRST AUTHOR
+    # MATCHES, but the 6-year gap + diverging titles ("volume" vs "challenge") mark a
+    # different work. (The old author-confirmed short-circuit let this through.)
+    sutton = _rec(["Richard S Sutton", "Andrew G Barto"],
+                  "Reinforcement learning: An introduction, volume 1", 1998)
+    chapter = _resolved(["Richard S. Sutton"],
+                        "Introduction: The Challenge of Reinforcement Learning", 1992,
+                        MatchMethod.FUZZY_TITLE)
+    assert reject(sutton, chapter)
+    # LangChain GitHub ref resolved to a Crossref record whose "title" is a bare date,
+    # with no authors — reject on either signal.
+    langchain = _rec(["Harrison Chase"], "Langchain, October 2022", 2022)
+    date_only = _resolved([], "October 2022", 2022, MatchMethod.FUZZY_TITLE)
+    assert reject(langchain, date_only)
+    # GUARD: a legit preprint-vs-published gap with the SAME title must NOT reject.
+    legit = _rec(["Jane Doe"], "Scaling laws for neural language models", 2020)
+    published = _resolved(["Jane Doe"], "Scaling laws for neural language models", 2023,
+                          MatchMethod.FUZZY_TITLE)
+    assert reject(legit, published) is None
 
 
 def test_fill_correctness_abstains_on_weak_fuzzy_match():
