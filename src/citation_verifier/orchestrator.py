@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 from .config import Settings, load_settings
@@ -259,6 +260,7 @@ def run_verification(
     resume: bool = True,
     out_dir: str | Path | None = None,
     max_citations: int = 0,
+    progress_cb: Callable[[dict], None] | None = None,
 ) -> VerificationResult:
     """Verify the citations in a paper draft and return a :class:`VerificationResult`.
 
@@ -281,10 +283,20 @@ def run_verification(
     settings = settings or load_settings()
     started = time.monotonic()
 
+    def _progress(stage: str, **extra: object) -> None:
+        # Best-effort progress for front-ends (web UI / bot); never breaks a run.
+        if progress_cb is None:
+            return
+        try:
+            progress_cb({"stage": stage, "elapsed_s": round(time.monotonic() - started, 1), **extra})
+        except Exception:  # noqa: BLE001 — progress is advisory only
+            pass
+
     # 1) Ingest. A genuine bad-input error is allowed to raise; everything past
     #    here is degrade-not-crash.
     from . import ingest as _ingest
 
+    _progress("ingesting", source=source)
     paper_source = _ingest.ingest(source, settings=settings)
     work_dir = Path(out_dir) if out_dir is not None else Path(
         paper_source.work_dir or (Path(settings.papers_dir) / paper_source.paper_id)
@@ -317,6 +329,7 @@ def run_verification(
             return result
 
     # 2) Extract record stubs.
+    _progress("extracting")
     stubs: list[CitationRecord] = []
     extractor = _get_extractor(paper_source)
     if extractor is None:
@@ -340,6 +353,7 @@ def run_verification(
         stubs = stubs[:max_citations]
 
     # 3) Run the chosen backend over the stubs.
+    _progress("verifying", count=len(stubs))
     backend_impl = _get_backend(backend, settings)
     if backend_impl is None:
         result.errors.append(
@@ -372,4 +386,10 @@ def run_verification(
     result.usage.wall_seconds = time.monotonic() - started
     _write_report(work_dir, result)
     _write_run(work_dir, result)
+    _progress(
+        "done",
+        paper_id=result.paper_id,
+        records=len(result.records),
+        cost_usd=round(result.usage.cost_usd, 4),
+    )
     return result
