@@ -10,7 +10,8 @@ The single public entry point (exported lazily as
                  over the stubs -> filled records + per-run :class:`RunUsage`.
   4. finalize  : where the backend did not set a model-judged severity, derive it
                  deterministically via :func:`schema.derive_severity`.
-  5. persist   : write ``papers/<id>/report.json`` and ``papers/<id>/run.json``.
+  5. persist   : write ``papers/<id>/report.json``, ``run.json`` and the rendered
+                 human-readable ``report.md``.
 
 Design rules honored from docs/decisions-phy.md:
   - degrade-not-crash: a per-pair failure becomes one ``unresolved/inconclusive`` row with
@@ -218,6 +219,19 @@ def _write_run(work_dir: Path, result: VerificationResult) -> None:
     )
 
 
+def _write_md(work_dir: Path, result: VerificationResult) -> None:
+    """Persist the human-readable ``report.md`` (the SKILL.md table + summary).
+
+    Written alongside ``report.json`` so every run — CLI *and* web — leaves a
+    rendered report on disk, not just the machine record. ``render`` is imported
+    lazily (presentation layer; keeps the core import light, like the CLI/web do).
+    """
+    from .render import render_report
+
+    work_dir.mkdir(parents=True, exist_ok=True)
+    (work_dir / "report.md").write_text(render_report(result) + "\n", encoding="utf-8")
+
+
 def _get_extractor(source: PaperSource):
     """Lazily fetch the extractor for a source (sibling 'extract' package).
 
@@ -326,6 +340,7 @@ def run_verification(
             result.usage.wall_seconds = time.monotonic() - started
             _write_report(work_dir, result)
             _write_run(work_dir, result)
+            _write_md(work_dir, result)
             return result
 
     # 2) Extract record stubs.
@@ -386,6 +401,7 @@ def run_verification(
     result.usage.wall_seconds = time.monotonic() - started
     _write_report(work_dir, result)
     _write_run(work_dir, result)
+    _write_md(work_dir, result)
     _progress(
         "done",
         paper_id=result.paper_id,
