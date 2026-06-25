@@ -121,6 +121,19 @@ ssh -L 8000:localhost:8000 <user>@<server>
 - Direct access (only if you control the firewall): `CVERIFY_WEB_HOST=0.0.0.0
   cverify-web`, then `http://<server-ip>:8000` — less secure; prefer the tunnel.
 
+### Where results are stored
+
+Each run writes its artifacts to `papers/<paper_id>/` (`report.json`, `run.json`,
+`report.md`, downloaded source) **on whatever machine runs the verification** — so
+on the **server** when `cverify` / `cverify-web` runs there (you read the page over
+the tunnel, but the files live server-side). The location is configurable:
+
+- `PAPERS_DIR=/path/to/store` — change the base dir for **every** run (export it, or
+  put it in `.env`). Applies to the CLI, the web UI, and the bot.
+- `cverify <paper> --out /path/to/dir` — override the dir for a **single** run.
+
+`papers/` is gitignored, so results never land in the repo by default.
+
 ### Environment variables (keys & contacts)
 
 **Nothing here is required** — the keyless floor runs with no keys at all. Keys
