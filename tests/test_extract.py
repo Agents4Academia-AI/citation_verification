@@ -1056,3 +1056,42 @@ def test_bind_from_visible_text_handles_given_name_bibkey():
     assert _bind_from_visible_text("guotao2024lg", claim, refs).title.startswith("LG-VQ")
     # a single visible citation binds without needing the keyword
     assert _bind_from_visible_text("guotao2024lg", "see (Liang et al., 2024)", refs).title.startswith("LG-VQ")
+
+
+def test_extract_text_citations_expands_grouped_and_multiyear():
+    """A grouped parenthetical yields one site per citation AND per year — not just the
+    first (AAAI-style author-year papers with no hyperlinks were under-counting)."""
+    from citation_verifier.extract.pdf_links import extract_text_citations
+
+    keys = lambda t: {s["cite_key"] for s in extract_text_citations(t)}  # noqa: E731
+    # ";"-separated group -> every citation
+    assert {"li2022b", "chen2025a", "tan2025"} <= keys(
+        "methods (Li et al. 2022b; Chen et al. 2025a; Tan et al. 2025) help"
+    )
+    # one author, several years
+    assert {"jung2019", "jung2020", "jung2022"} <= keys("defenses (Jung et al. 2019, 2020, 2022) apply")
+    # mixed group with a trailing multi-year author
+    assert {"chen2025b", "yi2025", "xu2024", "li2024", "hou2024", "hou2025"} <= keys(
+        "(Chen et al. 2025b; Yi et al. 2025; Xu et al. 2024; Li et al. 2024; Hou et al. 2024, 2025)"
+    )
+    # narrative multi-year
+    assert {"kim2024", "kim2025"} <= keys("Following Kim et al. (2024, 2025), we proceed.")
+    # the original single/narrative/two-author forms still resolve
+    assert {"yang2023", "lightman2024", "smith2020"} <= keys(
+        "(Yang et al., 2023). Lightman et al. (2024) did X. Others (Smith and Jones, 2020) disagree."
+    )
+
+
+def test_ay_entry_boundary_splits_consecutive_authoryear_entries():
+    """The author-year reference segmenter starts a fresh entry at "Surname, I.; …
+    YEAR." even when the previous entry just ended with "In ACSAC." (regression guard:
+    the AAAI Gu/Gao merge was an upstream text-extraction garble, not this boundary)."""
+    from citation_verifier.extract.pdf_refs import _AY_ENTRY_BOUNDARY
+
+    joined = (
+        "Gao, Y.; Xu, C.; and Nepal, S. 2019. STRIP: a defence against trojan attacks. In ACSAC. "
+        "Gu, T.; Liu, K.; Dolan-Gavitt, B.; and Garg, S. 2019. BadNets: evaluating backdooring attacks."
+    )
+    parts = [p.strip() for p in _AY_ENTRY_BOUNDARY.split(joined) if p.strip()]
+    assert len(parts) == 2
+    assert parts[1].startswith("Gu, T.")

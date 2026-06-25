@@ -39,15 +39,18 @@ _SENT_SPLIT = re.compile(
 _MAX_CLAIM_CHARS = 360
 _CITE_PREFIX = "cite."
 
-# Parenthetical "(Surname et al., 2023)" / "(Surname and Other, 2023)" / "(Surname, 2023)".
-_AY_PAREN_RE = re.compile(
-    r"\(\s*([A-Z][A-Za-z'’.\-]+(?:\s+(?:et\s+al\.?|and\s+[A-Z][A-Za-z'’.\-]+|&\s*[A-Z][A-Za-z'’.\-]+))?)"
-    r"\s*,?\s+((?:19|20)\d{2}[a-z]?)"
-)
-# Narrative "Surname et al. (2023)" / "Surname and Other (2023)".
+# A parenthetical citation block — any "(...)" carrying a year. Split internally on ";"
+# into individual citations; each may list several years for one author
+# ("(Li et al. 2022b; Chen et al. 2025a; Jung et al. 2019, 2020, 2022)").
+_PAREN_BLOCK_RE = re.compile(r"\(([^()]*(?:19|20)\d{2}[a-z]?[^()]*)\)")
+# Narrative "Surname et al. (2023)" / "Surname and Other (2024, 2025)".
 _AY_NARRATIVE_RE = re.compile(
-    r"\b([A-Z][A-Za-z'’.\-]+(?:\s+et\s+al\.?|\s+and\s+[A-Z][A-Za-z'’.\-]+)?)\s+\(\s*((?:19|20)\d{2}[a-z]?)\s*\)"
+    r"\b([A-Z][A-Za-z'’.\-]+(?:\s+et\s+al\.?|\s+and\s+[A-Z][A-Za-z'’.\-]+|\s*&\s*[A-Z][A-Za-z'’.\-]+)?)"
+    r"\s*\(\s*((?:19|20)\d{2}[a-z]?(?:\s*,\s*(?:19|20)\d{2}[a-z]?)*)\s*\)"
 )
+# A citation chunk's leading first-author surname, and every year token within a chunk.
+_CHUNK_SURNAME_RE = re.compile(r"^[\s,]*([A-Z][A-Za-z'’.\-]+)")
+_YEAR_TOKEN_RE = re.compile(r"\b((?:19|20)\d{2}[a-z]?)\b")
 
 
 def _fold(s: str) -> str:
@@ -96,19 +99,35 @@ def extract_link_citations(pdf_path) -> list[dict]:
 def extract_text_citations(text: str) -> list[dict]:
     """Tier 2: ``[{cite_key, claim, span}]`` from author-year text patterns.
 
-    A conservative fallback for PDFs with no hyperlinks: matches the common
-    parenthetical/narrative forms and synthesizes a ``surname+year`` key.
+    A conservative fallback for PDFs with no hyperlinks. Group-aware: a grouped
+    parenthetical ("(Li et al. 2022b; Chen et al. 2025a; Jung et al. 2019, 2020)")
+    yields one site per individual citation AND per year — not just the first — so a
+    claim that cites several works produces several ``(claim, cite_key)`` pairs.
     """
+    text = text or ""
     sites: list[dict] = []
-    for rx in (_AY_PAREN_RE, _AY_NARRATIVE_RE):
-        for m in rx.finditer(text or ""):
-            surname = _fold(re.sub(r"[^A-Za-z'’\-]", "", m.group(1).split()[0]))
-            if len(surname) < 2:
-                continue
-            cite_key = f"{surname}{m.group(2)}"
-            claim, span = _sentence_around(text, m.start())
-            if claim:
-                sites.append({"cite_key": cite_key, "claim": claim, "span": span})
+
+    def add(surname: str, year: str, pos: int) -> None:
+        s = _fold(re.sub(r"[^A-Za-z'’\-]", "", surname))
+        if len(s) < 2:
+            return
+        claim, span = _sentence_around(text, pos)
+        if claim:
+            sites.append({"cite_key": f"{s}{year}", "claim": claim, "span": span})
+
+    # Parenthetical groups: ";"-separated citations, each possibly multi-year.
+    for mb in _PAREN_BLOCK_RE.finditer(text):
+        for chunk in re.split(r"\s*;\s*", mb.group(1)):
+            ms = _CHUNK_SURNAME_RE.match(chunk)
+            if ms:
+                for y in _YEAR_TOKEN_RE.findall(chunk):
+                    add(ms.group(1), y, mb.start())
+
+    # Narrative "Surname et al. (2019, 2020)".
+    for mn in _AY_NARRATIVE_RE.finditer(text):
+        for y in _YEAR_TOKEN_RE.findall(mn.group(2)):
+            add(mn.group(1).split()[0], y, mn.start())
+
     return _dedupe(sites)
 
 
