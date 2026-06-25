@@ -114,7 +114,7 @@ def create_app(settings: Any | None = None):
     uploads = Path(settings.papers_dir) / "_uploads"
     uploads.mkdir(parents=True, exist_ok=True)
 
-    app = FastAPI(title="Citation Verifier")
+    app = FastAPI(title="RefWarden")
 
     @app.get("/", response_class=HTMLResponse)
     def index() -> str:
@@ -196,57 +196,89 @@ _INDEX_HTML = r"""<!doctype html>
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Citation Verifier</title>
+<title>RefWarden</title>
 <style>
-  :root { --bg:#0f1115; --card:#171a21; --line:#2a2f3a; --fg:#e6e8ee; --mut:#9aa3b2;
-          --acc:#5b9cff; --ok:#36b37e; --warn:#e2b340; --bad:#f0616d; }
+  :root {  /* light (default) */
+    --bg:#f5f6f8; --card:#ffffff; --line:#e4e7ec; --line2:#d3d8e0; --fg:#111827;
+    --mut:#6b7280; --soft:#f3f4f6; --field:#ffffff; --zebra:#fafbfc;
+    --accent-soft:#eef4ff; --ring:rgba(37,99,235,.18);
+    --acc:#2563eb; --acc-h:#1d4ed8; --ok:#059669; --warn:#b45309; --bad:#dc2626; }
+  :root[data-theme="dark"] {  /* dark (softer than pure black) */
+    --bg:#0f1318; --card:#181d25; --line:#272e38; --line2:#39414d; --fg:#e7e9ee;
+    --mut:#9aa4b2; --soft:#1e242d; --field:#10151c; --zebra:#161c24;
+    --accent-soft:#172234; --ring:rgba(91,156,255,.28);
+    --acc:#5b9cff; --acc-h:#7db3ff; --ok:#3ddc97; --warn:#e2b340; --bad:#f0616d; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--fg);
-         font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
-  .wrap { max-width:920px; margin:0 auto; padding:32px 20px 80px; }
-  h1 { font-size:22px; margin:0 0 4px; }
-  .sub { color:var(--mut); margin:0 0 24px; font-size:13px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; }
-  .row { display:flex; gap:10px; align-items:center; }
-  input[type=text] { flex:1; background:#0e1015; border:1px solid var(--line); color:var(--fg);
-                     border-radius:8px; padding:11px 12px; font-size:14px; }
-  input[type=text]:focus { outline:none; border-color:var(--acc); }
-  button { background:var(--acc); color:#fff; border:0; border-radius:8px; padding:11px 18px;
-           font-weight:600; cursor:pointer; font-size:14px; }
-  button:disabled { opacity:.5; cursor:default; }
-  .or { color:var(--mut); text-align:center; font-size:12px; margin:12px 0; letter-spacing:.08em; }
-  .drop { border:1.5px dashed var(--line); border-radius:10px; padding:22px; text-align:center;
-          color:var(--mut); cursor:pointer; transition:.15s; }
-  .drop.hot { border-color:var(--acc); color:var(--fg); background:#0e1320; }
+         font:16px/1.6 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+  .wrap { max-width:880px; margin:0 auto; padding:44px 20px 80px; position:relative; }
+  .theme-toggle { position:absolute; top:20px; right:20px; height:36px; padding:0 14px;
+    display:flex; align-items:center; gap:7px; border:1px solid var(--line2); background:var(--card);
+    color:var(--mut); border-radius:99px; font-size:13.5px; cursor:pointer; transition:.15s; }
+  .theme-toggle:hover { border-color:var(--acc); color:var(--fg); }
+  .title { font-size:44px; font-weight:700; text-align:center; letter-spacing:-.025em; margin:4px 0 12px;
+           background:linear-gradient(100deg,#0ea5e9,#2563eb 45%,#7c3aed);
+           -webkit-background-clip:text; background-clip:text;
+           color:transparent; -webkit-text-fill-color:transparent; }
+  .sub { color:var(--mut); text-align:center; margin:0 auto 30px; font-size:15.5px; max-width:62ch; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px;
+          padding:24px; box-shadow:0 1px 3px rgba(16,24,40,.05); }
+  .row { display:flex; gap:10px; align-items:stretch; }
+  input[type=text] { flex:1; min-width:0; background:var(--field); border:1px solid var(--line2); color:var(--fg);
+                     border-radius:10px; padding:0 15px; height:48px; font-size:15px; }
+  input[type=text]::placeholder { color:var(--mut); opacity:.8; }
+  input[type=text]:focus { outline:none; border-color:var(--acc); box-shadow:0 0 0 3px var(--ring); }
+  button { background:var(--acc); color:#fff; border:0; border-radius:10px; padding:0 24px; height:48px;
+           font-weight:600; cursor:pointer; font-size:15px; white-space:nowrap; transition:background .15s; }
+  button:hover:not(:disabled) { background:var(--acc-h); }
+  button:disabled { opacity:.55; cursor:default; }
+  .or { color:var(--mut); text-align:center; font-size:12px; margin:15px 0; letter-spacing:.12em; opacity:.8; }
+  .drop { display:block; width:100%; border:1.5px dashed var(--line2); border-radius:11px;
+          padding:30px; text-align:center; color:var(--mut); font-size:15px; cursor:pointer;
+          background:var(--soft); transition:.15s; }
+  .drop:hover, .drop.hot { border-color:var(--acc); color:var(--fg); background:var(--accent-soft); }
   .hidden { display:none; }
   /* progress */
-  #prog { margin-top:22px; }
-  .bar { height:10px; background:#0e1015; border:1px solid var(--line); border-radius:99px; overflow:hidden; }
-  .fill { height:100%; width:0; background:linear-gradient(90deg,var(--acc),#7db3ff);
-          transition:width .4s ease; }
-  .meta { display:flex; justify-content:space-between; margin-top:8px; font-size:13px; color:var(--mut); }
+  #prog { margin-top:24px; }
+  .bar { height:9px; background:var(--soft); border-radius:99px; overflow:hidden; }
+  .fill { height:100%; width:0; background:var(--acc); border-radius:99px; transition:width .4s ease; }
+  .meta { display:flex; justify-content:space-between; gap:12px; margin-top:10px; font-size:14px; color:var(--mut); }
   .stage { color:var(--fg); font-weight:600; }
   /* result */
-  #out { margin-top:26px; }
-  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
-  .chip { background:#0e1015; border:1px solid var(--line); border-radius:99px;
-          padding:5px 11px; font-size:12px; color:var(--mut); }
-  .chip b { color:var(--fg); }
-  .report { background:var(--card); border:1px solid var(--line); border-radius:12px;
-            padding:6px 22px 18px; overflow-x:auto; }
-  .report table { border-collapse:collapse; width:100%; font-size:12.5px; margin:10px 0; }
-  .report th, .report td { border:1px solid var(--line); padding:6px 8px; text-align:left; vertical-align:top; }
-  .report th { background:#0e1015; position:sticky; top:0; }
-  .report h1 { font-size:18px; } .report h2 { font-size:15px; border-top:1px solid var(--line); padding-top:14px; }
-  .report code { background:#0e1015; padding:1px 5px; border-radius:5px; }
-  .report a { color:var(--acc); }
+  #out { margin-top:28px; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+  .chip { background:var(--soft); border:1px solid var(--line); border-radius:99px;
+          padding:6px 13px; font-size:13px; color:var(--mut); }
+  .chip b { color:var(--fg); font-weight:600; }
+  .report { background:var(--card); border:1px solid var(--line); border-radius:14px;
+            padding:4px 24px 22px; overflow-x:auto; box-shadow:0 1px 3px rgba(16,24,40,.05); }
+  .report table { border-collapse:collapse; width:100%; font-size:13px; margin:12px 0; }
+  .report th, .report td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+  .report th { background:var(--soft); position:sticky; top:0; font-weight:600; }
+  .report tr:nth-child(even) td { background:var(--zebra); }
+  .report h1 { font-size:21px; font-weight:600; }
+  .report h2 { font-size:16px; border-top:1px solid var(--line); padding-top:16px; margin-top:18px; }
+  .report code { background:var(--soft); padding:1px 6px; border-radius:5px; font-size:12.5px; }
+  .report a { color:var(--acc); text-decoration:none; }
+  .report a:hover { text-decoration:underline; }
   .err { color:var(--bad); }
   .raw-md { white-space:pre-wrap; }
 </style>
+<script>
+  // Set the theme before first paint (no flash): saved choice, else system preference.
+  (function () {
+    try {
+      var t = localStorage.getItem("cv-theme");
+      if (t !== "light" && t !== "dark") t = "light";  // default light; the toggle persists a choice
+      document.documentElement.setAttribute("data-theme", t);
+    } catch (e) {}
+  })();
+</script>
 </head>
 <body>
 <div class="wrap">
-  <h1>Citation Verifier</h1>
+  <button id="theme" class="theme-toggle" aria-label="Toggle light/dark theme" title="Toggle light/dark"></button>
+  <h1 class="title">RefWarden</h1>
   <p class="sub">Upload a PDF or a LaTeX source .zip, or paste an arXiv link / PDF URL — checks every reference exists, has correct metadata, and actually supports the claim it's attached to. <span style="opacity:.7">auth: {{AUTH}}</span></p>
 
   <div class="card" id="form">
@@ -272,6 +304,17 @@ _INDEX_HTML = r"""<!doctype html>
 <script>
 const $ = s => document.querySelector(s);
 let es, t0, timer, etaS = 0, picked = null;
+
+// Theme toggle (top-right): label shows the mode you'll switch TO; choice persists.
+const root = document.documentElement;
+function paintTheme(){ $('#theme').textContent = root.getAttribute('data-theme') === 'dark' ? '☀ Light' : '☾ Dark'; }
+$('#theme').addEventListener('click', () => {
+  const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  root.setAttribute('data-theme', next);
+  try { localStorage.setItem('cv-theme', next); } catch (e) {}
+  paintTheme();
+});
+paintTheme();
 
 const drop = $('#drop'), fileIn = $('#file');
 drop.addEventListener('click', () => fileIn.click());
