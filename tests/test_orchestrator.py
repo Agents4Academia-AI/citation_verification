@@ -42,3 +42,25 @@ def test_append_source_links_falls_back_to_doi_and_skips_unresolved():
     _append_source_links([doi_rec, unresolved])
     assert doi_rec.notes == "source: https://doi.org/10.1/abc"
     assert unresolved.notes == "no match"  # untouched
+
+
+def test_write_md_persists_rendered_report(tmp_path):
+    """Every run must leave a human-readable report.md beside report.json — the
+    orchestrator's persist step writes it (regression: web/CLI runs saved only
+    report.json, so verified papers had no rendered report)."""
+    from citation_verifier.interfaces import RunUsage, VerificationResult
+    from citation_verifier.orchestrator import _write_md
+
+    rec = CitationRecord(
+        paper_id="p", claim_id="c1", cite_key="ref-1",
+        claim=Claim(claim_id="c1", text="A claim."),
+        cited_as=CitedAs(raw="ref", title="T", authors=["A B"], year=2020),
+        exists=Exists.YES,
+    )
+    result = VerificationResult(
+        paper_id="p", backend="agentic", records=[rec], errors=[], usage=RunUsage(backend="agentic")
+    )
+    _write_md(tmp_path, result)
+    md = (tmp_path / "report.md").read_text(encoding="utf-8")
+    assert md.startswith("# Citation verification")
+    assert "| # | Citation" in md  # the frozen SKILL.md table header

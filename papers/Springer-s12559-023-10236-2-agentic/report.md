@@ -192,6 +192,11 @@
 | no (fabricated) | 0 |  | does not | 56 |
 | **total refs** | **89** |  | inconclusive | 61 |
 
+*"inconclusive" = relevance could not be determined (an abstention, not a refutation) — by cause:*
+- cited in a table/figure — relevance not assessed by design: **34**
+- reference unresolved — no verified paper to judge against: **22**
+- abstract is on-topic, but the specific claim isn't stated in it: **5**
+
 ### Fix before submission
 - `ref-15` — Bird JJ et al., Chatbot interaction with artificial intelligence: human data augmentation with t5 and language transformer ensemble for text classification, 2023: high — (based on full text §Conclusion and Future Work) Evidence benchmarks transformer classifiers (RoBERTa best) for text-to-task commands, not the GPT series pushing language understanding/generation boundaries. · source: https://link.springer.com/content/pdf/10.1007/s12652-021-03439-8.pdf
 - `ref-36` — Murugesan S, Cherukuri AK, The rise of generative artificial intelligence and its impact on education: The promises and perils, 2023: high — (based on full text §Google’s LaMDA, released in May) Cited as the source for DeepMind Sparrow, but evidence describes LaMDA/Bard and ChatGPT, not Sparrow. · source: https://ieeexplore.ieee.org/ielx7/2/10109259/10109305.pdf

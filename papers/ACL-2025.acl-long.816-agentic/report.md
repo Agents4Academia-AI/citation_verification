@@ -66,6 +66,11 @@
 | no (fabricated) | 0 |  | does not | 1 |
 | **total refs** | **37** |  | inconclusive | 10 |
 
+*"inconclusive" = relevance could not be determined (an abstention, not a refutation) — by cause:*
+- reference unresolved — no verified paper to judge against: **7**
+- full text checked — the specific claim still wasn't confirmed: **1**
+- abstract is on-topic, but the specific claim isn't stated in it: **2**
+
 ### Fix before submission
 - `lin2004` — Zeming Lin et al., Evolutionary-scale prediction of atomic level protein structure with a language model. bioRxiv, 2022: high — (based on abstract only) Retrieved evidence is a protein-structure LLM abstract, not the ROUGE-L metric paper, so it cannot back the ROUGE-L claim. · source: https://doi.org/10.1126/science.ade2574
 

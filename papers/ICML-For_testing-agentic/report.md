@@ -76,6 +76,11 @@
 | no (fabricated) | 0 |  | does not | 2 |
 | **total refs** | **39** |  | inconclusive | 9 |
 
+*"inconclusive" = relevance could not be determined (an abstention, not a refutation) — by cause:*
+- reference unresolved — no verified paper to judge against: **1**
+- full text checked — the specific claim still wasn't confirmed: **3**
+- abstract is on-topic, but the specific claim isn't stated in it: **5**
+
 ### Fix before submission
 - `yang2025diffusionmodelscomprehensivesurvey` — Yang, L. et al., Diffusion models: A comprehensive survey of methods and applications, 2025: high — (based on full text §Introduction) Evidence is a diffusion models survey, entirely unrelated to Lean.Expr kernel type-checking or dependently typed lambda calculus. · source: http://arxiv.org/abs/2209.00796v15
 - `jiang2022thor` — Jiang, A. Q. et al., Thor: Wielding hammers to integrate language models and automated theorem provers, 2022: high — (based on full text §Related Work) Thor's evidence is about premise selection and hammer integration for proving, not an autoformalisation system emitting type-level statements. · source: https://arxiv.org/pdf/2205.10893
