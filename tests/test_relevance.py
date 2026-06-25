@@ -191,17 +191,20 @@ def test_verdict_downgrades_clear_contradiction_to_does_not():
     assert SupportsClaim(v2.supports_claim) is SupportsClaim.PARTIAL
 
 
-def test_group_system_reserves_inconclusive_for_insufficient_evidence():
-    """The judge prompt must follow SKILL.md: inconclusive = evidence INSUFFICIENT
-    (couldn't retrieve), does_not = evidence present but off-claim. Guards against
-    silently reverting to the old "absence in the abstract => inconclusive" bias.
+def test_group_system_reserves_does_not_to_three_named_cases():
+    """The judge prompt reserves does_not for three named cases (contradiction /
+    off-topic / searched-full-text-not-found), requires stating the basis, and keeps
+    mere abstract-absence as inconclusive — guarding against the old loose "does_not
+    whenever the evidence fails to support" bias.
     """
-    from citation_verifier.backends.relevance_judge import _GROUP_SYSTEM
+    from citation_verifier.backends.relevance_judge import _GROUP_SYSTEM as s
 
-    s = _GROUP_SYSTEM.lower()
-    # does_not broadened beyond explicit contradiction (off-topic/narrower scope).
-    assert "not only on explicit contradiction" in s
-    assert "materially" in s and "different from or narrower" in s
-    # inconclusive reserved for genuinely insufficient evidence, not a soft does_not.
-    assert "insufficient to judge" in s
+    # does_not reserved to the three explicit cases, with the basis named
+    assert "CONTRADICTION" in s and "OFF-TOPIC" in s and "SEARCHED, NOT FOUND" in s
+    assert "name which in the justification" in s
+    # mere absence from an ON-TOPIC abstract is inconclusive; an OFF-TOPIC abstract IS does_not
+    assert "ON-TOPIC abstract is NOT 'does_not'" in s
+    assert "OFF-TOPIC IS 'does_not'" in s
     assert "soft 'does_not'" in s
+    # the old loose instruction ("does_not whenever the evidence fails to support") is gone
+    assert "not only on explicit contradiction" not in s.lower()
