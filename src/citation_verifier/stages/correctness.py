@@ -152,21 +152,33 @@ def _reject_bad_fuzzy_match(cited: CitedAs, candidate: Resolved) -> str | None:
         cited.authors and candidate.authors and _same_author(cited.authors[0], candidate.authors[0])
     )
     year_gap = abs(cited.year - candidate.year) if (cited.year and candidate.year) else 0
-    # 3) A large year gap with diverging titles is a different work — even when the
-    #    first author matches (a prolific author has many works: a 1998 textbook vs a
-    #    1992 chapter that merely shares generic words).
+
+    # 3) A WRONG first author is the strongest single "different work" signal for a
+    #    title-only match. Pair it with any corroborating signal and reject — a
+    #    confident wrong match (which then mis-feeds the relevance judge) is worse
+    #    than abstaining.
+    if cited.authors and candidate.authors and not author_ok:
+        # (a) the citation carries a URL (a release/blog/repo/system card, e.g. Genie 2
+        #     → deepmind.google): a fuzzy SCHOLARLY match by a different author is almost
+        #     always the wrong paper — prefer the URL path / unresolved.
+        if (cited.url or "").strip():
+            return f"different author + the citation is a URL/release, not this paper ('{_short(ctitle)}')"
+        # (b) a SHORT cited title (≤2 distinctive tokens — "OpenAI o3-mini", "Genie 2")
+        #     matches longer unrelated titles as a coincidental substring (o3-mini was
+        #     matched to a pneumonia paper that merely mentions it).
+        if len(_content_tokens(cited.title)) <= 2:
+            return f"different author on a short cited title (coincidental match) ('{_short(ctitle)}')"
+        # (c) a second failing axis: year off >1, OR the titles genuinely diverge.
+        if year_gap > 1 or _title_poorly_covered(cited.title, ctitle) or _titles_diverge(cited.title, ctitle):
+            return f"closest candidate's author and title/year contradict ('{_short(ctitle)}')"
+
+    # 4) Even with a matching/unknown author: a large year gap + diverging titles is a
+    #    different work (a 1998 textbook vs a 1992 chapter sharing only generic words).
     if year_gap > 2 and _titles_diverge(cited.title, ctitle):
         return (
             f"closest candidate is a different work — cited {cited.year} vs {candidate.year}, "
             f"titles diverge ('{_short(ctitle)}')"
         )
-    # 4) Wrong first author confirmed by a second failing axis: year off >1, or the
-    #    resolved title drops the cited title's distinctive content (generic collision).
-    if cited.authors and candidate.authors and not author_ok:
-        if year_gap > 1:
-            return f"closest candidate's author and year both contradict ('{_short(ctitle)}')"
-        if _title_poorly_covered(cited.title, ctitle):
-            return f"closest candidate's author and title both contradict ('{_short(ctitle)}')"
     return None
 
 
@@ -312,7 +324,9 @@ _ORG_AUTHOR_RE = re.compile(
     r"microsoft|mistral|cohere|nvidia|hugging\s?face|allen\s?ai|ai2|stability|"
     r"alibaba|baidu|tencent|bytedance)\b"
 )
-_ORG_SUFFIX_RE = re.compile(r"(?i)\b(?:team|teams|labs?|inc|institute|consortium|collaboration)\b")
+_ORG_SUFFIX_RE = re.compile(
+    r"(?i)\b(?:team|teams|labs?|inc|institute|consortium|collaboration|contributors?|group)\b"
+)
 
 
 def _is_org_author(name: str) -> bool:
@@ -334,6 +348,11 @@ def _author_issue(claimed: list[str], canonical: list[str]) -> str | None:
         return None
     if not _same_author(claimed[0], canonical[0]):
         if _is_org_author(claimed[0]) or _is_org_author(canonical[0]):
+            return None
+        # Hyphenated / multi-part surname variants are the same person:
+        # "Perez-Liebana" vs "Perez Liebana", "Zamfirescu-Pereira" vs "Zamfirescu Pereira".
+        # Re-check with hyphens as spaces — warning-only, so resolution is untouched.
+        if _same_author(claimed[0].replace("-", " "), canonical[0].replace("-", " ")):
             return None
         return f"first-author mismatch: cited '{claimed[0]}' vs '{canonical[0]}'"
     matched = sum(1 for c in claimed if any(_same_author(c, k) for k in canonical))
@@ -408,6 +427,11 @@ def _strings_match(a: str, b: str, thresh: float = _SAME_THRESHOLD) -> bool:
     if not a2 or not b2:
         return True  # nothing to contradict
     if a2 in b2 or b2 in a2:
+        return True
+    # Tolerate a lost hyphen/space ("Scale-Invariant" vs PDF-glued "scaleinvariant"):
+    # compare with all spaces removed before flagging a mismatch.
+    a3, b3 = a2.replace(" ", ""), b2.replace(" ", "")
+    if a3 in b3 or b3 in a3:
         return True
     from rapidfuzz import fuzz
 

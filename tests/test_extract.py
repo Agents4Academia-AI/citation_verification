@@ -47,6 +47,71 @@ def test_split_author_title_is_style_agnostic():
     assert _split_author_title("CarpenterR.Jabberwacky-acasestudy.In:Proceedings") == ([], None)
 
 
+def test_split_author_title_lncs_multiword_surnames():
+    """LNCS colon style with compound / nobiliary surnames ("Van Der Maaten",
+    "Gontijo Lopes", "Karagol Ayan") — the author run must not eat the last author
+    into the title (regression: ECCV refs split at the wrong author)."""
+    a, t = _split_author_title(
+        "Huang, G., Liu, Z., Van Der Maaten, L., Weinberger, K.Q.: "
+        "Densely connected convolutional networks. In: CVPR. pp. 4700-4708 (2017)"
+    )
+    assert a == ["Huang, G.", "Liu, Z.", "Van Der Maaten, L.", "Weinberger, K.Q."]
+    assert t == "Densely connected convolutional networks"
+    # multi-word surnames mid-list + trailing "et al." before the colon
+    a, t = _split_author_title(
+        "Saharia, C., Gontijo Lopes, R., Karagol Ayan, B., Salimans, T., et al.: "
+        "Photorealistic text-to-image diffusion models. In: NeurIPS (2022)"
+    )
+    assert "Gontijo Lopes, R." in a and "Karagol Ayan, B." in a
+    assert t == "Photorealistic text-to-image diffusion models"
+    # a plain single-word-surname LNCS ref still parses (no regression)
+    a, t = _split_author_title("Vaswani, A., Shazeer, N.: Attention is all you need. In: NeurIPS (2017)")
+    assert a == ["Vaswani, A.", "Shazeer, N."] and t == "Attention is all you need"
+
+
+def test_clean_ref_body_heals_capitalized_hyphen_split():
+    """A line-break-split hyphenated name with a capitalized tail ("Ming- Hsuan")
+    keeps its hyphen but loses the stray space, so a long given-name-first author
+    list parses instead of leaking the venue into the title (ICCV VideoPoet)."""
+    from citation_verifier.extract.pdf import _clean_ref_body
+
+    assert _clean_ref_body("Ming- Hsuan Yang") == "Ming-Hsuan Yang"
+    assert _clean_ref_body("Transformer- XL") == "Transformer-XL"
+    # a lowercase tail is word-wrap, handled upstream — not re-hyphenated here
+    assert _clean_ref_body("scale- invariant") == "scale- invariant"
+
+    raw = (
+        "Dan Kondratyuk, Lijun Yu, Hartwig Adam, Ming- Hsuan Yang, David A Ross, and Lu Jiang. "
+        "Videopoet: A large language model for zero-shot video generation. "
+        "In Proceedings of the 41st International Conference on Machine Learning, 2024"
+    )
+    a, t = _split_author_title(_clean_ref_body(raw))
+    assert a[-1] == "Lu Jiang" and any("Ming-Hsuan" in x for x in a)
+    assert t == "Videopoet: A large language model for zero-shot video generation"
+
+
+def test_url_extraction_heals_pdf_injected_spaces():
+    """A URL split by PDF spaces after "."/"-"/"/" is rejoined; trailing prose
+    (which opens with a capital) is never swallowed (Genie 2, QwQ)."""
+    from citation_verifier.extract.pdf import _parse_ref_entry
+
+    u = _parse_ref_entry(
+        "J Parker-Holder et al. Genie 2. URL: https://deepmind. google/discover/blog/"
+        "genie- 2-a-large-scale-foundation-world-model/. Accessed 2024."
+    ).url
+    assert u == "https://deepmind.google/discover/blog/genie-2-a-large-scale-foundation-world-model/"
+    assert _parse_ref_entry("Qwen Team. Qwq. URL https://qwenlm. github. io/blog/qwq-32b-preview.").url == (
+        "https://qwenlm.github.io/blog/qwq-32b-preview"
+    )
+    # a clean URL followed by prose is untouched, and prose stays out
+    assert _parse_ref_entry("X. A paper. https://arxiv.org/abs/2406.12345. In NeurIPS, 2024.").url == (
+        "https://arxiv.org/abs/2406.12345"
+    )
+    assert _parse_ref_entry("Y. Tool. See https://github.com/org/repo for code. 2023.").url == (
+        "https://github.com/org/repo"
+    )
+
+
 def test_split_author_title_keeps_et_al_caps_titles_and_diacritics_out_of_authors():
     # "et al" must never leak into a name, and the title may open with a capital
     # phrase ("Building Watson:") without leaking into the author list.
@@ -927,3 +992,67 @@ def test_claim_scan_drops_section_headings_and_footnotes():
     assert "1 Introduction" not in out
     assert "Equal Contribution" not in out
     assert "The development of reasoning LLMs is rapid." in out
+
+
+def test_bind_keyword_suffix_not_eaten_and_leading_word_tiebreak():
+    """Regression: the a/b/c-suffix group must not eat a keyword's first letter
+    ("xiong2025autoregressive" != suffix 'a' + 'utoregressive'), and when a keyword
+    is in several same-surname/year titles, the title that OPENS with it wins."""
+    from citation_verifier.extract.pdf import _BIBKEY_RE, _bind_author_year
+    from citation_verifier.schema import CitedAs
+
+    # the suffix no longer swallows the keyword's first letter
+    m = _BIBKEY_RE.match("xiong2025autoregressive")
+    assert (m.group(3), m.group(4)) == (None, "autoregressive")
+    # …but a real a/b/c suffix and a CamelCase keyword still parse
+    assert _BIBKEY_RE.match("smith2020a").group(3) == "a"
+    assert _BIBKEY_RE.match("liu2022aBeyondPL").group(3) == "a"
+
+    # two same-surname/same-year refs both contain "autoregressive"; the bibkey binds
+    # to the one whose title STARTS with it (the keyword echoes the title's opening word)
+    refs = {
+        "a": CitedAs(authors=["Jingyi Xiong"], title="Autoregressive models in vision: A survey", year=2025),
+        "b": CitedAs(authors=["Tao Xiong"], title="GigaTok: scaling tokenizers for autoregressive generation", year=2025),
+    }
+    assert _bind_author_year("xiong2025autoregressive", refs).title.startswith("Autoregressive models")
+    # keyword that was previously mangled ("both"/"what"/"vila") now disambiguates
+    refs = {
+        "a": CitedAs(authors=["Bo Zhang"], title="Large multi-modal models can interpret features", year=2025),
+        "b": CitedAs(authors=["Wei Zhang"], title="Both semantics and reconstruction matter", year=2025),
+    }
+    assert _bind_author_year("zhang2025both", refs).title.startswith("Both semantics")
+
+
+def test_looks_like_table_dump_catches_author_year_metric_rows():
+    """Author-year papers have no "[n]" markers, so a results-table row is detected by
+    its model-size / metric-decimal cell density instead — without flagging prose."""
+    from citation_verifier.extract.pdf import _looks_like_table_dump
+
+    assert _looks_like_table_dump(
+        "VAE (Rombach et al., 2022) 55M 4096 0.27 – LDM-4 (Rombach et al., 2022) "
+        "400M Diff. 3.60 – SD-VAE (Ma et al., 2024) 84M 1.50 – MAR-H 943M 1.55 303.7"
+    )
+    # a prose claim that merely mentions a result or two is NOT a table dump
+    assert not _looks_like_table_dump(
+        "ConceptTok achieves a CKNNA score of 0.48, improving over the 0.41 baseline."
+    )
+    # the original [n]-marker table-row detection still fires
+    assert _looks_like_table_dump("ELIZA [19] 1966 Chatbot SHRDLU [20] 1970 Task PARRY [21] 1972 Sim")
+
+
+def test_bind_from_visible_text_handles_given_name_bibkey():
+    """A hyperlink bibkey keyed on a GIVEN name ("guotao2024lg" -> Liang, G.) binds via
+    the visible "Liang et al., 2024" in the claim, with the "lg" keyword breaking the tie
+    against the other 2024 citations in the same parenthetical group."""
+    from citation_verifier.extract.pdf import _bind_from_visible_text, _visible_author_years
+    from citation_verifier.schema import CitedAs
+
+    claim = "alignment using paired captions (Ge et al., 2024; Liang et al., 2024; Wu et al., 2025b)."
+    assert ("liang", "2024") in _visible_author_years(claim)  # inner ";"-separated cite is seen
+    refs = {
+        "a": CitedAs(authors=["Guang Ge"], title="Making LLaMA see and draw with SEED tokenizer", year=2024),
+        "b": CitedAs(authors=["Guotao Liang", "Bo Zhang"], title="LG-VQ: Language-guided codebook learning", year=2024),
+    }
+    assert _bind_from_visible_text("guotao2024lg", claim, refs).title.startswith("LG-VQ")
+    # a single visible citation binds without needing the keyword
+    assert _bind_from_visible_text("guotao2024lg", "see (Liang et al., 2024)", refs).title.startswith("LG-VQ")

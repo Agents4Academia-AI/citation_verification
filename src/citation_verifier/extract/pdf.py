@@ -245,7 +245,16 @@ _ARXIV_RE = re.compile(
     re.IGNORECASE,
 )
 _DOI_RE = re.compile(r"\b10\.\d{4,9}/[-._;()/:A-Za-z0-9]+", re.IGNORECASE)
-_URL_RE = re.compile(r"https?://[^\s]+")
+# A URL, tolerating PDF spaces injected after a structural "." / "-" / "/" when the
+# next fragment is a lowercase/digit continuation ("https://deepmind. google/genie- 2",
+# "https://qwenlm. github. io/blog"). Prose after a URL opens with a capital ("… .
+# In Proceedings"), so it is never swallowed. _despace_url removes the captured spaces.
+_URL_RE = re.compile(r"https?://[^\s]+(?:(?<=[.\-/])\s+[a-z0-9][^\s]*)*")
+
+
+def _despace_url(raw: str) -> str:
+    """Drop the PDF-injected spaces _URL_RE tolerated inside a URL."""
+    return re.sub(r"(?<=[.\-/])\s+(?=[a-z0-9])", "", raw)
 _YEAR_RE = re.compile(r"\b(19|20)\d{2}[a-z]?\b")
 
 
@@ -341,6 +350,12 @@ def _clean_ref_body(text: str) -> str:
     # ("Murakhovs’ ka" -> "Murakhovs’ka"): the stray space made the lowercase tail
     # look like a title word, so the author/title boundary landed inside the name.
     text = re.sub(r"(?<=[A-Za-z])(['’])\s+(?=[a-z])", r"\1", text)
+    # Heal a hyphenated name/compound the line-break split with a *capitalized* tail
+    # ("Ming- Hsuan" -> "Ming-Hsuan", "Transformer- XL"). _DEHYPHEN_RE removes the
+    # hyphen only for a lowercase tail (word-wrap "Lan- guage"); a capital tail is a
+    # real hyphen it keeps — but the leftover space breaks the author tokenizer, so a
+    # 30-author "…, and X." list silently fails and the venue leaks in as the title.
+    text = re.sub(r"(?<=[A-Za-z])-\s+(?=[A-Z])", "-", text)
     # Drop a trailing "cited on pages" back-reference some templates print after the
     # year ("…, 2017.2,17" / "…, 2025.6") — anchored to the end so it never touches
     # a mid-string arXiv id (e.g. "2503.18892").
@@ -381,7 +396,15 @@ _ETAL_TAIL_RE = re.compile(r"\s*,?\s+et\s+al\.?$", re.IGNORECASE)
 # word can't pose as one). The surname still starts uppercase, so a title fragment
 # ("Method, e.g. …") can't open an author run.
 _AY_INITS = r"(?:[A-Za-z]\.(?:\s*-\s*[A-Za-z]\.?)*\s*){1,4}"
-_AY_NAME = rf"[A-Z][\w'’`-]+,\s*{_AY_INITS}"
+# A surname may span several words — a compound family name or a nobiliary particle
+# ("Van Der Maaten", "Gontijo Lopes", "Karagol Ayan", "de la Cruz") — all kept before
+# the comma that introduces the initials. The trailing ",<initials>" anchors the run,
+# so a multi-word surname can't overshoot into a following name or a title.
+_AY_SURNAME = (
+    r"[A-Z][\w'’`-]+"
+    r"(?:\s+(?:[A-Z][\w'’`-]+|van|von|der|den|del|della|de|di|da|du|dos|la|le))*"
+)
+_AY_NAME = rf"{_AY_SURNAME},\s*{_AY_INITS}"
 # Names are comma- OR semicolon-separated ("Cai, H.; Zhang, P.; and Yuan, T." —
 # the AAAI/IEEE style); the comma-after-surname in _AY_NAME keeps this from firing
 # on Vancouver ("Surname I"), so allowing ";" only widens it to semicolon lists.
@@ -395,7 +418,7 @@ _AY_RUN_RE = re.compile(
 def _split_ay_authors(author_str: str) -> list[str]:
     """Split an author-year run into ``["Surname, I.", …]`` (surname+initials kept whole)."""
     author_str = _ETAL_TAIL_RE.sub("", author_str)
-    units = re.findall(rf"[A-Z][\w'’`-]+,\s*{_AY_INITS}", author_str)
+    units = re.findall(rf"{_AY_SURNAME},\s*{_AY_INITS}", author_str)
     return [re.sub(r"\s+", " ", u).strip().strip(",").strip() for u in units]
 
 
@@ -619,7 +642,7 @@ def _parse_ref_entry(body: str) -> CitedAs:
         venue=None,
         doi=doi.group(0).rstrip(".,;)") if doi else None,
         arxiv_id=arxiv.group(1) if arxiv else None,
-        url=url.group(0).rstrip(".,;)") if url else None,
+        url=_despace_url(url.group(0)).rstrip(".,;)") if url else None,
     )
 
 
@@ -641,11 +664,18 @@ _TABLE_CAPTION_RE = re.compile(r"^\s*(?:Table|TABLE|Tab\.)\s*\d+\b")
 # is followed by lowercase/punctuation ("[19] showed", "[19], which"), so this
 # does NOT fire on an ordinary multi-citation sentence ("works [1], [2], [3] …").
 _TABLE_ROW_RE = re.compile(r"\[\s*\d+\s*\]\s+(?:(?:19|20)\d{2}\b|[A-Z])")
+# Results/comparison-table row dumped inline — the author-year analogue, which has NO
+# "[n]" markers ("VAE (Rombach et al., 2022) 55M 4096 0.27 – LDM-4 … 400M Diff. 3.60 –").
+# The cells are model sizes ("55M"/"1.5B") and metric decimals ("0.27"/"3.60", with an
+# optional table superscript). Prose carries at most a stray year or a single result, so
+# a high cell count is the table signal that the marker heuristic above can't see.
+_TABLE_CELL_RE = re.compile(r"\b\d+(?:\.\d+)?[MBK]\b|\b\d+\.\d+[‡†⋆*]?\b")
 
 
 def _looks_like_table_dump(text: str) -> bool:
-    """True when a claim reads as a comparison-table row dump (skip its relevance)."""
-    return len(_TABLE_ROW_RE.findall(text or "")) >= 3
+    """True when a claim reads as a comparison/results-table row dump (skip relevance)."""
+    t = text or ""
+    return len(_TABLE_ROW_RE.findall(t)) >= 3 or len(_TABLE_CELL_RE.findall(t)) >= 5
 _MAX_CLAIM_CHARS = 360
 _EMAIL_RE = re.compile(r"\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b")
 _AFFILIATION_START_RE = re.compile(
@@ -831,8 +861,13 @@ def _sentence_around(text: str, pos: int, window: int = 500) -> tuple[str, tuple
 # A BibTeX-style key: a leading surname, an optional separator, a 4-digit year,
 # then an optional suffix/keyword. Tolerates CamelCase and separators:
 # "yang2023leandojo", "Zhao_2024", "MartinLofTypeTheory1998", "kaplan2020scaling".
+# surname / year / optional a-c disambiguator / keyword tail. The disambiguator is a
+# SINGLE lowercase letter that is NOT the first letter of a longer keyword — the
+# negative lookahead keeps "xiong2025autoregressive" from splitting into suffix "a" +
+# keyword "utoregressive" (which then never matches the title word "autoregressive").
+# A genuine suffix ("smith2020a") or a CamelCase keyword ("smith2020aBeyond") still parse.
 _BIBKEY_RE = re.compile(
-    r"^([A-Za-z][A-Za-z0-9]*?)(?:[-_ ]?et[-_ ]?al\d*)?[_:.\- ]?((?:19|20)\d{2})([a-z]?)(.*)$"
+    r"^([A-Za-z][A-Za-z0-9]*?)(?:[-_ ]?et[-_ ]?al\d*)?[_:.\- ]?((?:19|20)\d{2})([a-z](?![a-z]))?(.*)$"
 )
 
 
@@ -905,7 +940,7 @@ def _bind_author_year(cite_key: str, references: dict[str, CitedAs]) -> CitedAs 
         surname = _fold(re.sub(r"[^A-Za-z]", "", m.group(1)))
         # group(3) is the a/b/c disambiguator letter; group(4) the keyword tail —
         # keep them apart (the old code glued "b" onto the keyword).
-        year, suffix, kw = int(m.group(2)), m.group(3).lower(), m.group(4).lower()
+        year, suffix, kw = int(m.group(2)), (m.group(3) or "").lower(), m.group(4).lower()
         by_surname = [
             c for c in references.values()
             if c.authors and any(_surname_matches(surname, rs) for rs in _ay_surnames(c.authors[0]))
@@ -935,6 +970,13 @@ def _bind_author_year(cite_key: str, references: dict[str, CitedAs]) -> CitedAs 
                 hits = [c for c in pool if kw in re.findall(r"[a-z0-9]+", (c.title or "").lower())]
                 if len(hits) == 1:
                     return hits[0]
+                # The keyword is in several titles (e.g. two papers both mention
+                # "autoregressive"). The bibkey keyword echoes the title's OPENING
+                # word, so prefer the title that starts with it.
+                if len(hits) > 1:
+                    lead = [c for c in hits if re.findall(r"[a-z0-9]+", (c.title or "").lower())[:1] == [kw]]
+                    if len(lead) == 1:
+                        return lead[0]
             if len(kw) >= 4:  # a CamelCase keyword ("BeyondPL") as a unique title prefix
                 hits = [c for c in pool if kw[:5] in re.sub(r"[^a-z0-9]", "", (c.title or "").lower())]
                 if len(hits) == 1:
@@ -970,6 +1012,50 @@ def _bind_author_year(cite_key: str, references: dict[str, CitedAs]) -> CitedAs 
         if c.authors and any(len(rs) >= 6 and rs in folded for rs in _ay_surnames(c.authors[0]))
     ]
     return embedded[0] if len(embedded) == 1 else None
+
+
+# First-author surname + year for each VISIBLE author-year citation in a sentence —
+# "(Ge et al., 2024; Liang et al., 2024)", "Kingma & Welling, 2014", narrative
+# "Kim et al. (2025)", multi-word surnames. Used to bind a hyperlink whose bibkey is
+# NOT surname-year (it may key on a given name, e.g. "guotao2024lg" -> Liang, G.).
+_VISIBLE_AY_RE = re.compile(
+    r"([A-Z][A-Za-zÀ-ɏ'’\-]+)"
+    r"(?:\s+(?:et\s+al\.?|and\s+[A-Z][\w'’\-]+|&\s+[A-Z][\w'’\-]+))?"
+    r"\s*,?\s*\(?((?:19|20)\d{2})[a-z]?\)?"
+)
+
+
+def _visible_author_years(claim: str) -> list[tuple[str, str]]:
+    """``[(folded_surname, year), …]`` for the author-year citations visible in a claim."""
+    out: list[tuple[str, str]] = []
+    for m in _VISIBLE_AY_RE.finditer(claim or ""):
+        surname = _fold(re.sub(r"[^A-Za-z]", "", m.group(1)))
+        if len(surname) >= 2 and (surname, m.group(2)) not in out:
+            out.append((surname, m.group(2)))
+    return out
+
+
+def _bind_from_visible_text(
+    cite_key: str, claim: str, references: dict[str, CitedAs]
+) -> CitedAs | None:
+    """Bind a hyperlink via the VISIBLE "Surname et al., YEAR" in its claim, for bibkeys
+    that aren't surname-year (``_bind_author_year`` then fails on the key alone). Each
+    visible citation is bound by its own surname+year; when several resolve, the bibkey's
+    keyword as a title word breaks the tie ("guotao2024lg" -> the "LG-VQ" title)."""
+    m = _BIBKEY_RE.match(cite_key)
+    kw = (m.group(4) or "").lower() if m else ""
+    bound: list[CitedAs] = []
+    for surname, year in _visible_author_years(claim):
+        c = _bind_author_year(f"{surname}{year}", references)
+        if c and c not in bound:
+            bound.append(c)
+    if len(bound) == 1:
+        return bound[0]
+    if kw:
+        hits = [c for c in bound if kw in re.findall(r"[a-z0-9]+", (c.title or "").lower())]
+        if len(hits) == 1:
+            return hits[0]
+    return None
 
 
 # ───────────────────────────────────────────────────────────────
@@ -1047,8 +1133,19 @@ class PdfExtractor:
                 if dedup in seen:
                     continue
                 seen.add(dedup)
-                cited_as = _bind_author_year(cite_key, references) or CitedAs(raw="")
+                claim_text = site["claim"]
+                cited_as = (
+                    _bind_author_year(cite_key, references)
+                    or _bind_from_visible_text(cite_key, claim_text, references)
+                    or CitedAs(raw="")
+                )
                 matched = bool(cited_as.title or cited_as.authors)
+                # The hyperlink path skipped table detection (only the [n] path ran it),
+                # so table-row citations were judged as prose. Apply the same gate here.
+                in_table = bool(_TABLE_CAPTION_RE.match(claim_text)) or _looks_like_table_dump(claim_text)
+                notes = None if matched else "citation hyperlink not matched to a bibliography entry"
+                if in_table:
+                    notes = f"{notes}; {TABLE_NOTE}" if notes else TABLE_NOTE
                 records.append(
                     CitationRecord(
                         paper_id=source.paper_id,
@@ -1056,12 +1153,11 @@ class PdfExtractor:
                         cite_key=cite_key,
                         paper=paper,
                         claim=Claim(
-                            claim_id=claim_id, text=site["claim"], section=None, char_span=span
+                            claim_id=claim_id, text=claim_text, section=None, char_span=span
                         ),
                         cited_as=cited_as,
-                        notes=None
-                        if matched
-                        else "citation hyperlink not matched to a bibliography entry",
+                        in_table=in_table,
+                        notes=notes,
                     )
                 )
 

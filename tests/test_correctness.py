@@ -235,3 +235,45 @@ def test_fill_correctness_keeps_yes_for_single_axis_fuzzy_mismatch():
     yr = _resolved(["Mehmet Firat"], "Some Paper Title", 2017, MatchMethod.FUZZY_TITLE)
     out = fill_correctness(rec, resolver=_fake_resolver(yr))
     assert Exists(out.exists) is Exists.YES
+
+
+def test_reject_fuzzy_short_title_url_and_divergence():
+    """The three severe wrong-paper false-positives from the 6-venue review."""
+    from citation_verifier.schema import CitedAs, MatchMethod, Resolved
+    from citation_verifier.stages.correctness import _reject_bad_fuzzy_match as R
+
+    def C(t, a, y, url=None):
+        return CitedAs(raw="x", title=t, authors=a, year=y, url=url)
+
+    def V(t, a, y):
+        return Resolved(source="s2", match_method=MatchMethod.FUZZY_TITLE, title=t, authors=a, year=y)
+
+    # short cited title + wrong author -> coincidental substring (o3-mini in a pneumonia paper)
+    assert R(C("OpenAI o3-mini", ["OpenAI"], 2025),
+             V("Performance analysis of LLMs in clinical treatment of pneumonia", ["Zhiwu Lin"], 2025))
+    # URL/release citation + wrong author -> the URL is the real anchor (Genie 2)
+    assert R(C("Genie 2: A large-scale foundation world model", ["J Parker-Holder"], 2024, url="https://deepmind"),
+             V("The Mathematics of Genie 2: A Large-Scale Foundation World Model", ["Miquel Noguer I Alonso"], 2025))
+    # wrong author + diverging titles with only a 1-yr gap (wu2024 -> wrong video paper)
+    assert R(C("Scaling inference computation: compute-optimal inference for problem solving with language models", ["Yangzhen Wu"], 2024),
+             V("Inference Compute-Optimal Video Vision Language Models", ["Peiqi Wang"], 2025))
+    # a real paper (same title, author-variant matched, no URL) is still accepted
+    assert R(C("A specific multi word paper title", ["Firat M"], 2021),
+             V("A specific multi word paper title", ["Mehmet Firat"], 2019)) is None
+
+
+def test_strings_match_tolerates_lost_hyphen():
+    from citation_verifier.stages.correctness import _strings_match
+
+    assert _strings_match("Distinctive image features from scaleinvariant keypoints",
+                          "Distinctive Image Features from Scale-Invariant Keypoints")
+    assert not _strings_match("Attention is all you need", "Deep residual learning for image recognition")
+
+
+def test_author_issue_suppresses_org_contributors_and_hyphen_surnames():
+    # org list now covers "*-Contributors" collaborations
+    assert _author_issue(["Qingwen Bu"], ["AgiBot-World-Contributors"]) is None
+    # hyphenated surname vs spaced form is the same person, not a mismatch
+    assert _author_issue(["Diego Perez-Liebana"], ["Diego Perez Liebana"]) is None
+    # genuinely different people still flag
+    assert _author_issue(["Abby O'Neill"], ["A. Padalkar"]) is not None
