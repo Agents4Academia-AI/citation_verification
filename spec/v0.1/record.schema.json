@@ -285,6 +285,7 @@
         "doi",
         "arxiv",
         "fuzzy_title",
+        "direct_url",
         "none"
       ],
       "title": "MatchMethod",

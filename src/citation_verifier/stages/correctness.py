@@ -26,6 +26,7 @@ is entirely inside the injected ``resolver`` and is lazy + fail-soft there.
 
 from __future__ import annotations
 
+import os
 import re
 import unicodedata
 
@@ -63,6 +64,11 @@ def fill_correctness(record: CitationRecord, *, resolver: Resolver) -> CitationR
         return record
 
     if resolved is None or resolved.match_method is MatchMethod.NONE:
+        # No structured match — but a citation can still be a verifiable web/software/
+        # system-card object (GitHub repo, model system card). Try the cited URL
+        # directly before abstaining.
+        if _try_direct_url(record):
+            return record
         # Absence is a red flag, not proof of fabrication: abstain.
         record.exists = Exists.UNRESOLVED
         record.resolved = resolved
@@ -82,6 +88,10 @@ def fill_correctness(record: CitationRecord, *, resolver: Resolver) -> CitationR
     if resolved.match_method == MatchMethod.FUZZY_TITLE:
         reject = _reject_bad_fuzzy_match(record.cited_as, resolved)
         if reject:
+            # The scholarly candidate was wrong, but the cited URL may still be a
+            # live web/software object (e.g. LangChain's GitHub repo) — try it.
+            if _try_direct_url(record):
+                return record
             record.exists = Exists.UNRESOLVED
             record.resolved = None
             record.metadata_issues = [f"abstained from a weak fuzzy-title match — {reject}"]
@@ -202,6 +212,63 @@ def _unresolved_note(resolver: Resolver) -> str:
         if where
         else "could not retrieve a confident match in structured sources"
     )
+
+
+def _try_direct_url(record: CitationRecord) -> bool:
+    """Verify a citation that points at a web/software/system-card URL.
+
+    Fallback when the structured cascade found nothing (or rejected a wrong fuzzy
+    match): a GitHub repo / model system card / Notion page can still be a real
+    object reachable by URL. On a LIVE url -> ``exists=yes`` as a ``DIRECT_URL``
+    match (a web/software object, NOT a scholarly title match), backfilling
+    title/authors/year from the cited reference. On a BLOCKED (gated/bot-blocked)
+    url -> abstain with an *actionable* reason instead of a false ``yes`` — a later
+    run with GITHUB_TOKEN / S2_API_KEY / a search key can recover it. Returns
+    ``True`` when it set the record's verdict. Network is lazy + fail-soft.
+    """
+    raw = (record.cited_as.url or "").strip()
+    if not raw:
+        return False
+    from ..grounding import url_validate  # lazy: network helper, keeps import light
+
+    chk = url_validate.validate_citation_url(raw, github_token=os.environ.get("GITHUB_TOKEN"))
+    if chk is None:
+        return False
+    cited = record.cited_as
+    if chk.status == "live":
+        record.exists = Exists.YES
+        record.resolved = Resolved(
+            source="url",
+            match_method=MatchMethod.DIRECT_URL,
+            match_score=1.0,
+            url=chk.url,
+            url_valid=True,
+            title=cited.title,
+            authors=list(cited.authors or []),
+            year=cited.year,
+        )
+        record.metadata_issues = []
+        record.evidence = _dedupe_evidence(
+            record.evidence
+            + [
+                Evidence(
+                    kind="url",
+                    source=chk.method,
+                    quote=f"cited URL verified live (HTTP {chk.http}) — web/software/system-card object",
+                    url=chk.url,
+                )
+            ]
+        )
+        return True
+    if chk.status == "blocked":
+        record.exists = Exists.UNRESOLVED
+        record.resolved = None
+        record.metadata_issues = [
+            f"url access blocked: HTTP {chk.http} from direct fetch ({chk.url}); no configured "
+            "API/search fallback validated — set GITHUB_TOKEN / S2_API_KEY or a search key and re-run"
+        ]
+        return True
+    return False  # dead / network error -> let the normal abstain proceed
 
 
 # ───────────────────────────────────────────────────────────────

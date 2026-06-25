@@ -97,6 +97,8 @@ class MatchMethod(str, Enum):
     DOI = "doi"
     ARXIV = "arxiv"
     FUZZY_TITLE = "fuzzy_title"
+    DIRECT_URL = "direct_url"  # verified by fetching the cited URL — a web/software/
+    #                            system-card object, NOT a scholarly title match
     NONE = "none"  # no confident match (drives exists=no / unresolved upstream)
 
 

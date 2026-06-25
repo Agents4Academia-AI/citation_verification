@@ -57,6 +57,45 @@ def test_author_issue_clears_abbreviations_but_keeps_real_mismatch():
     assert _author_issue(["Smith J", "Jones A"], ["Adams B", "Clark C"]) is not None
 
 
+def test_fill_correctness_verifies_live_url_as_direct_url(monkeypatch):
+    import citation_verifier.grounding.url_validate as uv
+    from citation_verifier.schema import Exists, MatchMethod
+    from citation_verifier.stages.correctness import fill_correctness
+
+    rec = _rec(["Ganler"], "code-r1", 2025)
+    rec.cited_as.url = "https://github.com/ganler/code-r1"
+    monkeypatch.setattr(
+        uv, "validate_citation_url",
+        lambda raw, github_token=None: uv.UrlCheck(url=raw, status="live", http=200, method="github_api"),
+    )
+    # No structured match -> falls back to direct-URL verification -> exists=yes.
+    out = fill_correctness(rec, resolver=_fake_resolver(None))
+    assert _val(out.exists) == Exists.YES.value
+    assert _val(out.resolved.match_method) == MatchMethod.DIRECT_URL.value
+    assert out.resolved.source == "url" and out.resolved.url_valid is True
+    assert not out.metadata_issues
+
+
+def test_fill_correctness_blocked_url_abstains_with_actionable_reason(monkeypatch):
+    import citation_verifier.grounding.url_validate as uv
+    from citation_verifier.schema import Exists
+    from citation_verifier.stages.correctness import fill_correctness
+
+    rec = _rec(["OpenAI"], "o3-o4-mini system card", 2025)
+    rec.cited_as.url = "https://openai.com/index/o3-o4-mini-system-card/"
+    monkeypatch.setattr(
+        uv, "validate_citation_url",
+        lambda raw, github_token=None: uv.UrlCheck(url=raw, status="blocked", http=403, method="fetch"),
+    )
+    out = fill_correctness(rec, resolver=_fake_resolver(None))
+    assert _val(out.exists) == Exists.UNRESOLVED.value  # 403 is NOT a false yes
+    assert "url access blocked: HTTP 403" in " ".join(out.metadata_issues)
+
+
+def _val(x):
+    return getattr(x, "value", x)
+
+
 def test_author_issue_suppresses_org_vs_individual():
     # An organization / "* Team" author against a listed individual (or vice versa)
     # is a benign attribution discrepancy, not a metadata error — no first-author
