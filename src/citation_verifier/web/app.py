@@ -317,9 +317,11 @@ $('#theme').addEventListener('click', () => {
 paintTheme();
 
 const drop = $('#drop'), fileIn = $('#file');
-drop.addEventListener('click', () => fileIn.click());
+// NOTE: #drop is a <label> wrapping #file, so a click already opens the picker
+// natively — do NOT also call fileIn.click() here (that double-fires and the
+// dialog reopens after you pick a file).
 fileIn.addEventListener('change', () => { picked = fileIn.files[0] || null;
-  $('#droptext').textContent = picked ? ('📄 ' + picked.name) : 'Drop a PDF here, or click to choose a file'; });
+  $('#droptext').textContent = picked ? ('📄 ' + picked.name) : 'Drop a PDF or a LaTeX .zip here, or click to choose a file'; });
 ['dragover','dragenter'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('hot'); }));
 ['dragleave','drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('hot'); }));
 drop.addEventListener('drop', ev => { picked = ev.dataTransfer.files[0] || null;
