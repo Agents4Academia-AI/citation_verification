@@ -27,7 +27,7 @@ places becomes N rows (it can be obligatory in one spot, background in another).
 Each pair flows through a deterministic pipeline:
 
 ```
-arXiv id / URL / PDF
+arXiv id/URL · PDF (local file or URL) · LaTeX source .zip/.tar.gz
   → ingest       → PaperSource (paper_id, work_dir, tex_available?)
   → extract      → LaTeX .bbl/.bib + \cite sites (PDF fallback) → record stubs
   → correctness  → resolve DOI > arXiv-id > fuzzy-title; validate URL → exists, metadata_issues
@@ -75,6 +75,8 @@ make smoke                        # tests + run_eval on the in-repo smoke gold
 uv pip install -e '.[llm]'
 cverify 1706.03762 --out papers/1706.03762        # 'agentic' is the default backend
 cverify https://arxiv.org/abs/2005.14165 --format json
+cverify https://some.site/paper.pdf               # any PDF URL — downloaded, then parsed
+cverify path/to/source.zip                        # a LaTeX source .zip/.tar.gz — uses the (more accurate) LaTeX path
 
 # 4. Check one reference against the grounding sources (no LLM, no key)
 python -m citation_verifier.grounding.paper_lookup "Vaswani et al. Attention Is All You Need 2017"
@@ -82,12 +84,70 @@ python -m citation_verifier.grounding.paper_lookup "Vaswani et al. Attention Is 
 # 5. Discord bot (slash command /check <arxiv>) — see docs/DISCORD_BOT.md
 uv pip install -e '.[bot]'
 cverify-bot                       # reads DISCORD_BOT_TOKEN from .env
+
+# 6. Web UI (upload a PDF or paste an arXiv link; progress bar + report in the browser)
+uv pip install -e '.[web]'
+cverify-web                       # serves http://127.0.0.1:8000  (see "Web UI" below)
 ```
 
 The **keyless floor** — schema + render + eval + Crossref/arXiv grounding +
 open-access full-text — runs with no API keys, no `claude-agent-sdk`, and degrades
 softly offline. Keyed sources and the LLM backends turn on only when their keys are
 present.
+
+### Web UI (`cverify-web`)
+
+A browser front-end: drop a PDF or paste an arXiv link, watch the progress bar
+(stage + live citation count + elapsed time), and read the rendered report in the
+page. It runs the same `run_verification` pipeline and auth as the CLI (Claude
+Code subscription, or `ANTHROPIC_API_KEY`). Host/port: `CVERIFY_WEB_HOST` /
+`CVERIFY_WEB_PORT` (default `127.0.0.1:8000`).
+
+**Custom port.** Set `CVERIFY_WEB_PORT` (and `CVERIFY_WEB_HOST`) in the shell.
+They're read from the process environment, so use an inline prefix or `export` —
+**not** `.env`:
+
+```bash
+CVERIFY_WEB_PORT=9000 cverify-web            # → http://127.0.0.1:9000  (this run only)
+export CVERIFY_WEB_PORT=9000 && cverify-web  # → for the whole shell session
+```
+
+On a **remote server**, the SSH tunnel's *server-side* port must match the one
+`cverify-web` listens on (the local side can be anything):
+`ssh -L 9000:localhost:9000 <user>@<server>`.
+
+**Viewing it from your laptop when the code runs on a remote server.** The server
+listens on `127.0.0.1` only, so reach it over an SSH tunnel rather than exposing
+the port:
+
+```bash
+# on the server
+cverify-web                                   # listens on 127.0.0.1:8000
+
+# on your laptop (a second terminal): forward local 8000 -> the server's 8000
+ssh -L 8000:localhost:8000 <user>@<server>
+# then open http://localhost:8000 in your local browser
+```
+
+- Already connected over SSH? Run the `ssh -L ...` in a second local terminal, or
+  add `LocalForward 8000 localhost:8000` to your `~/.ssh/config` host entry.
+- VS Code / Cursor Remote-SSH forwards the port automatically (or use the Ports
+  panel -> forward `8000`).
+- Direct access (only if you control the firewall): `CVERIFY_WEB_HOST=0.0.0.0
+  cverify-web`, then `http://<server-ip>:8000` — less secure; prefer the tunnel.
+
+### Where results are stored
+
+Each run writes its artifacts to `papers/<paper_id>/` (`report.json`, `run.json`,
+`report.md`, downloaded source) **on whatever machine runs the verification** — so
+on the **server** when `cverify` / `cverify-web` runs there (you read the page over
+the tunnel, but the files live server-side). The location is configurable:
+
+- `PAPERS_DIR=/path/to/store` — change the base dir for **every** run (export it, or
+  put it in `.env`). Applies to the CLI, the web UI, and the bot.
+- `cverify <paper> --out /path/to/dir` — override the dir for a **single** run.
+
+`papers/` is gitignored, so results never land in the repo by default.
 
 ### Environment variables (keys & contacts)
 

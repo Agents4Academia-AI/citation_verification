@@ -26,11 +26,12 @@ is entirely inside the injected ``resolver`` and is lazy + fail-soft there.
 
 from __future__ import annotations
 
+import os
 import re
 import unicodedata
 
 from ..interfaces import Resolver
-from ..schema import CitationRecord, Evidence, Exists, MatchMethod, Resolved
+from ..schema import CitationRecord, CitedAs, Evidence, Exists, MatchMethod, Resolved
 
 # rapidfuzz threshold above which two author/venue/title strings are "the same".
 _SAME_THRESHOLD = 88.0
@@ -63,6 +64,11 @@ def fill_correctness(record: CitationRecord, *, resolver: Resolver) -> CitationR
         return record
 
     if resolved is None or resolved.match_method is MatchMethod.NONE:
+        # No structured match — but a citation can still be a verifiable web/software/
+        # system-card object (GitHub repo, model system card). Try the cited URL
+        # directly before abstaining.
+        if _try_direct_url(record):
+            return record
         # Absence is a red flag, not proof of fabrication: abstain.
         record.exists = Exists.UNRESOLVED
         record.resolved = resolved
@@ -79,14 +85,17 @@ def fill_correctness(record: CitationRecord, *, resolver: Resolver) -> CitationR
     # the id is authoritative and already title-gated by the resolver.
     # ``match_method`` is stored as its string value (use_enum_values), so compare
     # with ``==`` (str-enum equality), not ``is``.
-    if resolved.match_method == MatchMethod.FUZZY_TITLE and _fuzzy_match_is_weak(record, resolved):
-        record.exists = Exists.UNRESOLVED
-        record.resolved = None
-        record.metadata_issues = [
-            "abstained from a weak fuzzy-title match — both author and year contradict the "
-            f"cited reference (closest candidate: '{_short(resolved.title or '')}')"
-        ]
-        return record
+    if resolved.match_method == MatchMethod.FUZZY_TITLE:
+        reject = _reject_bad_fuzzy_match(record.cited_as, resolved)
+        if reject:
+            # The scholarly candidate was wrong, but the cited URL may still be a
+            # live web/software object (e.g. LangChain's GitHub repo) — try it.
+            if _try_direct_url(record):
+                return record
+            record.exists = Exists.UNRESOLVED
+            record.resolved = None
+            record.metadata_issues = [f"abstained from a weak fuzzy-title match — {reject}"]
+            return record
 
     record.resolved = resolved
     record.exists = Exists.YES
@@ -95,25 +104,70 @@ def fill_correctness(record: CitationRecord, *, resolver: Resolver) -> CitationR
     return record
 
 
-def _fuzzy_match_is_weak(record: CitationRecord, resolved: Resolved) -> bool:
-    """True when a fuzzy-title match is most likely the WRONG paper.
+_MONTHS = frozenset(
+    "january february march april may june july august september october november december".split()
+)
 
-    Anchored on a wrong first author (so an author-confirmed match is always
-    trusted, keeping false-negatives low), and confirmed by a second failing axis:
-    the year is off by >1, OR the resolved title drops the cited title's distinctive
-    content — a generic-substring collision like the cited "AI-powered chatbots for
-    healthcare: A systematic review" resolving to a paper merely titled "Systematic
-    review" (which ``_strings_match`` accepts as a substring, so it is NOT otherwise
-    flagged). A single failing axis stays ``yes`` + a metadata flag; this is a
-    narrow, high-precision abstain (docs/decisions: abstain beats guessing).
+
+def _is_nontitle(title: str | None) -> bool:
+    """True when a 'title' is really a date / number stub ('October 2022', '2022')."""
+    toks = _norm(title or "").split()
+    return not toks or all(
+        t in _MONTHS or re.fullmatch(r"(?:19|20)?\d{1,4}", t) for t in toks
+    )
+
+
+def _titles_diverge(a: str | None, b: str | None) -> bool:
+    """True when two titles are different works — neither is ~contained in the other.
+
+    A near-identical pair (one a subtitle-extended form of the other) leaves one side
+    almost fully covered; two genuinely different works each keep distinctive content
+    tokens (cited 'Reinforcement learning: An introduction, volume' vs candidate
+    'Introduction: The Challenge of Reinforcement Learning' — 'volume' vs 'challenge').
     """
-    cited = record.cited_as
-    if not (cited.authors and resolved.authors):
+    at, bt = _content_tokens(a), _content_tokens(b)
+    if len(at) < 2 or len(bt) < 2:
         return False
-    if _same_author(cited.authors[0], resolved.authors[0]):
-        return False  # author-confirmed -> trust the match
-    year_wrong = bool(cited.year and resolved.year and abs(cited.year - resolved.year) > 1)
-    return year_wrong or _title_poorly_covered(cited.title, resolved.title)
+    inter = len(at & bt)
+    return max(inter / len(at), inter / len(bt)) < 0.85
+
+
+def _reject_bad_fuzzy_match(cited: CitedAs, candidate: Resolved) -> str | None:
+    """Reason to REJECT a FUZZY_TITLE candidate as the wrong work, or ``None`` to accept.
+
+    A wrong ``exists=yes`` is worse than ``unresolved``: it sends the relevance judge
+    to the wrong paper. This is the single, high-precision veto over fuzzy (non-id)
+    candidates — id/exact matches are authoritative and never reach here. Abstain
+    beats guessing, so any of these "looks similar but is a different work" signals
+    drops the match to ``unresolved``.
+    """
+    ctitle = candidate.title or ""
+    # 1) The candidate "title" is a bare date / number ("October 2022") — not a title.
+    if _is_nontitle(ctitle):
+        return f"closest candidate is not a real title ('{_short(ctitle)}')"
+    # 2) No author corroboration at all on a fuzzy match — the minimum bar isn't met.
+    if not candidate.authors:
+        return f"closest candidate has no authors to corroborate ('{_short(ctitle)}')"
+    author_ok = bool(
+        cited.authors and candidate.authors and _same_author(cited.authors[0], candidate.authors[0])
+    )
+    year_gap = abs(cited.year - candidate.year) if (cited.year and candidate.year) else 0
+    # 3) A large year gap with diverging titles is a different work — even when the
+    #    first author matches (a prolific author has many works: a 1998 textbook vs a
+    #    1992 chapter that merely shares generic words).
+    if year_gap > 2 and _titles_diverge(cited.title, ctitle):
+        return (
+            f"closest candidate is a different work — cited {cited.year} vs {candidate.year}, "
+            f"titles diverge ('{_short(ctitle)}')"
+        )
+    # 4) Wrong first author confirmed by a second failing axis: year off >1, or the
+    #    resolved title drops the cited title's distinctive content (generic collision).
+    if cited.authors and candidate.authors and not author_ok:
+        if year_gap > 1:
+            return f"closest candidate's author and year both contradict ('{_short(ctitle)}')"
+        if _title_poorly_covered(cited.title, ctitle):
+            return f"closest candidate's author and title both contradict ('{_short(ctitle)}')"
+    return None
 
 
 # Tiny stopword set for title-coverage (the function words a generic match shares).
@@ -160,6 +214,63 @@ def _unresolved_note(resolver: Resolver) -> str:
     )
 
 
+def _try_direct_url(record: CitationRecord) -> bool:
+    """Verify a citation that points at a web/software/system-card URL.
+
+    Fallback when the structured cascade found nothing (or rejected a wrong fuzzy
+    match): a GitHub repo / model system card / Notion page can still be a real
+    object reachable by URL. On a LIVE url -> ``exists=yes`` as a ``DIRECT_URL``
+    match (a web/software object, NOT a scholarly title match), backfilling
+    title/authors/year from the cited reference. On a BLOCKED (gated/bot-blocked)
+    url -> abstain with an *actionable* reason instead of a false ``yes`` — a later
+    run with GITHUB_TOKEN / S2_API_KEY / a search key can recover it. Returns
+    ``True`` when it set the record's verdict. Network is lazy + fail-soft.
+    """
+    raw = (record.cited_as.url or "").strip()
+    if not raw:
+        return False
+    from ..grounding import url_validate  # lazy: network helper, keeps import light
+
+    chk = url_validate.validate_citation_url(raw, github_token=os.environ.get("GITHUB_TOKEN"))
+    if chk is None:
+        return False
+    cited = record.cited_as
+    if chk.status == "live":
+        record.exists = Exists.YES
+        record.resolved = Resolved(
+            source="url",
+            match_method=MatchMethod.DIRECT_URL,
+            match_score=1.0,
+            url=chk.url,
+            url_valid=True,
+            title=cited.title,
+            authors=list(cited.authors or []),
+            year=cited.year,
+        )
+        record.metadata_issues = []
+        record.evidence = _dedupe_evidence(
+            record.evidence
+            + [
+                Evidence(
+                    kind="url",
+                    source=chk.method,
+                    quote=f"cited URL verified live (HTTP {chk.http}) — web/software/system-card object",
+                    url=chk.url,
+                )
+            ]
+        )
+        return True
+    if chk.status == "blocked":
+        record.exists = Exists.UNRESOLVED
+        record.resolved = None
+        record.metadata_issues = [
+            f"url access blocked: HTTP {chk.http} from direct fetch ({chk.url}); no configured "
+            "API/search fallback validated — set GITHUB_TOKEN / S2_API_KEY or a search key and re-run"
+        ]
+        return True
+    return False  # dead / network error -> let the normal abstain proceed
+
+
 # ───────────────────────────────────────────────────────────────
 # Metadata comparison
 # ───────────────────────────────────────────────────────────────
@@ -192,16 +303,38 @@ def _diff_metadata(record: CitationRecord, resolved: Resolved) -> list[str]:
     return issues
 
 
+# Organization "authors": a paper credited to an org / "* Team" against a citation
+# that lists individuals (or vice versa) is a benign, common attribution discrepancy,
+# NOT a metadata error. This suppresses the WARNING only — the resolver's match gate
+# is untouched, so it never loosens what counts as a match.
+_ORG_AUTHOR_RE = re.compile(
+    r"(?i)\b(?:open\s?ai|deepseek|qwen|google|deepmind|meta|essential\s?ai|anthropic|"
+    r"microsoft|mistral|cohere|nvidia|hugging\s?face|allen\s?ai|ai2|stability|"
+    r"alibaba|baidu|tencent|bytedance)\b"
+)
+_ORG_SUFFIX_RE = re.compile(r"(?i)\b(?:team|teams|labs?|inc|institute|consortium|collaboration)\b")
+
+
+def _is_org_author(name: str) -> bool:
+    """True when an author string is an organization, not a person ('OpenAI', 'Qwen Team')."""
+    n = (name or "").strip()
+    return bool(n) and bool(_ORG_AUTHOR_RE.search(n) or _ORG_SUFFIX_RE.search(n))
+
+
 def _author_issue(claimed: list[str], canonical: list[str]) -> str | None:
     """Flag a wrong first author or a list that genuinely differs.
 
     Authors are matched by surname + given-name initial across the whole list, so
     an abbreviated cited name (``Yang Z``) matches its canonical full form
-    (``Zhengyuan Yang``) — only a different surname or initial is reported.
+    (``Zhengyuan Yang``) — only a different surname or initial is reported. An
+    org-vs-individual first author (``OpenAI`` / ``Qwen Team`` against a listed
+    person) is suppressed: it always "mismatches" by surname but is not an error.
     """
     if not claimed or not canonical:
         return None
     if not _same_author(claimed[0], canonical[0]):
+        if _is_org_author(claimed[0]) or _is_org_author(canonical[0]):
+            return None
         return f"first-author mismatch: cited '{claimed[0]}' vs '{canonical[0]}'"
     matched = sum(1 for c in claimed if any(_same_author(c, k) for k in canonical))
     if matched / len(claimed) < 0.5:
