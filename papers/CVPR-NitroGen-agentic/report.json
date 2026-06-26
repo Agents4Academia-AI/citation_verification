@@ -133,9 +133,9 @@
           "url": "https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0"
         }
       ],
-      "confidence": 0.85,
+      "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) GPT-3 shows LLM capability via large-scale pre-training, backing the LLM pre-training part of the claim. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
+      "notes": "(based on abstract only) GPT-3 evidence shows scaling LLMs via large-corpus pre-training yields task-agnostic few-shot generalization, backing the LLM pre-training claim. · source: https://www.semanticscholar.org/paper/90abbc2cf38462b954ae1b772fac9532e2ccd8b0",
       "error": null,
       "labels": null
     },
@@ -216,9 +216,9 @@
           "url": "https://www.semanticscholar.org/paper/df2b0e26d0599ce3e70df8a9da02e51594e0e992"
         }
       ],
-      "confidence": 0.85,
+      "confidence": 0.88,
       "model_tier": "judge",
-      "notes": "(based on abstract only) BERT pre-trains deep representations on large unlabeled text, supporting the large-scale pre-training claim. · source: https://www.semanticscholar.org/paper/df2b0e26d0599ce3e70df8a9da02e51594e0e992",
+      "notes": "(based on abstract only) BERT pre-trains on unlabeled text to enable broad downstream generalization, supporting large-scale pre-training generalization. · source: https://www.semanticscholar.org/paper/df2b0e26d0599ce3e70df8a9da02e51594e0e992",
       "error": null,
       "labels": null
     },
@@ -315,9 +315,9 @@
           "url": "https://www.semanticscholar.org/paper/268d347e8a55b5eb82fb5e7d2f800e33c75ab18a"
         }
       ],
-      "confidence": 0.85,
+      "confidence": 0.88,
       "model_tier": "judge",
-      "notes": "(based on abstract only) ViT achieves strong vision results when pre-trained on large data, backing the computer-vision pre-training claim. · source: https://www.semanticscholar.org/paper/268d347e8a55b5eb82fb5e7d2f800e33c75ab18a",
+      "notes": "(based on abstract only) ViT shows transformers pre-trained on large data transfer across vision tasks, backing the computer-vision pre-training generalization claim. · source: https://www.semanticscholar.org/paper/268d347e8a55b5eb82fb5e7d2f800e33c75ab18a",
       "error": null,
       "labels": null
     },
@@ -414,9 +414,9 @@
           "url": "https://www.semanticscholar.org/paper/6f870f7f02a8c59c3e23f407f3ef00dd1dcf8fc4"
         }
       ],
-      "confidence": 0.85,
+      "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) CLIP learns image representations from 400M internet image-text pairs, supporting large-scale internet pre-training for vision. · source: https://www.semanticscholar.org/paper/6f870f7f02a8c59c3e23f407f3ef00dd1dcf8fc4",
+      "notes": "(based on abstract only) CLIP learns from 400M internet image-text pairs, directly supporting large-scale internet pre-training in vision. · source: https://www.semanticscholar.org/paper/6f870f7f02a8c59c3e23f407f3ef00dd1dcf8fc4",
       "error": null,
       "labels": null
     },
@@ -443,17 +443,17 @@
         ]
       },
       "cited_as": {
-        "raw": "Ryan Volum, Sudha Rao, Michael Xu, Gabriel Des- Garennes, Chris Brockett, Benjamin Van Durme, Olivia Deng, Akanksha Malhotra, and Bill Dolan. Craft an iron sword: Dynamically generating interactive game characters by prompting large language models tuned on code. In Proceedings of the 3rd Wordplay: When Language Meets Games Workshop (Wordplay 2022), pages 25–43, Seattle, United States, 2022. Association for Computational Linguistics. 1",
+        "raw": "Ryan Volum, Sudha Rao, Michael Xu, Gabriel Des-Garennes, Chris Brockett, Benjamin Van Durme, Olivia Deng, Akanksha Malhotra, and Bill Dolan. Craft an iron sword: Dynamically generating interactive game characters by prompting large language models tuned on code. In Proceedings of the 3rd Wordplay: When Language Meets Games Workshop (Wordplay 2022), pages 25–43, Seattle, United States, 2022. Association for Computational Linguistics. 1",
         "authors": [
           "Ryan Volum",
           "Sudha Rao",
           "Michael Xu",
-          "Gabriel Des- Garennes",
+          "Gabriel Des-Garennes",
           "Chris Brockett",
           "Benjamin Van Durme",
           "Olivia Deng",
           "Akanksha Malhotra",
-          "and Bill Dolan"
+          "Bill Dolan"
         ],
         "title": "Craft an iron sword: Dynamically generating interactive game characters by prompting large language models tuned on code",
         "year": 2022,
@@ -509,7 +509,7 @@
       ],
       "confidence": 0.55,
       "model_tier": "judge",
-      "notes": "(based on abstract only) NPCs driven by LLM-generated code that alters game state is related but evidence doesn't describe hand-crafted programmatic APIs exposing internal states. · source: https://aclanthology.org/2022.wordplay-1.3.pdf",
+      "notes": "(based on abstract only) Evidence is LLM-driven NPC code/dialogue with dynamic game state, on-topic for LLM-in-games but does not clearly describe hand-crafted programmatic state APIs. · source: https://aclanthology.org/2022.wordplay-1.3.pdf",
       "error": null,
       "labels": null
     },
@@ -557,7 +557,7 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "arxiv",
+        "source": "s2",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "Voyager: An Open-Ended Embodied Agent with Large Language Models",
@@ -565,42 +565,42 @@
           "Guanzhi Wang",
           "Yuqi Xie",
           "Yunfan Jiang",
-          "Ajay Mandlekar",
+          "A. Mandlekar",
           "Chaowei Xiao",
           "Yuke Zhu",
-          "Linxi Fan",
+          "Linxi (Jim) Fan",
           "Anima Anandkumar"
         ],
         "year": 2023,
-        "venue": "arXiv (preprint)",
-        "doi": null,
-        "arxiv_id": "2305.16291v2",
-        "url": "http://arxiv.org/abs/2305.16291v2",
+        "venue": "Trans. Mach. Learn. Res.",
+        "doi": "10.48550/arxiv.2305.16291",
+        "arxiv_id": "2305.16291",
+        "url": "http://arxiv.org/pdf/2305.16291",
         "url_valid": true,
         "abstract": "We introduce Voyager, the first LLM-powered embodied lifelong learning agent in Minecraft that continuously explores the world, acquires diverse skills, and makes novel discoveries without human intervention. Voyager consists of three key components: 1) an automatic curriculum that maximizes exploration, 2) an ever-growing skill library of executable code for storing and retrieving complex behaviors, and 3) a new iterative prompting mechanism that incorporates environment feedback, execution errors, and self-verification for program improvement. Voyager interacts with GPT-4 via blackbox querie…"
       },
       "metadata_issues": [],
       "supports_claim": "partial",
-      "priority": "obligatory",
-      "severity": "medium",
+      "priority": "helpful",
+      "severity": "low",
       "compared_against": null,
       "evidence": [
         {
           "kind": "metadata",
-          "source": "2305.16291v2",
-          "quote": "Voyager: An Open-Ended Embodied Agent with Large Language Models — Guanzhi Wang, Yuqi Xie, Yunfan Jiang, Ajay Mandlekar, Chaowei Xiao, Yuke Zhu, Linxi Fan, Anima Anandkumar — 2023",
-          "url": "http://arxiv.org/abs/2305.16291v2"
+          "source": "10.48550/arxiv.2305.16291",
+          "quote": "Voyager: An Open-Ended Embodied Agent with Large Language Models — Guanzhi Wang, Yuqi Xie, Yunfan Jiang, A. Mandlekar, Chaowei Xiao, Yuke Zhu, Linxi (Jim) Fan, Anima Anandkumar — 2023",
+          "url": "http://arxiv.org/pdf/2305.16291"
         },
         {
           "kind": "abstract",
-          "source": "2305.16291v2",
+          "source": "10.48550/arxiv.2305.16291",
           "quote": "We introduce Voyager, the first LLM-powered embodied lifelong learning agent in Minecraft that continuously explores the world, acquires diverse skills, and makes novel discoveries without human intervention. Voyager consists of three key components: 1) an automatic curriculum that maximizes exploration, 2) an ever-growing skill library of executable code for storing and retrieving complex behaviors, and 3) a new iterative prompting mechanism that incorporates environment feedback, execution errors, and self-verification for program improvement. Voyager interacts with GPT-4 via blackbox querie…",
-          "url": "http://arxiv.org/abs/2305.16291v2"
+          "url": "http://arxiv.org/pdf/2305.16291"
         }
       ],
       "confidence": 0.6,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Voyager uses a skill library of executable code in Minecraft, consistent with programmatic API control though APIs not explicitly stated. · source: http://arxiv.org/abs/2305.16291v2",
+      "notes": "(based on abstract only) Voyager is an LLM agent using executable-code skills and GPT-4 queries, partially matching programmatic API control of game state. · source: http://arxiv.org/pdf/2305.16291",
       "error": null,
       "labels": null
     },
@@ -667,8 +667,8 @@
       },
       "metadata_issues": [],
       "supports_claim": "partial",
-      "priority": "obligatory",
-      "severity": "medium",
+      "priority": "helpful",
+      "severity": "low",
       "compared_against": null,
       "evidence": [
         {
@@ -686,7 +686,7 @@
       ],
       "confidence": 0.55,
       "model_tier": "judge",
-      "notes": "(based on abstract only) DEPS is an LLM planner for Minecraft agents; evidence supports planning/control but not explicitly hand-crafted programmatic APIs exposing game state. · source: http://arxiv.org/pdf/2302.01560",
+      "notes": "(based on abstract only) DEPS does LLM task planning in open-world Minecraft, on-topic but the specific hand-crafted programmatic state API is not evidenced. · source: http://arxiv.org/pdf/2302.01560",
       "error": null,
       "labels": null
     },
@@ -799,7 +799,7 @@
       ],
       "confidence": 0.55,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Cradle uses screenshots as input (perception) but evidence emphasizes unified screenshot/keyboard interface rather than complicated text-extraction/object-detection modules. · source: http://arxiv.org/abs/2403.03186v3",
+      "notes": "(based on abstract only) Cradle takes screenshots as perception input in an LMM framework, partially matching perception-module-based extraction but not explicitly object/text detection modules. · source: http://arxiv.org/abs/2403.03186v3",
       "error": null,
       "labels": null
     },
@@ -890,7 +890,7 @@
       },
       "metadata_issues": [],
       "supports_claim": "supports",
-      "priority": "obligatory",
+      "priority": "helpful",
       "severity": "ok",
       "compared_against": null,
       "evidence": [
@@ -909,7 +909,7 @@
       ],
       "confidence": 0.95,
       "model_tier": "judge",
-      "notes": "(based on abstract only) OpenAI Five defeated Dota 2 world champions, directly supporting RL superhuman performance in Dota 2. · source: https://www.semanticscholar.org/paper/b19729b27a1b4c24b52f87308c907653300afa7f",
+      "notes": "(based on abstract only) OpenAI Five defeated Dota 2 world champions, directly supporting superhuman RL performance in Dota 2. · source: https://www.semanticscholar.org/paper/b19729b27a1b4c24b52f87308c907653300afa7f",
       "error": null,
       "labels": null
     },
@@ -956,49 +956,49 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "arxiv",
+        "source": "s2",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "Playing Atari with Deep Reinforcement Learning",
         "authors": [
           "Volodymyr Mnih",
-          "Koray Kavukcuoglu",
+          "K. Kavukcuoglu",
           "David Silver",
           "Alex Graves",
           "Ioannis Antonoglou",
           "Daan Wierstra",
-          "Martin Riedmiller"
+          "Martin A. Riedmiller"
         ],
         "year": 2013,
-        "venue": "arXiv (preprint)",
+        "venue": "arXiv.org",
         "doi": null,
-        "arxiv_id": "1312.5602v1",
-        "url": "http://arxiv.org/abs/1312.5602v1",
+        "arxiv_id": "1312.5602",
+        "url": "https://www.semanticscholar.org/paper/2319a491378867c7049b3da055c5df60e1671158",
         "url_valid": true,
         "abstract": "We present the first deep learning model to successfully learn control policies directly from high-dimensional sensory input using reinforcement learning. The model is a convolutional neural network, trained with a variant of Q-learning, whose input is raw pixels and whose output is a value function estimating future rewards. We apply our method to seven Atari 2600 games from the Arcade Learning Environment, with no adjustment of the architecture or learning algorithm. We find that it outperforms all previous approaches on six of the games and surpasses a human expert on three of them."
       },
       "metadata_issues": [],
       "supports_claim": "supports",
-      "priority": "obligatory",
+      "priority": "helpful",
       "severity": "ok",
       "compared_against": null,
       "evidence": [
         {
           "kind": "metadata",
-          "source": "1312.5602v1",
-          "quote": "Playing Atari with Deep Reinforcement Learning — Volodymyr Mnih, Koray Kavukcuoglu, David Silver, Alex Graves, Ioannis Antonoglou, Daan Wierstra, Martin Riedmiller — 2013",
-          "url": "http://arxiv.org/abs/1312.5602v1"
+          "source": "1312.5602",
+          "quote": "Playing Atari with Deep Reinforcement Learning — Volodymyr Mnih, K. Kavukcuoglu, David Silver, Alex Graves, Ioannis Antonoglou, Daan Wierstra, Martin A. Riedmiller — 2013",
+          "url": "https://www.semanticscholar.org/paper/2319a491378867c7049b3da055c5df60e1671158"
         },
         {
           "kind": "abstract",
-          "source": "1312.5602v1",
+          "source": "1312.5602",
           "quote": "We present the first deep learning model to successfully learn control policies directly from high-dimensional sensory input using reinforcement learning. The model is a convolutional neural network, trained with a variant of Q-learning, whose input is raw pixels and whose output is a value function estimating future rewards. We apply our method to seven Atari 2600 games from the Arcade Learning Environment, with no adjustment of the architecture or learning algorithm. We find that it outperforms all previous approaches on six of the games and surpasses a human expert on three of them.",
-          "url": "http://arxiv.org/abs/1312.5602v1"
+          "url": "https://www.semanticscholar.org/paper/2319a491378867c7049b3da055c5df60e1671158"
         }
       ],
-      "confidence": 0.75,
+      "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract only) DQN surpasses human experts on Atari games, supporting RL superhuman performance in games. · source: http://arxiv.org/abs/1312.5602v1",
+      "notes": "(based on abstract only) DQN surpasses a human expert on Atari games via RL, supporting superhuman RL game performance. · source: https://www.semanticscholar.org/paper/2319a491378867c7049b3da055c5df60e1671158",
       "error": null,
       "labels": null
     },
@@ -1083,7 +1083,7 @@
       },
       "metadata_issues": [],
       "supports_claim": "supports",
-      "priority": "obligatory",
+      "priority": "helpful",
       "severity": "ok",
       "compared_against": null,
       "evidence": [
@@ -1100,9 +1100,9 @@
           "url": "https://www.semanticscholar.org/paper/340f48901f72278f6bf78a04ee5b01df208cc508"
         }
       ],
-      "confidence": 0.8,
+      "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract only) DQN human-level control across diverse Atari tasks supports RL superhuman game performance. · source: https://www.semanticscholar.org/paper/340f48901f72278f6bf78a04ee5b01df208cc508",
+      "notes": "(based on abstract only) Nature DQN is the first agent excelling at diverse challenging tasks, supporting landmark RL game performance. · source: https://www.semanticscholar.org/paper/340f48901f72278f6bf78a04ee5b01df208cc508",
       "error": null,
       "labels": null
     },
@@ -1188,7 +1188,7 @@
       },
       "metadata_issues": [],
       "supports_claim": "supports",
-      "priority": "obligatory",
+      "priority": "helpful",
       "severity": "ok",
       "compared_against": null,
       "evidence": [
@@ -1205,9 +1205,9 @@
           "url": "https://www.nature.com/articles/nature16961.pdf"
         }
       ],
-      "confidence": 0.8,
+      "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) AlphaGo defeating a human Go professional supports RL achieving superhuman game performance. · source: https://www.nature.com/articles/nature16961.pdf",
+      "notes": "(based on abstract only) AlphaGo defeated a human Go professional, supporting superhuman RL game performance. · source: https://www.nature.com/articles/nature16961.pdf",
       "error": null,
       "labels": null
     },
@@ -1315,7 +1315,7 @@
       },
       "metadata_issues": [],
       "supports_claim": "supports",
-      "priority": "obligatory",
+      "priority": "helpful",
       "severity": "ok",
       "compared_against": null,
       "evidence": [
@@ -1332,9 +1332,9 @@
           "url": "https://www.semanticscholar.org/paper/361c00b22e29d0816ca896513d2c165e26399821"
         }
       ],
-      "confidence": 0.95,
+      "confidence": 0.92,
       "model_tier": "judge",
-      "notes": "(based on abstract only) AlphaStar reached Grandmaster in StarCraft II, directly supporting RL superhuman performance in StarCraft II. · source: https://www.semanticscholar.org/paper/361c00b22e29d0816ca896513d2c165e26399821",
+      "notes": "(based on abstract only) AlphaStar reached Grandmaster in StarCraft II, directly supporting superhuman RL in StarCraft II. · source: https://www.semanticscholar.org/paper/361c00b22e29d0816ca896513d2c165e26399821",
       "error": null,
       "labels": null
     },
@@ -1407,9 +1407,9 @@
         "abstract": "Pretraining on noisy, internet-scale datasets has been heavily studied as a technique for training models with broad, general capabilities for text, images, and other modalities. However, for many sequential decision domains such as robotics, video games, and computer use, publicly available data does not contain the labels required to train behavioral priors in the same way. We extend the internet-scale pretraining paradigm to sequential decision domains through semi-supervised imitation learning wherein agents learn to act by watching online unlabeled videos. Specifically, we show that with …"
       },
       "metadata_issues": [],
-      "supports_claim": "partial",
+      "supports_claim": "supports",
       "priority": "obligatory",
-      "severity": "medium",
+      "severity": "ok",
       "compared_against": null,
       "evidence": [
         {
@@ -1433,7 +1433,7 @@
       ],
       "confidence": 0.7,
       "model_tier": "judge",
-      "notes": "(based on full text §Introduction) Evidence documents very expensive contractor demonstrations (~$160k) for behavioral cloning, backing the cost premise, but does not state training is constrained to only a few game titles. · source: https://arxiv.org/pdf/2206.11795",
+      "notes": "(based on full text §Introduction) Evidence states BC can require large amounts of data and that contractor demonstration data cost ~$90k-$160k, backing the expensive-demonstrations point. · source: https://arxiv.org/pdf/2206.11795",
       "error": null,
       "labels": null
     },
@@ -1483,39 +1483,38 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "arxiv",
+        "source": "s2",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "Scaling Instructable Agents Across Many Simulated Worlds",
         "authors": [
-          "SIMA Team",
+          "S1-NexusAgent Team",
           "Maria Abi Raad",
           "Arun Ahuja",
           "Catarina Barros",
-          "Frederic Besse",
+          "F. Besse",
           "Andrew Bolt",
           "Adrian Bolton",
           "Bethanie Brownfield",
           "Gavin Buttimore",
           "Max Cant",
           "Sarah Chakera",
-          "Stephanie C. Y. Chan",
+          "S. Chan",
           "Jeff Clune",
           "Adrian Collister",
           "Vikki Copeman",
-          "Alex Cullum",
+          "Alex A. Cullum",
           "Ishita Dasgupta",
-          "Dario de Cesare",
+          "D. Cesare",
           "Julia Di Trapani",
           "Yani Donchev",
           "Emma Dunleavy",
           "Martin Engelcke",
           "Ryan Faulkner",
           "Frankie Garcia",
-          "Charles Gbadamosi",
+          "C. Gbadamosi",
           "Zhitao Gong",
-          "Lucy Gonzales",
-          "Kshitij Gupta",
+          "Lucy G. Gonzales",
           "Karol Gregor",
           "Arne Olav Hallingstad",
           "Tim Harley",
@@ -1523,71 +1522,36 @@
           "Felix Hill",
           "Ed Hirst",
           "Drew A. Hudson",
-          "Jony Hudson",
           "Steph Hughes-Fitt",
           "Danilo J. Rezende",
           "Mimi Jasarevic",
           "Laura Kampis",
           "Rosemary Ke",
-          "Thomas Keck",
+          "T. Keck",
           "Junkyung Kim",
           "Oscar Knagg",
           "Kavya Kopparapu",
-          "Rory Lawton",
-          "Andrew Lampinen",
-          "Shane Legg",
+          "Andrew Kyle Lampinen",
+          "S. Legg",
           "Alexander Lerchner",
           "Marjorie Limont",
           "Yulan Liu",
           "Maria Loks-Thompson",
           "Joseph Marino",
           "Kathryn Martin Cussons",
-          "Loic Matthey",
-          "Siobhan Mcloughlin",
+          "L. Matthey",
+          "S. Mcloughlin",
           "Piermaria Mendolicchio",
           "Hamza Merzic",
           "Anna Mitenkova",
           "Alexandre Moufarek",
-          "Valeria Oliveira",
-          "Yanko Oliveira",
-          "Hannah Openshaw",
-          "Renke Pan",
-          "Aneesh Pappu",
-          "Alex Platonov",
-          "Ollie Purkiss",
-          "David Reichert",
-          "John Reid",
-          "Pierre Harvey Richemond",
-          "Tyson Roberts",
-          "Giles Ruscoe",
-          "Jaume Sanchez Elias",
-          "Tasha Sandars",
-          "Daniel P. Sawyer",
-          "Tim Scholtes",
-          "Guy Simmons",
-          "Daniel Slater",
-          "Hubert Soyer",
-          "Heiko Strathmann",
-          "Peter Stys",
-          "Allison C. Tam",
-          "Denis Teplyashin",
-          "Tayfun Terzi",
-          "Davide Vercelli",
-          "Bojan Vujatovic",
-          "Marcus Wainwright",
-          "Jane X. Wang",
-          "Zhengdong Wang",
-          "Daan Wierstra",
-          "Duncan Williams",
-          "Nathaniel Wong",
-          "Sarah York",
-          "Nick Young"
+          "V. Oliveira"
         ],
         "year": 2024,
-        "venue": "arXiv (preprint)",
-        "doi": null,
-        "arxiv_id": "2404.10179v3",
-        "url": "http://arxiv.org/abs/2404.10179v3",
+        "venue": "arXiv.org",
+        "doi": "10.48550/arxiv.2404.10179",
+        "arxiv_id": "2404.10179",
+        "url": "https://www.semanticscholar.org/paper/7c0cc7f7efba81ba78b4d9ff21282def690514e8",
         "url_valid": true,
         "abstract": "Building embodied AI systems that can follow arbitrary language instructions in any 3D environment is a key challenge for creating general AI. Accomplishing this goal requires learning to ground language in perception and embodied actions, in order to accomplish complex tasks. The Scalable, Instructable, Multiworld Agent (SIMA) project tackles this by training agents to follow free-form instructions across a diverse range of virtual 3D environments, including curated research environments as well as open-ended, commercial video games. Our goal is to develop an instructable agent that can accom…"
       },
@@ -1599,9 +1563,9 @@
       "evidence": [
         {
           "kind": "metadata",
-          "source": "2404.10179v3",
-          "quote": "Scaling Instructable Agents Across Many Simulated Worlds — SIMA Team, Maria Abi Raad, Arun Ahuja, Catarina Barros, Frederic Besse, Andrew Bolt, Adrian Bolton, Bethanie Brownfield, Gavin Buttimore, Max Cant, Sarah Chakera, Stephanie C. Y. Chan, Jeff Clune, Adrian Collister, Vikki Copeman, Alex Cullum, Ishita Dasgupta, Dario de Cesare, Julia Di Trapani, Yani Donchev, Emma Dunleavy, Martin Engelcke, Ryan Faulkner, Frankie Garcia, Charles Gbadamosi, Zhitao Gong, Lucy Gonzales, Kshitij Gupta, Karol Gregor, Arne Olav Hallingstad, Tim Harley, Sam Haves, Felix Hill, Ed Hirst, Drew A. Hudson, Jony Huds",
-          "url": "http://arxiv.org/abs/2404.10179v3"
+          "source": "10.48550/arxiv.2404.10179",
+          "quote": "Scaling Instructable Agents Across Many Simulated Worlds — S1-NexusAgent Team, Maria Abi Raad, Arun Ahuja, Catarina Barros, F. Besse, Andrew Bolt, Adrian Bolton, Bethanie Brownfield, Gavin Buttimore, Max Cant, Sarah Chakera, S. Chan, Jeff Clune, Adrian Collister, Vikki Copeman, Alex A. Cullum, Ishita Dasgupta, D. Cesare, Julia Di Trapani, Yani Donchev, Emma Dunleavy, Martin Engelcke, Ryan Faulkner, Frankie Garcia, C. Gbadamosi, Zhitao Gong, Lucy G. Gonzales, Karol Gregor, Arne Olav Hallingstad, Tim Harley, Sam Haves, Felix Hill, Ed Hirst, Drew A. Hudson, Steph Hughes-Fitt, Danilo J. Rezende, M",
+          "url": "https://www.semanticscholar.org/paper/7c0cc7f7efba81ba78b4d9ff21282def690514e8"
         },
         {
           "kind": "full_text",
@@ -1611,14 +1575,14 @@
         },
         {
           "kind": "abstract",
-          "source": "2404.10179v3",
+          "source": "10.48550/arxiv.2404.10179",
           "quote": "Building embodied AI systems that can follow arbitrary language instructions in any 3D environment is a key challenge for creating general AI. Accomplishing this goal requires learning to ground language in perception and embodied actions, in order to accomplish complex tasks. The Scalable, Instructable, Multiworld Agent (SIMA) project tackles this by training agents to follow free-form instructions across a diverse range of virtual 3D environments, including curated research environments as well as open-ended, commercial video games. Our goal is to develop an instructable agent that can accom…",
-          "url": "http://arxiv.org/abs/2404.10179v3"
+          "url": "https://www.semanticscholar.org/paper/7c0cc7f7efba81ba78b4d9ff21282def690514e8"
         }
       ],
       "confidence": 0.6,
       "model_tier": "judge",
-      "notes": "(based on full text §Data) Evidence confirms behavioral cloning from collected human gameplay data, but it spans 10+ environments and does not characterize the data as expensive or limited to a few titles. · source: http://arxiv.org/abs/2404.10179v3",
+      "notes": "(based on full text §Data) Evidence confirms behavioral cloning on expensive-to-collect human gameplay data, but does not back the 'only a few game titles' limitation—SIMA spans 10+ environments. · source: https://www.semanticscholar.org/paper/7c0cc7f7efba81ba78b4d9ff21282def690514e8",
       "error": null,
       "labels": null
     },
@@ -1668,21 +1632,21 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "arxiv",
+        "source": "s2",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "Gymnasium: A Standard Interface for Reinforcement Learning Environments",
         "authors": [
           "Mark Towers",
           "Ariel Kwiatkowski",
-          "Jordan Terry",
+          "Jordan K. Terry",
           "John U. Balis",
-          "Gianluca De Cola",
-          "Tristan Deleu",
+          "G. Cola",
+          "T. Deleu",
           "Manuel Goulão",
           "Andreas Kallinteris",
           "Markus Krimmel",
-          "Arjun KG",
+          "KG Arjun",
           "Rodrigo Perez-Vicente",
           "Andrea Pierré",
           "Sander Schulhoff",
@@ -1691,10 +1655,10 @@
           "Omar G. Younis"
         ],
         "year": 2024,
-        "venue": "arXiv (preprint)",
-        "doi": null,
-        "arxiv_id": "2407.17032v4",
-        "url": "http://arxiv.org/abs/2407.17032v4",
+        "venue": "arXiv.org",
+        "doi": "10.48550/arxiv.2407.17032",
+        "arxiv_id": "2407.17032",
+        "url": "https://www.semanticscholar.org/paper/cafe66a9bdcef9ec43c91d57ece9087203b0a0e3",
         "url_valid": true,
         "abstract": "Reinforcement Learning (RL) is a continuously growing field that has the potential to revolutionize many areas of artificial intelligence. However, despite its promise, RL research is often hindered by the lack of standardization in environment and algorithm implementations. This makes it difficult for researchers to compare and build upon each other's work, slowing down progress in the field. Gymnasium is an open-source library that provides a standard API for RL environments, aiming to tackle this issue. Gymnasium's main feature is a set of abstractions that allow for wide interoperability b…"
       },
@@ -1706,20 +1670,20 @@
       "evidence": [
         {
           "kind": "metadata",
-          "source": "2407.17032v4",
-          "quote": "Gymnasium: A Standard Interface for Reinforcement Learning Environments — Mark Towers, Ariel Kwiatkowski, Jordan Terry, John U. Balis, Gianluca De Cola, Tristan Deleu, Manuel Goulão, Andreas Kallinteris, Markus Krimmel, Arjun KG, Rodrigo Perez-Vicente, Andrea Pierré, Sander Schulhoff, Jun Jet Tai, Hannah Tan, Omar G. Younis — 2024",
-          "url": "http://arxiv.org/abs/2407.17032v4"
+          "source": "10.48550/arxiv.2407.17032",
+          "quote": "Gymnasium: A Standard Interface for Reinforcement Learning Environments — Mark Towers, Ariel Kwiatkowski, Jordan K. Terry, John U. Balis, G. Cola, T. Deleu, Manuel Goulão, Andreas Kallinteris, Markus Krimmel, KG Arjun, Rodrigo Perez-Vicente, Andrea Pierré, Sander Schulhoff, Jun Jet Tai, Hannah Tan, Omar G. Younis — 2024",
+          "url": "https://www.semanticscholar.org/paper/cafe66a9bdcef9ec43c91d57ece9087203b0a0e3"
         },
         {
           "kind": "abstract",
-          "source": "2407.17032v4",
+          "source": "10.48550/arxiv.2407.17032",
           "quote": "Reinforcement Learning (RL) is a continuously growing field that has the potential to revolutionize many areas of artificial intelligence. However, despite its promise, RL research is often hindered by the lack of standardization in environment and algorithm implementations. This makes it difficult for researchers to compare and build upon each other's work, slowing down progress in the field. Gymnasium is an open-source library that provides a standard API for RL environments, aiming to tackle this issue. Gymnasium's main feature is a set of abstractions that allow for wide interoperability b…",
-          "url": "http://arxiv.org/abs/2407.17032v4"
+          "url": "https://www.semanticscholar.org/paper/cafe66a9bdcef9ec43c91d57ece9087203b0a0e3"
         }
       ],
-      "confidence": 0.9,
+      "confidence": 0.92,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Gymnasium provides a standard API for RL environments, supporting its use as a universal wrapping API. · source: http://arxiv.org/abs/2407.17032v4",
+      "notes": "(based on abstract only) Gymnasium provides a standard RL environment API, supporting the universal Gymnasium API for the evaluation suite. · source: https://www.semanticscholar.org/paper/cafe66a9bdcef9ec43c91d57ece9087203b0a0e3",
       "error": null,
       "labels": null
     },
@@ -1775,9 +1739,7 @@
         "url_valid": true,
         "abstract": null
       },
-      "metadata_issues": [
-        "title mismatch: cited 'Distinctive image features from scaleinvariant keypoints' vs 'Distinctive Image Features from Scale-Invariant Keypoints'"
-      ],
+      "metadata_issues": [],
       "supports_claim": "inconclusive",
       "priority": "helpful",
       "severity": "low",
@@ -1877,7 +1839,7 @@
       ],
       "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) XFeat is a local feature detection/matching method, supporting its use for feature matching. · source: http://arxiv.org/pdf/2404.19174",
+      "notes": "(based on abstract only) XFeat is an accelerated local-feature detection/matching method, supporting its use for frame feature matching. · source: http://arxiv.org/pdf/2404.19174",
       "error": null,
       "labels": null
     },
@@ -1962,9 +1924,9 @@
           "url": "https://www.semanticscholar.org/paper/e3d7778a47c6cab4ea1ef3ee9d19ec1510c15c60"
         }
       ],
-      "confidence": 0.9,
+      "confidence": 0.92,
       "model_tier": "judge",
-      "notes": "(based on abstract only) SegFormer is a semantic segmentation model, supporting its use as a fine-tuned segmentation model. · source: https://www.semanticscholar.org/paper/e3d7778a47c6cab4ea1ef3ee9d19ec1510c15c60",
+      "notes": "(based on abstract only) SegFormer is a semantic segmentation framework, supporting its use as the segmentation model for parsing controller states. · source: https://www.semanticscholar.org/paper/e3d7778a47c6cab4ea1ef3ee9d19ec1510c15c60",
       "error": null,
       "labels": null
     },
@@ -2045,7 +2007,7 @@
       ],
       "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Adam is the optimizer foundation of AdamW, supporting the AdamW optimizer citation. · source: https://www.semanticscholar.org/paper/a6cb366736791bcccc5c8639de5a8f9636bf87e8",
+      "notes": "(based on abstract only) Adam is the cited gradient optimizer underlying AdamW used for training. · source: https://www.semanticscholar.org/paper/a6cb366736791bcccc5c8639de5a8f9636bf87e8",
       "error": null,
       "labels": null
     },
@@ -2124,7 +2086,7 @@
       ],
       "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) This is the decoupled-weight-decay (AdamW) paper, directly supporting the AdamW optimizer citation. · source: http://arxiv.org/abs/1711.05101v3",
+      "notes": "(based on abstract only) This is the decoupled weight decay (AdamW) paper, supporting the AdamW-with-weight-decay training detail. · source: http://arxiv.org/abs/1711.05101v3",
       "error": null,
       "labels": null
     },
@@ -2223,7 +2185,7 @@
       ],
       "confidence": 0.6,
       "model_tier": "judge",
-      "notes": "(based on full text §Introduction) Same VPT paper and data topic, but the retrieved text never mentions over-predicting the null action with 71,000 hours of raw data. · source: https://arxiv.org/pdf/2206.11795",
+      "notes": "(based on full text §Introduction) On-topic (VPT is the cited work) but the partial excerpts (§Introduction/§IDM/§Data Scaling) do not mention over-predicting the null action; the detail could plausibly appear elsewhere in the paper. · source: https://arxiv.org/pdf/2206.11795",
       "error": null,
       "labels": null
     },
@@ -2273,21 +2235,21 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "arxiv",
+        "source": "s2",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "Gymnasium: A Standard Interface for Reinforcement Learning Environments",
         "authors": [
           "Mark Towers",
           "Ariel Kwiatkowski",
-          "Jordan Terry",
+          "Jordan K. Terry",
           "John U. Balis",
-          "Gianluca De Cola",
-          "Tristan Deleu",
+          "G. Cola",
+          "T. Deleu",
           "Manuel Goulão",
           "Andreas Kallinteris",
           "Markus Krimmel",
-          "Arjun KG",
+          "KG Arjun",
           "Rodrigo Perez-Vicente",
           "Andrea Pierré",
           "Sander Schulhoff",
@@ -2296,10 +2258,10 @@
           "Omar G. Younis"
         ],
         "year": 2024,
-        "venue": "arXiv (preprint)",
-        "doi": null,
-        "arxiv_id": "2407.17032v4",
-        "url": "http://arxiv.org/abs/2407.17032v4",
+        "venue": "arXiv.org",
+        "doi": "10.48550/arxiv.2407.17032",
+        "arxiv_id": "2407.17032",
+        "url": "https://www.semanticscholar.org/paper/cafe66a9bdcef9ec43c91d57ece9087203b0a0e3",
         "url_valid": true,
         "abstract": "Reinforcement Learning (RL) is a continuously growing field that has the potential to revolutionize many areas of artificial intelligence. However, despite its promise, RL research is often hindered by the lack of standardization in environment and algorithm implementations. This makes it difficult for researchers to compare and build upon each other's work, slowing down progress in the field. Gymnasium is an open-source library that provides a standard API for RL environments, aiming to tackle this issue. Gymnasium's main feature is a set of abstractions that allow for wide interoperability b…"
       },
@@ -2311,20 +2273,20 @@
       "evidence": [
         {
           "kind": "metadata",
-          "source": "2407.17032v4",
-          "quote": "Gymnasium: A Standard Interface for Reinforcement Learning Environments — Mark Towers, Ariel Kwiatkowski, Jordan Terry, John U. Balis, Gianluca De Cola, Tristan Deleu, Manuel Goulão, Andreas Kallinteris, Markus Krimmel, Arjun KG, Rodrigo Perez-Vicente, Andrea Pierré, Sander Schulhoff, Jun Jet Tai, Hannah Tan, Omar G. Younis — 2024",
-          "url": "http://arxiv.org/abs/2407.17032v4"
+          "source": "10.48550/arxiv.2407.17032",
+          "quote": "Gymnasium: A Standard Interface for Reinforcement Learning Environments — Mark Towers, Ariel Kwiatkowski, Jordan K. Terry, John U. Balis, G. Cola, T. Deleu, Manuel Goulão, Andreas Kallinteris, Markus Krimmel, KG Arjun, Rodrigo Perez-Vicente, Andrea Pierré, Sander Schulhoff, Jun Jet Tai, Hannah Tan, Omar G. Younis — 2024",
+          "url": "https://www.semanticscholar.org/paper/cafe66a9bdcef9ec43c91d57ece9087203b0a0e3"
         },
         {
           "kind": "abstract",
-          "source": "2407.17032v4",
+          "source": "10.48550/arxiv.2407.17032",
           "quote": "Reinforcement Learning (RL) is a continuously growing field that has the potential to revolutionize many areas of artificial intelligence. However, despite its promise, RL research is often hindered by the lack of standardization in environment and algorithm implementations. This makes it difficult for researchers to compare and build upon each other's work, slowing down progress in the field. Gymnasium is an open-source library that provides a standard API for RL environments, aiming to tackle this issue. Gymnasium's main feature is a set of abstractions that allow for wide interoperability b…",
-          "url": "http://arxiv.org/abs/2407.17032v4"
+          "url": "https://www.semanticscholar.org/paper/cafe66a9bdcef9ec43c91d57ece9087203b0a0e3"
         }
       ],
       "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Gymnasium's standard API enables programmatic control of environments as claimed. · source: http://arxiv.org/abs/2407.17032v4",
+      "notes": "(based on abstract only) Gymnasium's standard API enabling interoperability supports the programmatic-control claim. · source: https://www.semanticscholar.org/paper/cafe66a9bdcef9ec43c91d57ece9087203b0a0e3",
       "error": null,
       "labels": null
     },
@@ -2417,7 +2379,7 @@
       ],
       "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) VPT learns Minecraft actions, consistent with task-specific action spaces, but evidence does not explicitly discuss action-space definition. · source: https://arxiv.org/pdf/2206.11795",
+      "notes": "(based on abstract only) VPT operates in Minecraft with a game-specific action space, partially supporting the task-specific action-space contrast though not stated explicitly. · source: https://arxiv.org/pdf/2206.11795",
       "error": null,
       "labels": null
     },
@@ -2506,7 +2468,7 @@
       ],
       "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) MineRL is a Minecraft-specific dataset consistent with task-specific action spaces, but evidence does not explicitly discuss action-space definition. · source: https://www.ijcai.org/proceedings/2019/0339.pdf",
+      "notes": "(based on abstract only) MineRL is a Minecraft demonstration dataset, partially supporting the game-specific action-space contrast though not stated explicitly. · source: https://www.ijcai.org/proceedings/2019/0339.pdf",
       "error": null,
       "labels": null
     },
@@ -2591,7 +2553,7 @@
       ],
       "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) This is the Flow Matching paper, supporting NITROGEN's use of flow matching to generate actions. · source: https://www.semanticscholar.org/paper/af68f10ab5078bfc519caae377c90ee6d9c504e9",
+      "notes": "(based on abstract only) Flow Matching is the generative training method cited for action-chunk generation. · source: https://www.semanticscholar.org/paper/af68f10ab5078bfc519caae377c90ee6d9c504e9",
       "error": null,
       "labels": null
     },
@@ -2641,25 +2603,24 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "arxiv",
+        "source": "s2",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "GR00T N1: An Open Foundation Model for Generalist Humanoid Robots",
         "authors": [
-          "NVIDIA",
-          ":",
+          "Nvidia",
           "Johan Bjorck",
           "Fernando Castañeda",
           "Nikita Cherniadev",
           "Xingye Da",
           "Runyu Ding",
-          "Linxi \"Jim\" Fan",
+          "LinxiJimFan",
           "Yu Fang",
           "Dieter Fox",
           "Fengyuan Hu",
           "Spencer Huang",
-          "Joel Jang",
-          "Zhenyu Jiang",
+          "J. Jang",
+          "Zhenyuan Jiang",
           "Jan Kautz",
           "Kaushil Kundalia",
           "Lawrence Lao",
@@ -2669,11 +2630,11 @@
           "Guilin Liu",
           "Edith Llontop",
           "Loic Magne",
-          "Ajay Mandlekar",
+          "A. Mandlekar",
           "Avnish Narayan",
           "Soroush Nasiriany",
           "Scott Reed",
-          "You Liang Tan",
+          "Y. Tan",
           "Guanzhi Wang",
           "Zu Wang",
           "Jing Wang",
@@ -2681,7 +2642,7 @@
           "Jiannan Xiang",
           "Yuqi Xie",
           "Yinzhen Xu",
-          "Zhenjia Xu",
+          "Zhen-Teng Xu",
           "Seonghyeon Ye",
           "Zhiding Yu",
           "Ao Zhang",
@@ -2691,10 +2652,10 @@
           "Yuke Zhu"
         ],
         "year": 2025,
-        "venue": "arXiv (preprint)",
-        "doi": null,
-        "arxiv_id": "2503.14734v2",
-        "url": "http://arxiv.org/abs/2503.14734v2",
+        "venue": "arXiv.org",
+        "doi": "10.48550/arxiv.2503.14734",
+        "arxiv_id": "2503.14734",
+        "url": "https://www.semanticscholar.org/paper/731c50b0d6af4c1cb8d95f506541681ea487973b",
         "url_valid": true,
         "abstract": "General-purpose robots need a versatile body and an intelligent mind. Recent advancements in humanoid robots have shown great promise as a hardware platform for building generalist autonomy in the human world. A robot foundation model, trained on massive and diverse data sources, is essential for enabling the robots to reason about novel situations, robustly handle real-world variability, and rapidly learn new tasks. To this end, we introduce GR00T N1, an open foundation model for humanoid robots. GR00T N1 is a Vision-Language-Action (VLA) model with a dual-system architecture. The vision-lang…"
       },
@@ -2706,20 +2667,20 @@
       "evidence": [
         {
           "kind": "metadata",
-          "source": "2503.14734v2",
-          "quote": "GR00T N1: An Open Foundation Model for Generalist Humanoid Robots — NVIDIA, :, Johan Bjorck, Fernando Castañeda, Nikita Cherniadev, Xingye Da, Runyu Ding, Linxi \"Jim\" Fan, Yu Fang, Dieter Fox, Fengyuan Hu, Spencer Huang, Joel Jang, Zhenyu Jiang, Jan Kautz, Kaushil Kundalia, Lawrence Lao, Zhiqi Li, Zongyu Lin, Kevin Lin, Guilin Liu, Edith Llontop, Loic Magne, Ajay Mandlekar, Avnish Narayan, Soroush Nasiriany, Scott Reed, You Liang Tan, Guanzhi Wang, Zu Wang, Jing Wang, Qi Wang, Jiannan Xiang, Yuqi Xie, Yinzhen Xu, Zhenjia Xu, Seonghyeon Ye, Zhiding Yu, Ao Zhang, Hao Zhang, Yizhou Zhao, Ruijie Z",
-          "url": "http://arxiv.org/abs/2503.14734v2"
+          "source": "10.48550/arxiv.2503.14734",
+          "quote": "GR00T N1: An Open Foundation Model for Generalist Humanoid Robots — Nvidia, Johan Bjorck, Fernando Castañeda, Nikita Cherniadev, Xingye Da, Runyu Ding, LinxiJimFan, Yu Fang, Dieter Fox, Fengyuan Hu, Spencer Huang, J. Jang, Zhenyuan Jiang, Jan Kautz, Kaushil Kundalia, Lawrence Lao, Zhiqi Li, Zongyu Lin, Kevin Lin, Guilin Liu, Edith Llontop, Loic Magne, A. Mandlekar, Avnish Narayan, Soroush Nasiriany, Scott Reed, Y. Tan, Guanzhi Wang, Zu Wang, Jing Wang, Qi Wang, Jiannan Xiang, Yuqi Xie, Yinzhen Xu, Zhen-Teng Xu, Seonghyeon Ye, Zhiding Yu, Ao Zhang, Hao Zhang, Yizhou Zhao, Ruijie Zheng, Yuke Zhu",
+          "url": "https://www.semanticscholar.org/paper/731c50b0d6af4c1cb8d95f506541681ea487973b"
         },
         {
           "kind": "abstract",
-          "source": "2503.14734v2",
+          "source": "10.48550/arxiv.2503.14734",
           "quote": "General-purpose robots need a versatile body and an intelligent mind. Recent advancements in humanoid robots have shown great promise as a hardware platform for building generalist autonomy in the human world. A robot foundation model, trained on massive and diverse data sources, is essential for enabling the robots to reason about novel situations, robustly handle real-world variability, and rapidly learn new tasks. To this end, we introduce GR00T N1, an open foundation model for humanoid robots. GR00T N1 is a Vision-Language-Action (VLA) model with a dual-system architecture. The vision-lang…",
-          "url": "http://arxiv.org/abs/2503.14734v2"
+          "url": "https://www.semanticscholar.org/paper/731c50b0d6af4c1cb8d95f506541681ea487973b"
         }
       ],
-      "confidence": 0.85,
+      "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract only) GR00T N1 is a VLA model with vision-language and action components, supporting it as the adapted architecture. · source: http://arxiv.org/abs/2503.14734v2",
+      "notes": "(based on abstract only) GR00T N1 is the VLA dual-system architecture the citing paper adapts from. · source: https://www.semanticscholar.org/paper/731c50b0d6af4c1cb8d95f506541681ea487973b",
       "error": null,
       "labels": null
     },
@@ -2818,7 +2779,7 @@
       ],
       "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract only) SigLIP 2 is a vision-language encoder, supporting its use as the vision transformer encoder. · source: https://www.semanticscholar.org/paper/5bbb904e85ced452f44d9ed9559297334298c407",
+      "notes": "(based on abstract only) SigLIP 2 is a vision-language encoder, supporting its use as the vision transformer encoding frames. · source: https://www.semanticscholar.org/paper/5bbb904e85ced452f44d9ed9559297334298c407",
       "error": null,
       "labels": null
     },
@@ -2895,9 +2856,9 @@
           "url": "https://arxiv.org/pdf/2212.09748"
         }
       ],
-      "confidence": 0.9,
+      "confidence": 0.88,
       "model_tier": "judge",
-      "notes": "(based on abstract only) This is the Diffusion Transformer (DiT) paper, supporting actions generated with a DiT. · source: https://arxiv.org/pdf/2212.09748",
+      "notes": "(based on abstract only) DiT is the transformer-based diffusion architecture cited for generating actions. · source: https://arxiv.org/pdf/2212.09748",
       "error": null,
       "labels": null
     },
@@ -3000,9 +2961,9 @@
         "abstract": "Robot learning holds tremendous promise to unlock the full potential of flexible, general, and dexterous robot systems, as well as to address some of the deepest questions in artificial intelligence. However, bringing robot learning to the level of generality required for effective real-world systems faces major obstacles in terms of data, generalization, and robustness. In this paper, we discuss how generalist robot policies (i.e., robot foundation models) can address these challenges, and how we can design effective generalist robot policies for complex and highly dexterous tasks. We propose…"
       },
       "metadata_issues": [],
-      "supports_claim": "partial",
+      "supports_claim": "supports",
       "priority": "obligatory",
-      "severity": "medium",
+      "severity": "ok",
       "compared_against": null,
       "evidence": [
         {
@@ -3012,15 +2973,21 @@
           "url": "https://www.semanticscholar.org/paper/7e7e59d2e247d99954081080ddd5aae93d10b9e0"
         },
         {
+          "kind": "full_text",
+          "source": "arxiv_html §II Related Work",
+          "quote": "Outside of robot control, many models have been proposed that combine pre-trained language models with diffusion [ 40 , 41 , 14 ] , including models that specifically hybridize diffusion and autoregressive large language models [ 19 , 29 , 59 ] . Such models are typically concerned with image generation, but our action generation model builds on a number of previously proposed concepts. Like Zhou et al. [ 59 ] , we train our model via a diffusion-style (flow matching) loss applied on individual sequence elements, in lieu of the standard cross-entropy loss for decoder-only transformers. Additio…",
+          "url": "https://arxiv.org/html/2410.24164"
+        },
+        {
           "kind": "abstract",
           "source": "10.48550/arxiv.2410.24164",
           "quote": "Robot learning holds tremendous promise to unlock the full potential of flexible, general, and dexterous robot systems, as well as to address some of the deepest questions in artificial intelligence. However, bringing robot learning to the level of generality required for effective real-world systems faces major obstacles in terms of data, generalization, and robustness. In this paper, we discuss how generalist robot policies (i.e., robot foundation models) can address these challenges, and how we can design effective generalist robot policies for complex and highly dexterous tasks. We propose…",
           "url": "https://www.semanticscholar.org/paper/7e7e59d2e247d99954081080ddd5aae93d10b9e0"
         }
       ],
-      "confidence": 0.5,
+      "confidence": 0.78,
       "model_tier": "judge",
-      "notes": "(based on abstract only) This generalist robot-policy paper is the right source family, but visible evidence does not explicitly state the flow-matching objective. · source: https://www.semanticscholar.org/paper/7e7e59d2e247d99954081080ddd5aae93d10b9e0",
+      "notes": "(based on full text §II Related Work) Evidence states the model is trained via a diffusion-style flow-matching loss with action chunking, backing the cited flow-matching objective. · source: https://www.semanticscholar.org/paper/7e7e59d2e247d99954081080ddd5aae93d10b9e0",
       "error": null,
       "labels": null
     },
@@ -3105,7 +3072,7 @@
       ],
       "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Flow Matching paper supports the conditional flow-matching objective citation. · source: https://www.semanticscholar.org/paper/af68f10ab5078bfc519caae377c90ee6d9c504e9",
+      "notes": "(based on abstract only) Evidence defines the conditional flow-matching objective used for training. · source: https://www.semanticscholar.org/paper/af68f10ab5078bfc519caae377c90ee6d9c504e9",
       "error": null,
       "labels": null
     },
@@ -3186,7 +3153,7 @@
       ],
       "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Adam underlies AdamW, supporting the optimizer citation. · source: https://www.semanticscholar.org/paper/a6cb366736791bcccc5c8639de5a8f9636bf87e8",
+      "notes": "(based on abstract only) Adam is the cited optimizer foundation for the AdamW training setup. · source: https://www.semanticscholar.org/paper/a6cb366736791bcccc5c8639de5a8f9636bf87e8",
       "error": null,
       "labels": null
     },
@@ -3265,7 +3232,7 @@
       ],
       "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Decoupled weight decay (AdamW) paper supports the AdamW with weight-decay citation. · source: http://arxiv.org/abs/1711.05101v3",
+      "notes": "(based on abstract only) AdamW/decoupled weight decay is the cited optimizer matching the training setup. · source: http://arxiv.org/abs/1711.05101v3",
       "error": null,
       "labels": null
     },
@@ -3311,23 +3278,23 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "arxiv",
+        "source": "s2",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "Understanding Warmup-Stable-Decay Learning Rates: A River Valley Loss Landscape Perspective",
         "authors": [
           "Kaiyue Wen",
           "Zhiyuan Li",
-          "Jason Wang",
-          "David Hall",
+          "Jason S. Wang",
+          "David Leo Wright Hall",
           "Percy Liang",
           "Tengyu Ma"
         ],
         "year": 2024,
-        "venue": "arXiv (preprint)",
-        "doi": null,
-        "arxiv_id": "2410.05192v3",
-        "url": "http://arxiv.org/abs/2410.05192v3",
+        "venue": "arXiv.org",
+        "doi": "10.48550/arxiv.2410.05192",
+        "arxiv_id": "2410.05192",
+        "url": "https://www.semanticscholar.org/paper/b096dc25eeacb00ca35293131230e6234bac9a59",
         "url_valid": true,
         "abstract": "Training language models currently requires pre-determining a fixed compute budget because the typical cosine learning rate schedule depends on the total number of steps. In contrast, the Warmup-Stable-Decay (WSD) schedule uses a constant learning rate to produce a main branch of iterates that can in principle continue indefinitely without a pre-specified compute budget. Then, given any compute budget, one can branch out from the main branch at a proper time with a rapidly decaying learning rate to produce a strong model. Empirically, WSD generates a non-traditional loss curve: the loss remain…"
       },
@@ -3339,20 +3306,20 @@
       "evidence": [
         {
           "kind": "metadata",
-          "source": "2410.05192v3",
-          "quote": "Understanding Warmup-Stable-Decay Learning Rates: A River Valley Loss Landscape Perspective — Kaiyue Wen, Zhiyuan Li, Jason Wang, David Hall, Percy Liang, Tengyu Ma — 2024",
-          "url": "http://arxiv.org/abs/2410.05192v3"
+          "source": "10.48550/arxiv.2410.05192",
+          "quote": "Understanding Warmup-Stable-Decay Learning Rates: A River Valley Loss Landscape Perspective — Kaiyue Wen, Zhiyuan Li, Jason S. Wang, David Leo Wright Hall, Percy Liang, Tengyu Ma — 2024",
+          "url": "https://www.semanticscholar.org/paper/b096dc25eeacb00ca35293131230e6234bac9a59"
         },
         {
           "kind": "abstract",
-          "source": "2410.05192v3",
+          "source": "10.48550/arxiv.2410.05192",
           "quote": "Training language models currently requires pre-determining a fixed compute budget because the typical cosine learning rate schedule depends on the total number of steps. In contrast, the Warmup-Stable-Decay (WSD) schedule uses a constant learning rate to produce a main branch of iterates that can in principle continue indefinitely without a pre-specified compute budget. Then, given any compute budget, one can branch out from the main branch at a proper time with a rapidly decaying learning rate to produce a strong model. Empirically, WSD generates a non-traditional loss curve: the loss remain…",
-          "url": "http://arxiv.org/abs/2410.05192v3"
+          "url": "https://www.semanticscholar.org/paper/b096dc25eeacb00ca35293131230e6234bac9a59"
         }
       ],
-      "confidence": 0.9,
+      "confidence": 0.92,
       "model_tier": "judge",
-      "notes": "(based on abstract only) WSD paper describes a constant-LR schedule that trains indefinitely without a fixed budget, matching the claim. · source: http://arxiv.org/abs/2410.05192v3",
+      "notes": "(based on abstract only) WSD evidence describes a constant-LR schedule allowing training without a fixed compute budget, matching the claim. · source: https://www.semanticscholar.org/paper/b096dc25eeacb00ca35293131230e6234bac9a59",
       "error": null,
       "labels": null
     },
@@ -3423,21 +3390,15 @@
           "url": "https://arxiv.org/pdf/2212.09748"
         },
         {
-          "kind": "full_text",
-          "source": "arxiv_html §Experimental Setup",
-          "quote": "Even without these techniques, training was highly stable across all model configs and we did not observe any loss spikes commonly seen when training transformers. Following common practice in the generative modeling literature, we maintain an exponential moving average (EMA) of DiT weights over training with a decay of 0.9999. All results reported use the EMA model. We use identical training hyperparameters across all DiT model sizes and patch sizes. Our training hyperparameters are almost entirely retained from ADM. Evaluating the diffusion model with is done by randomly dropping out during …",
-          "url": "https://ar5iv.org/abs/2212.09748"
-        },
-        {
           "kind": "abstract",
           "source": "10.1109/iccv51070.2023.00387",
           "quote": "We explore a new class of diffusion models based on the transformer architecture. We train latent diffusion models of images, replacing the commonly-used U-Net backbone with a transformer that operates on latent patches. We analyze the scalability of our Diffusion Transformers (DiTs) through the lens of forward pass complexity as measured by Gflops. We find that DiTs with higher Gflops—through increased transformer depth/width or increased number of input tokens—consistently have lower FID. In addition to possessing good scalability properties, our largest DiT-XL/2 models outperform all prior …",
           "url": "https://arxiv.org/pdf/2212.09748"
         }
       ],
-      "confidence": 0.98,
+      "confidence": 0.97,
       "model_tier": "judge",
-      "notes": "(based on full text §Experimental Setup) Evidence explicitly states they maintain an EMA of weights over training with a decay of 0.9999, matching the claim exactly. · source: https://arxiv.org/pdf/2212.09748",
+      "notes": "(based on abstract only) Evidence explicitly states the cited work maintains an EMA of weights over training with a decay of 0.9999, matching the claim. · source: https://arxiv.org/pdf/2212.09748",
       "error": null,
       "labels": null
     },
@@ -3520,7 +3481,7 @@
       ],
       "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract only) This is the Self-Imitation Learning paper, supporting the self-imitation experiment citation. · source: https://www.semanticscholar.org/paper/d397f4cf400f6ffcb1b8e3db27bb75966a0513cf",
+      "notes": "(based on abstract only) Self-Imitation Learning is the cited method underlying the self-imitation RL fine-tuning experiment. · source: https://www.semanticscholar.org/paper/d397f4cf400f6ffcb1b8e3db27bb75966a0513cf",
       "error": null,
       "labels": null
     },
@@ -3595,9 +3556,9 @@
           "url": "https://www.semanticscholar.org/paper/0838819fb4c0397e4312eca58def6f2bd60708c8"
         }
       ],
-      "confidence": 0.45,
+      "confidence": 0.4,
       "model_tier": "judge",
-      "notes": "(based on abstract only) BotPrize is a game-AI bot competition, related to classic game AI but not Pac-Man or the listed methods. · source: https://www.semanticscholar.org/paper/0838819fb4c0397e4312eca58def6f2bd60708c8",
+      "notes": "(based on abstract only) BotPrize is a game-bot humanlike-behavior competition, on-topic for game AI but not Pac-Man or the listed search methods. · source: https://www.semanticscholar.org/paper/0838819fb4c0397e4312eca58def6f2bd60708c8",
       "error": null,
       "labels": null
     },
@@ -3676,7 +3637,7 @@
       ],
       "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Mario AI benchmark is classic game-AI relevant but concerns Mario, not Pac-Man specifically. · source: http://julian.togelius.com/Karakovskiy2012The.pdf",
+      "notes": "(based on abstract only) Mario AI benchmark is a classic-game AI benchmark with diverse game-AI techniques, related but not Pac-Man specifically. · source: http://julian.togelius.com/Karakovskiy2012The.pdf",
       "error": null,
       "labels": null
     },
@@ -3753,7 +3714,7 @@
       ],
       "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract only) This is the Ms Pac-Man competition, directly supporting the Pac-Man game-AI reference. · source: https://www.semanticscholar.org/paper/c3e93448af2a1a9d55c8403eb22c16cc01397672",
+      "notes": "(based on abstract only) Evidence is a Ms Pac-Man competition, directly supporting Pac-Man as a studied game-AI domain. · source: https://www.semanticscholar.org/paper/c3e93448af2a1a9d55c8403eb22c16cc01397672",
       "error": null,
       "labels": null
     },
@@ -3817,9 +3778,7 @@
         "url_valid": true,
         "abstract": "The General Video Game AI framework and competition pose the problem of creating artificial intelligence that can play a wide, and in principle unlimited, range of games. Concretely, it tackles the problem of devising an algorithm that is able to play any game it is given, even if the game is not known a priori. This area of study can be seen as an approximation of General Artificial Intelligence, with very little room for game-dependent heuristics. This short paper summarizes the motivation, infrastructure, results and future plans of General Video Game AI, stressing the findings and first co…"
       },
-      "metadata_issues": [
-        "first-author mismatch: cited 'Diego Perez-Liebana' vs 'Diego Perez Liebana'"
-      ],
+      "metadata_issues": [],
       "supports_claim": "partial",
       "priority": "helpful",
       "severity": "low",
@@ -3838,9 +3797,9 @@
           "url": "https://ojs.aaai.org/index.php/AAAI/article/download/9869/9728"
         }
       ],
-      "confidence": 0.55,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) GVGAI covers general game AI with planning (MCTS) but evidence does not specifically address Pac-Man. · source: https://ojs.aaai.org/index.php/AAAI/article/download/9869/9728",
+      "notes": "(based on abstract only) GVGAI is general video-game AI using planning/MCTS, on-topic for game-AI methods but not Pac-Man specifically. · source: https://ojs.aaai.org/index.php/AAAI/article/download/9869/9728",
       "error": null,
       "labels": null
     },
@@ -3925,7 +3884,7 @@
       ],
       "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Mario AI Championship is classic game-AI relevant but about Mario, not Pac-Man. · source: https://ojs.aaai.org/index.php/aimagazine/article/download/2492/2379",
+      "notes": "(based on abstract only) Mario AI Championship is a classic-game AI competition with learning/evolutionary tracks, related but not Pac-Man. · source: https://ojs.aaai.org/index.php/aimagazine/article/download/2492/2379",
       "error": null,
       "labels": null
     },
@@ -4010,7 +3969,7 @@
       ],
       "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) GVGAI-Gym is a general game-AI benchmark, related but not Pac-Man specific. · source: https://arxiv.org/pdf/1806.02448",
+      "notes": "(based on abstract only) GVGAI uses a forward model with MCTS over many games, on-topic for game-AI methods but not Pac-Man specifically. · source: https://arxiv.org/pdf/1806.02448",
       "error": null,
       "labels": null
     },
@@ -4095,7 +4054,7 @@
       ],
       "confidence": 0.7,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence supports evolutionary programming for game AI, matching the evolutionary-algorithms part of the claim. · source: https://www.semanticscholar.org/paper/3e0b63f6b9d9d86a3f45df9c7580e522dc10229c",
+      "notes": "(based on abstract only) Evidence supports applicability of evolutionary programming to AI in games, backing the evolutionary-algorithms method claim. · source: https://www.semanticscholar.org/paper/3e0b63f6b9d9d86a3f45df9c7580e522dc10229c",
       "error": null,
       "labels": null
     },
@@ -4158,9 +4117,9 @@
         "abstract": "In this article we introduce the Arcade Learning Environment (ALE): both a challenge problem and a platform and methodology for evaluating the development of general, domain-independent AI technology. ALE provides an interface to hundreds of Atari 2600 game environments, each one different, interesting, and designed to be a challenge for human players. ALE presents significant research challenges for reinforcement learning, model learning, model-based planning, imitation learning, transfer learning, and intrinsic motivation. Most importantly, it provides a rigorous testbed for evaluating and c…"
       },
       "metadata_issues": [],
-      "supports_claim": "partial",
+      "supports_claim": "supports",
       "priority": "helpful",
-      "severity": "low",
+      "severity": "ok",
       "compared_against": null,
       "evidence": [
         {
@@ -4176,9 +4135,9 @@
           "url": "https://jair.org/index.php/jair/article/download/10819/25823"
         }
       ],
-      "confidence": 0.55,
+      "confidence": 0.7,
       "model_tier": "judge",
-      "notes": "(based on abstract only) ALE lists model-based planning as a challenge but is a benchmark platform, not itself an approach offering model-based reasoning strengths. · source: https://jair.org/index.php/jair/article/download/10819/25823",
+      "notes": "(based on abstract only) ALE explicitly poses challenges for model-based planning and imitation learning, supporting the model-based reasoning attribution. · source: https://jair.org/index.php/jair/article/download/10819/25823",
       "error": null,
       "labels": null
     },
@@ -4262,7 +4221,7 @@
         "abstract": "This work bridges the divide between high-dimensional sensory inputs and actions, resulting in the first artificial agent that is capable of learning to excel at a diverse array of challenging tasks."
       },
       "metadata_issues": [],
-      "supports_claim": "does_not",
+      "supports_claim": "partial",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
@@ -4280,9 +4239,9 @@
           "url": "https://www.semanticscholar.org/paper/340f48901f72278f6bf78a04ee5b01df208cc508"
         }
       ],
-      "confidence": 0.55,
+      "confidence": 0.45,
       "model_tier": "judge",
-      "notes": "(based on abstract only) DQN is model-free deep RL; evidence does not support its being a model-based-reasoning approach complementary to deep RL. · source: https://www.semanticscholar.org/paper/340f48901f72278f6bf78a04ee5b01df208cc508",
+      "notes": "(based on abstract only) DQN is deep RL, on-topic, but it is model-free and does not specifically support the model-based reasoning attribution. · source: https://www.semanticscholar.org/paper/340f48901f72278f6bf78a04ee5b01df208cc508",
       "error": null,
       "labels": null
     },
@@ -4348,7 +4307,7 @@
       },
       "metadata_issues": [],
       "supports_claim": "supports",
-      "priority": "obligatory",
+      "priority": "helpful",
       "severity": "ok",
       "compared_against": null,
       "evidence": [
@@ -4367,7 +4326,7 @@
       ],
       "confidence": 0.65,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence states GVGAI provides a forward model enabling MCTS planning, supporting model-based reasoning strength. · source: https://arxiv.org/pdf/1806.02448",
+      "notes": "(based on abstract only) GVGAI's forward-model online planning (MCTS) supports its citation for model-based reasoning. · source: https://arxiv.org/pdf/1806.02448",
       "error": null,
       "labels": null
     },
@@ -4458,7 +4417,7 @@
       },
       "metadata_issues": [],
       "supports_claim": "supports",
-      "priority": "obligatory",
+      "priority": "helpful",
       "severity": "ok",
       "compared_against": null,
       "evidence": [
@@ -4475,9 +4434,9 @@
           "url": "https://www.semanticscholar.org/paper/b19729b27a1b4c24b52f87308c907653300afa7f"
         }
       ],
-      "confidence": 0.95,
+      "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is OpenAI Five, exactly the named RL landmark. · source: https://www.semanticscholar.org/paper/b19729b27a1b4c24b52f87308c907653300afa7f",
+      "notes": "(based on abstract only) Evidence confirms OpenAI Five as a landmark RL success trained via large-scale simulation. · source: https://www.semanticscholar.org/paper/b19729b27a1b4c24b52f87308c907653300afa7f",
       "error": null,
       "labels": null
     },
@@ -4524,49 +4483,49 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "arxiv",
+        "source": "s2",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "Playing Atari with Deep Reinforcement Learning",
         "authors": [
           "Volodymyr Mnih",
-          "Koray Kavukcuoglu",
+          "K. Kavukcuoglu",
           "David Silver",
           "Alex Graves",
           "Ioannis Antonoglou",
           "Daan Wierstra",
-          "Martin Riedmiller"
+          "Martin A. Riedmiller"
         ],
         "year": 2013,
-        "venue": "arXiv (preprint)",
+        "venue": "arXiv.org",
         "doi": null,
-        "arxiv_id": "1312.5602v1",
-        "url": "http://arxiv.org/abs/1312.5602v1",
+        "arxiv_id": "1312.5602",
+        "url": "https://www.semanticscholar.org/paper/2319a491378867c7049b3da055c5df60e1671158",
         "url_valid": true,
         "abstract": "We present the first deep learning model to successfully learn control policies directly from high-dimensional sensory input using reinforcement learning. The model is a convolutional neural network, trained with a variant of Q-learning, whose input is raw pixels and whose output is a value function estimating future rewards. We apply our method to seven Atari 2600 games from the Arcade Learning Environment, with no adjustment of the architecture or learning algorithm. We find that it outperforms all previous approaches on six of the games and surpasses a human expert on three of them."
       },
       "metadata_issues": [],
       "supports_claim": "supports",
-      "priority": "obligatory",
+      "priority": "helpful",
       "severity": "ok",
       "compared_against": null,
       "evidence": [
         {
           "kind": "metadata",
-          "source": "1312.5602v1",
-          "quote": "Playing Atari with Deep Reinforcement Learning — Volodymyr Mnih, Koray Kavukcuoglu, David Silver, Alex Graves, Ioannis Antonoglou, Daan Wierstra, Martin Riedmiller — 2013",
-          "url": "http://arxiv.org/abs/1312.5602v1"
+          "source": "1312.5602",
+          "quote": "Playing Atari with Deep Reinforcement Learning — Volodymyr Mnih, K. Kavukcuoglu, David Silver, Alex Graves, Ioannis Antonoglou, Daan Wierstra, Martin A. Riedmiller — 2013",
+          "url": "https://www.semanticscholar.org/paper/2319a491378867c7049b3da055c5df60e1671158"
         },
         {
           "kind": "abstract",
-          "source": "1312.5602v1",
+          "source": "1312.5602",
           "quote": "We present the first deep learning model to successfully learn control policies directly from high-dimensional sensory input using reinforcement learning. The model is a convolutional neural network, trained with a variant of Q-learning, whose input is raw pixels and whose output is a value function estimating future rewards. We apply our method to seven Atari 2600 games from the Arcade Learning Environment, with no adjustment of the architecture or learning algorithm. We find that it outperforms all previous approaches on six of the games and surpasses a human expert on three of them.",
-          "url": "http://arxiv.org/abs/1312.5602v1"
+          "url": "https://www.semanticscholar.org/paper/2319a491378867c7049b3da055c5df60e1671158"
         }
       ],
       "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is the DQN Atari paper, exactly the named landmark. · source: http://arxiv.org/abs/1312.5602v1",
+      "notes": "(based on abstract only) Evidence is the Atari DQN result, the named landmark in the claim. · source: https://www.semanticscholar.org/paper/2319a491378867c7049b3da055c5df60e1671158",
       "error": null,
       "labels": null
     },
@@ -4651,7 +4610,7 @@
       },
       "metadata_issues": [],
       "supports_claim": "supports",
-      "priority": "obligatory",
+      "priority": "helpful",
       "severity": "ok",
       "compared_against": null,
       "evidence": [
@@ -4668,9 +4627,9 @@
           "url": "https://www.semanticscholar.org/paper/340f48901f72278f6bf78a04ee5b01df208cc508"
         }
       ],
-      "confidence": 0.9,
+      "confidence": 0.88,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is the DQN Nature paper, matching the Atari/DQN landmark named. · source: https://www.semanticscholar.org/paper/340f48901f72278f6bf78a04ee5b01df208cc508",
+      "notes": "(based on abstract only) Evidence is the DQN human-level result named as an RL landmark. · source: https://www.semanticscholar.org/paper/340f48901f72278f6bf78a04ee5b01df208cc508",
       "error": null,
       "labels": null
     },
@@ -4756,7 +4715,7 @@
       },
       "metadata_issues": [],
       "supports_claim": "supports",
-      "priority": "obligatory",
+      "priority": "helpful",
       "severity": "ok",
       "compared_against": null,
       "evidence": [
@@ -4775,7 +4734,7 @@
       ],
       "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is AlphaGo, exactly the named landmark. · source: https://www.nature.com/articles/nature16961.pdf",
+      "notes": "(based on abstract only) Evidence is AlphaGo, the named landmark in the claim. · source: https://www.nature.com/articles/nature16961.pdf",
       "error": null,
       "labels": null
     },
@@ -4883,7 +4842,7 @@
       },
       "metadata_issues": [],
       "supports_claim": "supports",
-      "priority": "obligatory",
+      "priority": "helpful",
       "severity": "ok",
       "compared_against": null,
       "evidence": [
@@ -4900,9 +4859,9 @@
           "url": "https://www.semanticscholar.org/paper/361c00b22e29d0816ca896513d2c165e26399821"
         }
       ],
-      "confidence": 0.95,
+      "confidence": 0.9,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence is AlphaStar, exactly the named landmark. · source: https://www.semanticscholar.org/paper/361c00b22e29d0816ca896513d2c165e26399821",
+      "notes": "(based on abstract only) Evidence is AlphaStar, the named StarCraft landmark. · source: https://www.semanticscholar.org/paper/361c00b22e29d0816ca896513d2c165e26399821",
       "error": null,
       "labels": null
     },
@@ -4985,7 +4944,7 @@
       ],
       "confidence": 0.55,
       "model_tier": "judge",
-      "notes": "(based on abstract only) DreamerV3 is a world-model RL method trained via environment interaction, consistent with needing simulators, but the claim's exact point is not explicitly stated. · source: http://arxiv.org/abs/2301.04104v2",
+      "notes": "(based on abstract only) DreamerV3 is the named world-model RL method trained across simulated tasks, partially supporting the dedicated-simulator dependence claim. · source: http://arxiv.org/abs/2301.04104v2",
       "error": null,
       "labels": null
     },
@@ -5096,9 +5055,9 @@
           "url": "http://arxiv.org/abs/2403.03186v3"
         }
       ],
-      "confidence": 0.55,
+      "confidence": 0.6,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Cradle is an LMM-powered reasoning framework, but evidence describes screenshot/keyboard I/O rather than structured APIs. · source: http://arxiv.org/abs/2403.03186v3",
+      "notes": "(based on abstract only) Cradle is named as LMM reasoning agent, though it uses screenshots+keyboard/mouse rather than clearly structured APIs. · source: http://arxiv.org/abs/2403.03186v3",
       "error": null,
       "labels": null
     },
@@ -5146,7 +5105,7 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "arxiv",
+        "source": "s2",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "Voyager: An Open-Ended Embodied Agent with Large Language Models",
@@ -5154,17 +5113,17 @@
           "Guanzhi Wang",
           "Yuqi Xie",
           "Yunfan Jiang",
-          "Ajay Mandlekar",
+          "A. Mandlekar",
           "Chaowei Xiao",
           "Yuke Zhu",
-          "Linxi Fan",
+          "Linxi (Jim) Fan",
           "Anima Anandkumar"
         ],
         "year": 2023,
-        "venue": "arXiv (preprint)",
-        "doi": null,
-        "arxiv_id": "2305.16291v2",
-        "url": "http://arxiv.org/abs/2305.16291v2",
+        "venue": "Trans. Mach. Learn. Res.",
+        "doi": "10.48550/arxiv.2305.16291",
+        "arxiv_id": "2305.16291",
+        "url": "http://arxiv.org/pdf/2305.16291",
         "url_valid": true,
         "abstract": "We introduce Voyager, the first LLM-powered embodied lifelong learning agent in Minecraft that continuously explores the world, acquires diverse skills, and makes novel discoveries without human intervention. Voyager consists of three key components: 1) an automatic curriculum that maximizes exploration, 2) an ever-growing skill library of executable code for storing and retrieving complex behaviors, and 3) a new iterative prompting mechanism that incorporates environment feedback, execution errors, and self-verification for program improvement. Voyager interacts with GPT-4 via blackbox querie…"
       },
@@ -5176,20 +5135,20 @@
       "evidence": [
         {
           "kind": "metadata",
-          "source": "2305.16291v2",
-          "quote": "Voyager: An Open-Ended Embodied Agent with Large Language Models — Guanzhi Wang, Yuqi Xie, Yunfan Jiang, Ajay Mandlekar, Chaowei Xiao, Yuke Zhu, Linxi Fan, Anima Anandkumar — 2023",
-          "url": "http://arxiv.org/abs/2305.16291v2"
+          "source": "10.48550/arxiv.2305.16291",
+          "quote": "Voyager: An Open-Ended Embodied Agent with Large Language Models — Guanzhi Wang, Yuqi Xie, Yunfan Jiang, A. Mandlekar, Chaowei Xiao, Yuke Zhu, Linxi (Jim) Fan, Anima Anandkumar — 2023",
+          "url": "http://arxiv.org/pdf/2305.16291"
         },
         {
           "kind": "abstract",
-          "source": "2305.16291v2",
+          "source": "10.48550/arxiv.2305.16291",
           "quote": "We introduce Voyager, the first LLM-powered embodied lifelong learning agent in Minecraft that continuously explores the world, acquires diverse skills, and makes novel discoveries without human intervention. Voyager consists of three key components: 1) an automatic curriculum that maximizes exploration, 2) an ever-growing skill library of executable code for storing and retrieving complex behaviors, and 3) a new iterative prompting mechanism that incorporates environment feedback, execution errors, and self-verification for program improvement. Voyager interacts with GPT-4 via blackbox querie…",
-          "url": "http://arxiv.org/abs/2305.16291v2"
+          "url": "http://arxiv.org/pdf/2305.16291"
         }
       ],
       "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Voyager is exactly an LLM (GPT-4) agent using executable-code skills for high-level reasoning, as the claim names. · source: http://arxiv.org/abs/2305.16291v2",
+      "notes": "(based on abstract only) Voyager is named explicitly as LLM high-level reasoning with code/API interaction, matching the cited example. · source: http://arxiv.org/pdf/2305.16291",
       "error": null,
       "labels": null
     },
@@ -5276,9 +5235,9 @@
           "url": "https://www.ijcai.org/proceedings/2019/0339.pdf"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract only) MineRL provides human demonstration data for learning, fitting its listing among pixel/state behavior-cloning resources. · source: https://www.ijcai.org/proceedings/2019/0339.pdf",
+      "notes": "(based on abstract only) MineRL provides human demonstrations for Minecraft, supporting its listing as a demonstration-based learning source. · source: https://www.ijcai.org/proceedings/2019/0339.pdf",
       "error": null,
       "labels": null
     },
@@ -5371,7 +5330,7 @@
       ],
       "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract only) VPT learns to act from pixel video via imitation, matching its listing as a pixel-based behavior-cloning approach. · source: https://arxiv.org/pdf/2206.11795",
+      "notes": "(based on abstract only) VPT learns to act by watching video, supporting its listing as pixel-based behavior learning. · source: https://arxiv.org/pdf/2206.11795",
       "error": null,
       "labels": null
     },
@@ -5421,39 +5380,38 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "arxiv",
+        "source": "s2",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "Scaling Instructable Agents Across Many Simulated Worlds",
         "authors": [
-          "SIMA Team",
+          "S1-NexusAgent Team",
           "Maria Abi Raad",
           "Arun Ahuja",
           "Catarina Barros",
-          "Frederic Besse",
+          "F. Besse",
           "Andrew Bolt",
           "Adrian Bolton",
           "Bethanie Brownfield",
           "Gavin Buttimore",
           "Max Cant",
           "Sarah Chakera",
-          "Stephanie C. Y. Chan",
+          "S. Chan",
           "Jeff Clune",
           "Adrian Collister",
           "Vikki Copeman",
-          "Alex Cullum",
+          "Alex A. Cullum",
           "Ishita Dasgupta",
-          "Dario de Cesare",
+          "D. Cesare",
           "Julia Di Trapani",
           "Yani Donchev",
           "Emma Dunleavy",
           "Martin Engelcke",
           "Ryan Faulkner",
           "Frankie Garcia",
-          "Charles Gbadamosi",
+          "C. Gbadamosi",
           "Zhitao Gong",
-          "Lucy Gonzales",
-          "Kshitij Gupta",
+          "Lucy G. Gonzales",
           "Karol Gregor",
           "Arne Olav Hallingstad",
           "Tim Harley",
@@ -5461,71 +5419,36 @@
           "Felix Hill",
           "Ed Hirst",
           "Drew A. Hudson",
-          "Jony Hudson",
           "Steph Hughes-Fitt",
           "Danilo J. Rezende",
           "Mimi Jasarevic",
           "Laura Kampis",
           "Rosemary Ke",
-          "Thomas Keck",
+          "T. Keck",
           "Junkyung Kim",
           "Oscar Knagg",
           "Kavya Kopparapu",
-          "Rory Lawton",
-          "Andrew Lampinen",
-          "Shane Legg",
+          "Andrew Kyle Lampinen",
+          "S. Legg",
           "Alexander Lerchner",
           "Marjorie Limont",
           "Yulan Liu",
           "Maria Loks-Thompson",
           "Joseph Marino",
           "Kathryn Martin Cussons",
-          "Loic Matthey",
-          "Siobhan Mcloughlin",
+          "L. Matthey",
+          "S. Mcloughlin",
           "Piermaria Mendolicchio",
           "Hamza Merzic",
           "Anna Mitenkova",
           "Alexandre Moufarek",
-          "Valeria Oliveira",
-          "Yanko Oliveira",
-          "Hannah Openshaw",
-          "Renke Pan",
-          "Aneesh Pappu",
-          "Alex Platonov",
-          "Ollie Purkiss",
-          "David Reichert",
-          "John Reid",
-          "Pierre Harvey Richemond",
-          "Tyson Roberts",
-          "Giles Ruscoe",
-          "Jaume Sanchez Elias",
-          "Tasha Sandars",
-          "Daniel P. Sawyer",
-          "Tim Scholtes",
-          "Guy Simmons",
-          "Daniel Slater",
-          "Hubert Soyer",
-          "Heiko Strathmann",
-          "Peter Stys",
-          "Allison C. Tam",
-          "Denis Teplyashin",
-          "Tayfun Terzi",
-          "Davide Vercelli",
-          "Bojan Vujatovic",
-          "Marcus Wainwright",
-          "Jane X. Wang",
-          "Zhengdong Wang",
-          "Daan Wierstra",
-          "Duncan Williams",
-          "Nathaniel Wong",
-          "Sarah York",
-          "Nick Young"
+          "V. Oliveira"
         ],
         "year": 2024,
-        "venue": "arXiv (preprint)",
-        "doi": null,
-        "arxiv_id": "2404.10179v3",
-        "url": "http://arxiv.org/abs/2404.10179v3",
+        "venue": "arXiv.org",
+        "doi": "10.48550/arxiv.2404.10179",
+        "arxiv_id": "2404.10179",
+        "url": "https://www.semanticscholar.org/paper/7c0cc7f7efba81ba78b4d9ff21282def690514e8",
         "url_valid": true,
         "abstract": "Building embodied AI systems that can follow arbitrary language instructions in any 3D environment is a key challenge for creating general AI. Accomplishing this goal requires learning to ground language in perception and embodied actions, in order to accomplish complex tasks. The Scalable, Instructable, Multiworld Agent (SIMA) project tackles this by training agents to follow free-form instructions across a diverse range of virtual 3D environments, including curated research environments as well as open-ended, commercial video games. Our goal is to develop an instructable agent that can accom…"
       },
@@ -5537,20 +5460,20 @@
       "evidence": [
         {
           "kind": "metadata",
-          "source": "2404.10179v3",
-          "quote": "Scaling Instructable Agents Across Many Simulated Worlds — SIMA Team, Maria Abi Raad, Arun Ahuja, Catarina Barros, Frederic Besse, Andrew Bolt, Adrian Bolton, Bethanie Brownfield, Gavin Buttimore, Max Cant, Sarah Chakera, Stephanie C. Y. Chan, Jeff Clune, Adrian Collister, Vikki Copeman, Alex Cullum, Ishita Dasgupta, Dario de Cesare, Julia Di Trapani, Yani Donchev, Emma Dunleavy, Martin Engelcke, Ryan Faulkner, Frankie Garcia, Charles Gbadamosi, Zhitao Gong, Lucy Gonzales, Kshitij Gupta, Karol Gregor, Arne Olav Hallingstad, Tim Harley, Sam Haves, Felix Hill, Ed Hirst, Drew A. Hudson, Jony Huds",
-          "url": "http://arxiv.org/abs/2404.10179v3"
+          "source": "10.48550/arxiv.2404.10179",
+          "quote": "Scaling Instructable Agents Across Many Simulated Worlds — S1-NexusAgent Team, Maria Abi Raad, Arun Ahuja, Catarina Barros, F. Besse, Andrew Bolt, Adrian Bolton, Bethanie Brownfield, Gavin Buttimore, Max Cant, Sarah Chakera, S. Chan, Jeff Clune, Adrian Collister, Vikki Copeman, Alex A. Cullum, Ishita Dasgupta, D. Cesare, Julia Di Trapani, Yani Donchev, Emma Dunleavy, Martin Engelcke, Ryan Faulkner, Frankie Garcia, C. Gbadamosi, Zhitao Gong, Lucy G. Gonzales, Karol Gregor, Arne Olav Hallingstad, Tim Harley, Sam Haves, Felix Hill, Ed Hirst, Drew A. Hudson, Steph Hughes-Fitt, Danilo J. Rezende, M",
+          "url": "https://www.semanticscholar.org/paper/7c0cc7f7efba81ba78b4d9ff21282def690514e8"
         },
         {
           "kind": "abstract",
-          "source": "2404.10179v3",
+          "source": "10.48550/arxiv.2404.10179",
           "quote": "Building embodied AI systems that can follow arbitrary language instructions in any 3D environment is a key challenge for creating general AI. Accomplishing this goal requires learning to ground language in perception and embodied actions, in order to accomplish complex tasks. The Scalable, Instructable, Multiworld Agent (SIMA) project tackles this by training agents to follow free-form instructions across a diverse range of virtual 3D environments, including curated research environments as well as open-ended, commercial video games. Our goal is to develop an instructable agent that can accom…",
-          "url": "http://arxiv.org/abs/2404.10179v3"
+          "url": "https://www.semanticscholar.org/paper/7c0cc7f7efba81ba78b4d9ff21282def690514e8"
         }
       ],
-      "confidence": 0.8,
+      "confidence": 0.82,
       "model_tier": "judge",
-      "notes": "(based on abstract only) SIMA trains agents from pixels to follow instructions across video games, supporting its listing as a pixel-based BC approach. · source: http://arxiv.org/abs/2404.10179v3",
+      "notes": "(based on abstract only) SIMA grounds language in perception and embodied actions across games, supporting its listing as pixel-based behavior learning. · source: https://www.semanticscholar.org/paper/7c0cc7f7efba81ba78b4d9ff21282def690514e8",
       "error": null,
       "labels": null
     },
@@ -5699,9 +5622,9 @@
           "url": "https://www.semanticscholar.org/paper/8ba856e1c993f43f9c65bf7b9a5f00f157cc212c"
         }
       ],
-      "confidence": 0.55,
+      "confidence": 0.5,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Dreamer 4 learns control from pixels via a world model in Minecraft, partly matching pixel/state learning though it is world-model RL rather than pure behavior cloning. · source: https://www.semanticscholar.org/paper/8ba856e1c993f43f9c65bf7b9a5f00f157cc212c",
+      "notes": "(based on abstract only) Dreamer 4 learns from video/pixels via world models, partially matching the pixel/state learning grouping though it is RL-in-imagination not behavior cloning. · source: https://www.semanticscholar.org/paper/8ba856e1c993f43f9c65bf7b9a5f00f157cc212c",
       "error": null,
       "labels": null
     },
@@ -5802,9 +5725,9 @@
           "url": "https://www.semanticscholar.org/paper/d9bceaef17c1342c202dc43cb940227474568af5"
         }
       ],
-      "confidence": 0.8,
+      "confidence": 0.85,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Lumine processes raw pixels end-to-end to produce keyboard-mouse actions, supporting its listing as a pixel-based learning approach. · source: https://www.semanticscholar.org/paper/d9bceaef17c1342c202dc43cb940227474568af5",
+      "notes": "(based on abstract only) Lumine processes raw pixels end-to-end into keyboard-mouse actions, supporting its listing as pixel-based behavior learning. · source: https://www.semanticscholar.org/paper/d9bceaef17c1342c202dc43cb940227474568af5",
       "error": null,
       "labels": null
     },
@@ -5887,9 +5810,9 @@
           "url": "https://www.semanticscholar.org/paper/802df6909fe4ad69d016438a6c24ff74e940a1e6"
         }
       ],
-      "confidence": 0.75,
+      "confidence": 0.78,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence describes learning humanlike bot behavior from human demonstrations via a transformer, matching a behavior-cloning approach. · source: https://www.semanticscholar.org/paper/802df6909fe4ad69d016438a6c24ff74e940a1e6",
+      "notes": "(based on abstract only) Evidence learns humanlike bot behavior from human demonstrations via a transformer, supporting its listing as demonstration/state-based behavior learning. · source: https://www.semanticscholar.org/paper/802df6909fe4ad69d016438a6c24ff74e940a1e6",
       "error": null,
       "labels": null
     },
@@ -6016,9 +5939,9 @@
           "url": "https://www.semanticscholar.org/paper/e017d71c51731d572dc75d92945e2ebc10078ae9"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.62,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence confirms Game-TARS is a multi-game agent trained on multimodal data (500B tokens), but does not mention contractor data or the specific 20,000+ hours figure. · source: https://www.semanticscholar.org/paper/e017d71c51731d572dc75d92945e2ebc10078ae9",
+      "notes": "(based on abstract only) On-topic: backs a generalist multi-game agent trained on multimodal data, but the specific '20,000 hours' and 'contractor' data figures are absent from the abstract. · source: https://www.semanticscholar.org/paper/e017d71c51731d572dc75d92945e2ebc10078ae9",
       "error": null,
       "labels": null
     },
@@ -6146,9 +6069,9 @@
           "url": "http://arxiv.org/abs/2204.01691v2"
         }
       ],
-      "confidence": 0.75,
+      "confidence": 0.78,
       "model_tier": "judge",
-      "notes": "(based on abstract only) SayCan pairs a pre-trained LLM's semantic knowledge with grounded low-level robot skills, matching the hierarchical characterization. · source: http://arxiv.org/abs/2204.01691v2",
+      "notes": "(based on abstract only) Evidence describes pairing a pre-trained LLM's semantic knowledge with grounded robot skills/low-level policies, matching the hierarchical-method characterization. · source: http://arxiv.org/abs/2204.01691v2",
       "error": null,
       "labels": null
     },
@@ -6247,9 +6170,9 @@
         "abstract": "Large language models excel at a wide range of complex tasks. However, enabling general inference in the real world, e.g., for robotics problems, raises the challenge of grounding. We propose embodied language models to directly incorporate real-world continuous sensor modalities into language models and thereby establish the link between words and percepts. Input to our embodied language model are multi-modal sentences that interleave visual, continuous state estimation, and textual input encodings. We train these encodings end-to-end, in conjunction with a pre-trained large language model, f…"
       },
       "metadata_issues": [],
-      "supports_claim": "partial",
+      "supports_claim": "supports",
       "priority": "obligatory",
-      "severity": "medium",
+      "severity": "ok",
       "compared_against": null,
       "evidence": [
         {
@@ -6271,9 +6194,9 @@
           "url": "http://arxiv.org/pdf/2303.03378"
         }
       ],
-      "confidence": 0.6,
+      "confidence": 0.72,
       "model_tier": "judge",
-      "notes": "(based on full text §Figure 2:) PaLM-E produces high-level decisions executed by separate low-level policies, supporting the LLM/VLM-plus-policy pairing, but it is trained end-to-end rather than treating the model as a black-box. · source: http://arxiv.org/pdf/2303.03378",
+      "notes": "(based on full text §Figure 2:) PaLM-E produces decisions/plans and assumes a separate low-level policy translates them into actions, matching pairing a pretrained LLM/VLM with low-level policies. · source: http://arxiv.org/pdf/2303.03378",
       "error": null,
       "labels": null
     },
@@ -6323,34 +6246,34 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "arxiv",
+        "source": "s2",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "Inner Monologue: Embodied Reasoning through Planning with Language Models",
         "authors": [
           "Wenlong Huang",
-          "Fei Xia",
+          "F. Xia",
           "Ted Xiao",
           "Harris Chan",
           "Jacky Liang",
-          "Pete Florence",
+          "Peter R. Florence",
           "Andy Zeng",
           "Jonathan Tompson",
           "Igor Mordatch",
           "Yevgen Chebotar",
-          "Pierre Sermanet",
+          "P. Sermanet",
           "Noah Brown",
           "Tomas Jackson",
           "Linda Luu",
-          "Sergey Levine",
+          "S. Levine",
           "Karol Hausman",
           "Brian Ichter"
         ],
         "year": 2022,
-        "venue": "arXiv (preprint)",
-        "doi": null,
-        "arxiv_id": "2207.05608v1",
-        "url": "http://arxiv.org/abs/2207.05608v1",
+        "venue": "Conference on Robot Learning",
+        "doi": "10.48550/arxiv.2207.05608",
+        "arxiv_id": "2207.05608",
+        "url": "http://arxiv.org/pdf/2207.05608",
         "url_valid": true,
         "abstract": "Recent works have shown how the reasoning capabilities of Large Language Models (LLMs) can be applied to domains beyond natural language processing, such as planning and interaction for robots. These embodied problems require an agent to understand many semantic aspects of the world: the repertoire of skills available, how these skills influence the world, and how changes to the world map back to the language. LLMs planning in embodied environments need to consider not just what skills to do, but also how and when to do them - answers that change over time in response to the agent's own choice…"
       },
@@ -6362,20 +6285,20 @@
       "evidence": [
         {
           "kind": "metadata",
-          "source": "2207.05608v1",
-          "quote": "Inner Monologue: Embodied Reasoning through Planning with Language Models — Wenlong Huang, Fei Xia, Ted Xiao, Harris Chan, Jacky Liang, Pete Florence, Andy Zeng, Jonathan Tompson, Igor Mordatch, Yevgen Chebotar, Pierre Sermanet, Noah Brown, Tomas Jackson, Linda Luu, Sergey Levine, Karol Hausman, Brian Ichter — 2022",
-          "url": "http://arxiv.org/abs/2207.05608v1"
+          "source": "10.48550/arxiv.2207.05608",
+          "quote": "Inner Monologue: Embodied Reasoning through Planning with Language Models — Wenlong Huang, F. Xia, Ted Xiao, Harris Chan, Jacky Liang, Peter R. Florence, Andy Zeng, Jonathan Tompson, Igor Mordatch, Yevgen Chebotar, P. Sermanet, Noah Brown, Tomas Jackson, Linda Luu, S. Levine, Karol Hausman, Brian Ichter — 2022",
+          "url": "http://arxiv.org/pdf/2207.05608"
         },
         {
           "kind": "abstract",
-          "source": "2207.05608v1",
+          "source": "10.48550/arxiv.2207.05608",
           "quote": "Recent works have shown how the reasoning capabilities of Large Language Models (LLMs) can be applied to domains beyond natural language processing, such as planning and interaction for robots. These embodied problems require an agent to understand many semantic aspects of the world: the repertoire of skills available, how these skills influence the world, and how changes to the world map back to the language. LLMs planning in embodied environments need to consider not just what skills to do, but also how and when to do them - answers that change over time in response to the agent's own choice…",
-          "url": "http://arxiv.org/abs/2207.05608v1"
+          "url": "http://arxiv.org/pdf/2207.05608"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.75,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence describes an LLM planning over a repertoire of low-level skills in embodied environments, fitting the hierarchical pairing. · source: http://arxiv.org/abs/2207.05608v1",
+      "notes": "(based on abstract only) Evidence describes an LLM planning over a repertoire of available robot skills, i.e. pairing an LLM with low-level policies. · source: http://arxiv.org/pdf/2207.05608",
       "error": null,
       "labels": null
     },
@@ -6464,9 +6387,9 @@
           "url": "https://arxiv.org/pdf/2209.07753"
         }
       ],
-      "confidence": 0.75,
+      "confidence": 0.78,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Code as Policies uses an LLM to write policy code parameterizing low-level control primitive APIs, matching the hierarchical pairing. · source: https://arxiv.org/pdf/2209.07753",
+      "notes": "(based on abstract only) Code-writing LLMs generate policy code that parameterizes low-level control primitive APIs, matching LLM-plus-low-level-policy hierarchy. · source: https://arxiv.org/pdf/2209.07753",
       "error": null,
       "labels": null
     },
@@ -6557,9 +6480,9 @@
           "url": "https://arxiv.org/pdf/2209.11302"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.74,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence shows an LLM scoring/generating actions for task planning grounded to a robot's available actions, fitting the hierarchical description. · source: https://arxiv.org/pdf/2209.11302",
+      "notes": "(based on abstract only) Evidence shows an LLM scoring/generating next robot actions during task planning, consistent with pairing LLMs with low-level robot actions. · source: https://arxiv.org/pdf/2209.11302",
       "error": null,
       "labels": null
     },
@@ -6609,25 +6532,24 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "arxiv",
+        "source": "s2",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "GR00T N1: An Open Foundation Model for Generalist Humanoid Robots",
         "authors": [
-          "NVIDIA",
-          ":",
+          "Nvidia",
           "Johan Bjorck",
           "Fernando Castañeda",
           "Nikita Cherniadev",
           "Xingye Da",
           "Runyu Ding",
-          "Linxi \"Jim\" Fan",
+          "LinxiJimFan",
           "Yu Fang",
           "Dieter Fox",
           "Fengyuan Hu",
           "Spencer Huang",
-          "Joel Jang",
-          "Zhenyu Jiang",
+          "J. Jang",
+          "Zhenyuan Jiang",
           "Jan Kautz",
           "Kaushil Kundalia",
           "Lawrence Lao",
@@ -6637,11 +6559,11 @@
           "Guilin Liu",
           "Edith Llontop",
           "Loic Magne",
-          "Ajay Mandlekar",
+          "A. Mandlekar",
           "Avnish Narayan",
           "Soroush Nasiriany",
           "Scott Reed",
-          "You Liang Tan",
+          "Y. Tan",
           "Guanzhi Wang",
           "Zu Wang",
           "Jing Wang",
@@ -6649,7 +6571,7 @@
           "Jiannan Xiang",
           "Yuqi Xie",
           "Yinzhen Xu",
-          "Zhenjia Xu",
+          "Zhen-Teng Xu",
           "Seonghyeon Ye",
           "Zhiding Yu",
           "Ao Zhang",
@@ -6659,10 +6581,10 @@
           "Yuke Zhu"
         ],
         "year": 2025,
-        "venue": "arXiv (preprint)",
-        "doi": null,
-        "arxiv_id": "2503.14734v2",
-        "url": "http://arxiv.org/abs/2503.14734v2",
+        "venue": "arXiv.org",
+        "doi": "10.48550/arxiv.2503.14734",
+        "arxiv_id": "2503.14734",
+        "url": "https://www.semanticscholar.org/paper/731c50b0d6af4c1cb8d95f506541681ea487973b",
         "url_valid": true,
         "abstract": "General-purpose robots need a versatile body and an intelligent mind. Recent advancements in humanoid robots have shown great promise as a hardware platform for building generalist autonomy in the human world. A robot foundation model, trained on massive and diverse data sources, is essential for enabling the robots to reason about novel situations, robustly handle real-world variability, and rapidly learn new tasks. To this end, we introduce GR00T N1, an open foundation model for humanoid robots. GR00T N1 is a Vision-Language-Action (VLA) model with a dual-system architecture. The vision-lang…"
       },
@@ -6674,20 +6596,20 @@
       "evidence": [
         {
           "kind": "metadata",
-          "source": "2503.14734v2",
-          "quote": "GR00T N1: An Open Foundation Model for Generalist Humanoid Robots — NVIDIA, :, Johan Bjorck, Fernando Castañeda, Nikita Cherniadev, Xingye Da, Runyu Ding, Linxi \"Jim\" Fan, Yu Fang, Dieter Fox, Fengyuan Hu, Spencer Huang, Joel Jang, Zhenyu Jiang, Jan Kautz, Kaushil Kundalia, Lawrence Lao, Zhiqi Li, Zongyu Lin, Kevin Lin, Guilin Liu, Edith Llontop, Loic Magne, Ajay Mandlekar, Avnish Narayan, Soroush Nasiriany, Scott Reed, You Liang Tan, Guanzhi Wang, Zu Wang, Jing Wang, Qi Wang, Jiannan Xiang, Yuqi Xie, Yinzhen Xu, Zhenjia Xu, Seonghyeon Ye, Zhiding Yu, Ao Zhang, Hao Zhang, Yizhou Zhao, Ruijie Z",
-          "url": "http://arxiv.org/abs/2503.14734v2"
+          "source": "10.48550/arxiv.2503.14734",
+          "quote": "GR00T N1: An Open Foundation Model for Generalist Humanoid Robots — Nvidia, Johan Bjorck, Fernando Castañeda, Nikita Cherniadev, Xingye Da, Runyu Ding, LinxiJimFan, Yu Fang, Dieter Fox, Fengyuan Hu, Spencer Huang, J. Jang, Zhenyuan Jiang, Jan Kautz, Kaushil Kundalia, Lawrence Lao, Zhiqi Li, Zongyu Lin, Kevin Lin, Guilin Liu, Edith Llontop, Loic Magne, A. Mandlekar, Avnish Narayan, Soroush Nasiriany, Scott Reed, Y. Tan, Guanzhi Wang, Zu Wang, Jing Wang, Qi Wang, Jiannan Xiang, Yuqi Xie, Yinzhen Xu, Zhen-Teng Xu, Seonghyeon Ye, Zhiding Yu, Ao Zhang, Hao Zhang, Yizhou Zhao, Ruijie Zheng, Yuke Zhu",
+          "url": "https://www.semanticscholar.org/paper/731c50b0d6af4c1cb8d95f506541681ea487973b"
         },
         {
           "kind": "abstract",
-          "source": "2503.14734v2",
+          "source": "10.48550/arxiv.2503.14734",
           "quote": "General-purpose robots need a versatile body and an intelligent mind. Recent advancements in humanoid robots have shown great promise as a hardware platform for building generalist autonomy in the human world. A robot foundation model, trained on massive and diverse data sources, is essential for enabling the robots to reason about novel situations, robustly handle real-world variability, and rapidly learn new tasks. To this end, we introduce GR00T N1, an open foundation model for humanoid robots. GR00T N1 is a Vision-Language-Action (VLA) model with a dual-system architecture. The vision-lang…",
-          "url": "http://arxiv.org/abs/2503.14734v2"
+          "url": "https://www.semanticscholar.org/paper/731c50b0d6af4c1cb8d95f506541681ea487973b"
         }
       ],
-      "confidence": 0.85,
+      "confidence": 0.82,
       "model_tier": "judge",
-      "notes": "(based on abstract only) GR00T N1 is a VLA model trained on embodied data, matching the VLA-models claim. · source: http://arxiv.org/abs/2503.14734v2",
+      "notes": "(based on abstract only) GR00T N1 is a VLA model trained end-to-end on embodied data, supporting its listing among VLA methods. · source: https://www.semanticscholar.org/paper/731c50b0d6af4c1cb8d95f506541681ea487973b",
       "error": null,
       "labels": null
     },
@@ -6783,9 +6705,9 @@
           "url": "https://www.semanticscholar.org/paper/7e7e59d2e247d99954081080ddd5aae93d10b9e0"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.72,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence describes generalist robot foundation policies trained on embodied data facing generalization/robustness challenges, matching the VLA claim. · source: https://www.semanticscholar.org/paper/7e7e59d2e247d99954081080ddd5aae93d10b9e0",
+      "notes": "(based on abstract only) Evidence describes generalist robot policies (foundation models) trained on embodied data and explicitly notes generalization/robustness obstacles. · source: https://www.semanticscholar.org/paper/7e7e59d2e247d99954081080ddd5aae93d10b9e0",
       "error": null,
       "labels": null
     },
@@ -6919,9 +6841,9 @@
           "url": "https://arxiv.org/pdf/2212.06817"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.72,
       "model_tier": "judge",
-      "notes": "(based on abstract only) RT-1-style generalist robot model trained end-to-end on diverse robot data with generalization as a critical challenge supports the claim. · source: https://arxiv.org/pdf/2212.06817",
+      "notes": "(based on abstract only) Evidence describes a general robot policy trained on diverse real-world robot data with generalization as the critical challenge. · source: https://arxiv.org/pdf/2212.06817",
       "error": null,
       "labels": null
     },
@@ -6971,7 +6893,7 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "s2",
+        "source": "arxiv",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "GR-2: A Generative Video-Language-Action Model with Web-Scale Knowledge for Robot Manipulation",
@@ -6990,10 +6912,10 @@
           "Minzhao Zhu"
         ],
         "year": 2024,
-        "venue": "arXiv.org",
-        "doi": "10.48550/arxiv.2410.06158",
-        "arxiv_id": "2410.06158",
-        "url": "https://www.semanticscholar.org/paper/398090d5d5232fc9466fee8a9b904bf7a28bbded",
+        "venue": "arXiv (preprint)",
+        "doi": null,
+        "arxiv_id": "2410.06158v1",
+        "url": "http://arxiv.org/abs/2410.06158v1",
         "url_valid": true,
         "abstract": "We present GR-2, a state-of-the-art generalist robot agent for versatile and generalizable robot manipulation. GR-2 is first pre-trained on a vast number of Internet videos to capture the dynamics of the world. This large-scale pre-training, involving 38 million video clips and over 50 billion tokens, equips GR-2 with the ability to generalize across a wide range of robotic tasks and environments during subsequent policy learning. Following this, GR-2 is fine-tuned for both video generation and action prediction using robot trajectories. It exhibits impressive multi-task learning capabilities,…"
       },
@@ -7005,20 +6927,20 @@
       "evidence": [
         {
           "kind": "metadata",
-          "source": "10.48550/arxiv.2410.06158",
+          "source": "2410.06158v1",
           "quote": "GR-2: A Generative Video-Language-Action Model with Web-Scale Knowledge for Robot Manipulation — Chi-Lam Cheang, Guangzeng Chen, Ya Jing, Tao Kong, Hang Li, Yifeng Li, Yuxiao Liu, Hongtao Wu, Jiafeng Xu, Yichu Yang, Hanbo Zhang, Minzhao Zhu — 2024",
-          "url": "https://www.semanticscholar.org/paper/398090d5d5232fc9466fee8a9b904bf7a28bbded"
+          "url": "http://arxiv.org/abs/2410.06158v1"
         },
         {
           "kind": "abstract",
-          "source": "10.48550/arxiv.2410.06158",
+          "source": "2410.06158v1",
           "quote": "We present GR-2, a state-of-the-art generalist robot agent for versatile and generalizable robot manipulation. GR-2 is first pre-trained on a vast number of Internet videos to capture the dynamics of the world. This large-scale pre-training, involving 38 million video clips and over 50 billion tokens, equips GR-2 with the ability to generalize across a wide range of robotic tasks and environments during subsequent policy learning. Following this, GR-2 is fine-tuned for both video generation and action prediction using robot trajectories. It exhibits impressive multi-task learning capabilities,…",
-          "url": "https://www.semanticscholar.org/paper/398090d5d5232fc9466fee8a9b904bf7a28bbded"
+          "url": "http://arxiv.org/abs/2410.06158v1"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.68,
       "model_tier": "judge",
-      "notes": "(based on abstract only) GR-2 is a generalist robot agent fine-tuned for end-to-end action prediction on robot trajectories, matching the VLA characterization. · source: https://www.semanticscholar.org/paper/398090d5d5232fc9466fee8a9b904bf7a28bbded",
+      "notes": "(based on abstract only) GR-2 is a generalist robot agent fine-tuned end-to-end for action prediction on robot trajectories, fitting the VLA-on-embodied-data characterization. · source: http://arxiv.org/abs/2410.06158v1",
       "error": null,
       "labels": null
     },
@@ -7119,9 +7041,9 @@
           "url": "http://arxiv.org/abs/2406.09246v3"
         }
       ],
-      "confidence": 0.8,
+      "confidence": 0.82,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence explicitly describes VLA models fine-tuned end-to-end for visuomotor control to obtain generalizable policies. · source: http://arxiv.org/abs/2406.09246v3",
+      "notes": "(based on abstract only) Evidence explicitly describes VLA models fine-tuned end-to-end on robot demonstrations for visuomotor control. · source: http://arxiv.org/abs/2406.09246v3",
       "error": null,
       "labels": null
     },
@@ -7171,24 +7093,25 @@
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "s2",
+        "source": "arxiv",
         "match_method": "arxiv",
         "match_score": 1.0,
         "title": "Octo: An Open-Source Generalist Robot Policy",
         "authors": [
-          "O. Team",
+          "Octo Model Team",
           "Dibya Ghosh",
-          "H. Walke",
+          "Homer Walke",
           "Karl Pertsch",
           "Kevin Black",
           "Oier Mees",
-          "S. Dasari",
+          "Sudeep Dasari",
           "Joey Hejna",
           "Tobias Kreiman",
           "Charles Xu",
           "Jianlan Luo",
           "You Liang Tan",
-          "Pannag R. Sanketi",
+          "Lawrence Yunliang Chen",
+          "Pannag Sanketi",
           "Quan Vuong",
           "Ted Xiao",
           "Dorsa Sadigh",
@@ -7196,10 +7119,10 @@
           "Sergey Levine"
         ],
         "year": 2024,
-        "venue": "Robotics: Science and Systems",
-        "doi": "10.48550/arxiv.2405.12213",
-        "arxiv_id": "2405.12213",
-        "url": "https://www.semanticscholar.org/paper/1d2753d74025e7a71594506623be81f18b073adb",
+        "venue": "arXiv (preprint)",
+        "doi": null,
+        "arxiv_id": "2405.12213v2",
+        "url": "http://arxiv.org/abs/2405.12213v2",
         "url_valid": true,
         "abstract": "Large policies pretrained on diverse robot datasets have the potential to transform robotic learning: instead of training new policies from scratch, such generalist robot policies may be finetuned with only a little in-domain data, yet generalize broadly. However, to be widely applicable across a range of robotic learning scenarios, environments, and tasks, such policies need to handle diverse sensors and action spaces, accommodate a variety of commonly used robotic platforms, and finetune readily and efficiently to new domains. In this work, we aim to lay the groundwork for developing open-so…"
       },
@@ -7211,20 +7134,20 @@
       "evidence": [
         {
           "kind": "metadata",
-          "source": "10.48550/arxiv.2405.12213",
-          "quote": "Octo: An Open-Source Generalist Robot Policy — O. Team, Dibya Ghosh, H. Walke, Karl Pertsch, Kevin Black, Oier Mees, S. Dasari, Joey Hejna, Tobias Kreiman, Charles Xu, Jianlan Luo, You Liang Tan, Pannag R. Sanketi, Quan Vuong, Ted Xiao, Dorsa Sadigh, Chelsea Finn, Sergey Levine — 2024",
-          "url": "https://www.semanticscholar.org/paper/1d2753d74025e7a71594506623be81f18b073adb"
+          "source": "2405.12213v2",
+          "quote": "Octo: An Open-Source Generalist Robot Policy — Octo Model Team, Dibya Ghosh, Homer Walke, Karl Pertsch, Kevin Black, Oier Mees, Sudeep Dasari, Joey Hejna, Tobias Kreiman, Charles Xu, Jianlan Luo, You Liang Tan, Lawrence Yunliang Chen, Pannag Sanketi, Quan Vuong, Ted Xiao, Dorsa Sadigh, Chelsea Finn, Sergey Levine — 2024",
+          "url": "http://arxiv.org/abs/2405.12213v2"
         },
         {
           "kind": "abstract",
-          "source": "10.48550/arxiv.2405.12213",
+          "source": "2405.12213v2",
           "quote": "Large policies pretrained on diverse robot datasets have the potential to transform robotic learning: instead of training new policies from scratch, such generalist robot policies may be finetuned with only a little in-domain data, yet generalize broadly. However, to be widely applicable across a range of robotic learning scenarios, environments, and tasks, such policies need to handle diverse sensors and action spaces, accommodate a variety of commonly used robotic platforms, and finetune readily and efficiently to new domains. In this work, we aim to lay the groundwork for developing open-so…",
-          "url": "https://www.semanticscholar.org/paper/1d2753d74025e7a71594506623be81f18b073adb"
+          "url": "http://arxiv.org/abs/2405.12213v2"
         }
       ],
-      "confidence": 0.75,
+      "confidence": 0.74,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Octo-style generalist robot policy pretrained on diverse robot data to generalize broadly supports the VLA end-to-end claim. · source: https://www.semanticscholar.org/paper/1d2753d74025e7a71594506623be81f18b073adb",
+      "notes": "(based on abstract only) Evidence describes generalist robot policies trained on diverse robot datasets handling varied embodiments, matching the VLA characterization including cross-embodiment challenge. · source: http://arxiv.org/abs/2405.12213v2",
       "error": null,
       "labels": null
     },
@@ -7322,7 +7245,7 @@
       ],
       "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract only) TinyVLA is explicitly a VLA model trained end-to-end for visuomotor control, and notes the deployment/pre-training challenges. · source: https://doi.org/10.1109/lra.2025.3544909",
+      "notes": "(based on abstract only) Evidence explicitly describes VLA models for visuomotor control via end-to-end learning trained on robotic data. · source: https://doi.org/10.1109/lra.2025.3544909",
       "error": null,
       "labels": null
     },
@@ -7409,9 +7332,9 @@
           "url": "https://www.ijcai.org/proceedings/2019/0339.pdf"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.75,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence confirms MineRL is a gaming dataset, supporting its characterization as such. · source: https://www.ijcai.org/proceedings/2019/0339.pdf",
+      "notes": "(based on abstract only) MineRL is a Minecraft human-demonstration dataset, supporting its characterization as a limited-coverage gaming dataset. · source: https://www.ijcai.org/proceedings/2019/0339.pdf",
       "error": null,
       "labels": null
     },
@@ -7486,9 +7409,9 @@
         "abstract": "Autonomous agents have made great strides in specialist domains like Atari games and Go. However, they typically learn tabula rasa in isolated environments with limited and manually conceived objectives, thus failing to generalize across a wide spectrum of tasks and capabilities. Inspired by how humans continually learn and adapt in the open world, we advocate a trinity of ingredients for building generalist agents: 1) an environment that supports a multitude of tasks and goals, 2) a large-scale database of multimodal knowledge, and 3) a flexible and scalable agent architecture. We introduce M…"
       },
       "metadata_issues": [],
-      "supports_claim": "supports",
+      "supports_claim": "partial",
       "priority": "obligatory",
-      "severity": "ok",
+      "severity": "medium",
       "compared_against": null,
       "evidence": [
         {
@@ -7510,9 +7433,9 @@
           "url": "https://arxiv.org/pdf/2206.08853"
         }
       ],
-      "confidence": 0.78,
+      "confidence": 0.7,
       "model_tier": "judge",
-      "notes": "(based on full text §Related work) Evidence describes MineDojo's internet-scale Minecraft video knowledge base, two orders of magnitude larger than MineRL, backing the scaled video data without action labels. · source: https://arxiv.org/pdf/2206.08853",
+      "notes": "(based on full text §Related work) Evidence confirms MineDojo offers an internet-scale knowledge base of Minecraft videos (scaling video data), but does not explicitly state these lack action labels. · source: https://arxiv.org/pdf/2206.08853",
       "error": null,
       "labels": null
     },
@@ -7597,15 +7520,21 @@
           "url": "https://arxiv.org/pdf/2206.11795"
         },
         {
+          "kind": "full_text",
+          "source": "arxiv_html §Abstract",
+          "quote": "Specifically, we show that with a small amount of labeled data we can train an inverse dynamics model accurate enough to label a huge unlabeled source of online data – here, online videos of people playing Minecraft – from which we can then train a general behavioral prior. 21 , 22 , 23 , 24 , 25 Furthermore, most prior semi-supervised imitation learning work was tested in the relatively low data regime; because we experiment with far more data ( 70k hours of unlabeled video), we hypothesize that we can achieve good performance with a much simpler method, a trend that has proven true for pretr…",
+          "url": "https://ar5iv.org/abs/2206.11795"
+        },
+        {
           "kind": "abstract",
           "source": "10.48550/arxiv.2206.11795",
           "quote": "Pretraining on noisy, internet-scale datasets has been heavily studied as a technique for training models with broad, general capabilities for text, images, and other modalities. However, for many sequential decision domains such as robotics, video games, and computer use, publicly available data does not contain the labels required to train behavioral priors in the same way. We extend the internet-scale pretraining paradigm to sequential decision domains through semi-supervised imitation learning wherein agents learn to act by watching online unlabeled videos. Specifically, we show that with …",
           "url": "https://arxiv.org/pdf/2206.11795"
         }
       ],
-      "confidence": 0.55,
+      "confidence": 0.6,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence confirms VPT's semi-supervised video imitation but not the specific 70k-hour inverse-dynamics figure or Minecraft-only scope. · source: https://arxiv.org/pdf/2206.11795",
+      "notes": "(based on full text §Abstract) Evidence confirms inverse-dynamics-based labeling and a Minecraft setting (contractor_house/early_game), but the specific 70,000-hours annotation figure is not stated. · source: https://arxiv.org/pdf/2206.11795",
       "error": null,
       "labels": null
     },
@@ -7713,9 +7642,9 @@
           "url": "https://www.semanticscholar.org/paper/c064de2c71ebc5cf05493f49dc312b033c36b3b9"
         }
       ],
-      "confidence": 0.8,
+      "confidence": 0.82,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Genie learns a latent action model from unlabelled internet videos, directly supporting inferring latent actions from video. · source: https://www.semanticscholar.org/paper/c064de2c71ebc5cf05493f49dc312b033c36b3b9",
+      "notes": "(based on abstract only) Evidence explicitly describes a latent action model trained from unlabelled internet videos, matching inferring latent actions from videos. · source: https://www.semanticscholar.org/paper/c064de2c71ebc5cf05493f49dc312b033c36b3b9",
       "error": null,
       "labels": null
     },
@@ -7798,7 +7727,7 @@
       ],
       "confidence": 0.78,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence describes inferring latent policies/actions from state observations and aligning them to real actions, matching the latent-action claim. · source: https://www.semanticscholar.org/paper/395ea8a62d84c8dd85a8dadfc3043cf2228e38c5",
+      "notes": "(based on abstract only) Evidence describes inferring latent policies/actions from state observations and their causal effects, matching latent-action inference from observations. · source: https://www.semanticscholar.org/paper/395ea8a62d84c8dd85a8dadfc3043cf2228e38c5",
       "error": null,
       "labels": null
     },
@@ -7843,44 +7772,51 @@
         "venue": null,
         "doi": null,
         "arxiv_id": null,
-        "url": "https://deepmind"
+        "url": "https://deepmind.google/discover/blog/genie-2-a-large-scale-foundation-world-model"
       },
       "in_table": false,
       "exists": "yes",
       "resolved": {
-        "source": "crossref",
-        "match_method": "fuzzy_title",
-        "match_score": 0.822,
-        "title": "The Mathematics of Genie 2: A Large-Scale Foundation World Model",
+        "source": "url",
+        "match_method": "direct_url",
+        "match_score": 1.0,
+        "title": "Genie 2: A large-scale foundation world model",
         "authors": [
-          "Miquel Noguer I Alonso"
+          "J Parker-Holder",
+          "P Ball",
+          "J Bruce",
+          "V Dasagi",
+          "K Holsheimer",
+          "C Kaplanis",
+          "A Moufarek",
+          "G Scully",
+          "J Shar",
+          "J Shi"
         ],
-        "year": 2025,
+        "year": 2024,
         "venue": null,
-        "doi": "10.2139/ssrn.5045438",
+        "doi": null,
         "arxiv_id": null,
-        "url": "https://doi.org/10.2139/ssrn.5045438",
+        "url": "https://deepmind.google/discover/blog/genie-2-a-large-scale-foundation-world-model",
         "url_valid": true,
         "abstract": null
       },
-      "metadata_issues": [
-        "first-author mismatch: cited 'J Parker-Holder' vs 'Miquel Noguer I Alonso'"
-      ],
+      "metadata_issues": [],
       "supports_claim": "inconclusive",
       "priority": "helpful",
       "severity": "low",
       "compared_against": null,
       "evidence": [
         {
-          "kind": "metadata",
-          "source": "10.2139/ssrn.5045438",
-          "quote": "The Mathematics of Genie 2: A Large-Scale Foundation World Model — Miquel Noguer I Alonso — 2025",
-          "url": "https://doi.org/10.2139/ssrn.5045438"
+          "kind": "url",
+          "source": "fetch",
+          "quote": "cited URL verified live (HTTP 200) — web/software/system-card object",
+          "url": "https://deepmind.google/discover/blog/genie-2-a-large-scale-foundation-world-model"
         }
       ],
       "confidence": null,
       "model_tier": "judge",
-      "notes": "(based on abstract only) no abstract or introduction to judge from · source: https://doi.org/10.2139/ssrn.5045438",
+      "notes": "(based on abstract only) no abstract or introduction to judge from · source: https://deepmind.google/discover/blog/genie-2-a-large-scale-foundation-world-model",
       "error": null,
       "labels": null
     },
@@ -7979,9 +7915,9 @@
           "url": "https://www.semanticscholar.org/paper/5e25c253b0c3fb159c9581131e22b6e9f615619c"
         }
       ],
-      "confidence": 0.82,
+      "confidence": 0.83,
       "model_tier": "judge",
-      "notes": "(based on abstract only) LAPA learns discrete latent actions between frames from action-label-free videos, directly supporting the claim. · source: https://www.semanticscholar.org/paper/5e25c253b0c3fb159c9581131e22b6e9f615619c",
+      "notes": "(based on abstract only) LAPA learns discrete latent actions between frames from internet-scale videos without action labels, directly matching the claim. · source: https://www.semanticscholar.org/paper/5e25c253b0c3fb159c9581131e22b6e9f615619c",
       "error": null,
       "labels": null
     },
@@ -8076,9 +8012,9 @@
           "url": "https://www.semanticscholar.org/paper/cda470bede832f2965e594f9bdee79d6973a91e9"
         }
       ],
-      "confidence": 0.75,
+      "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract only) RoboTurk is a teleoperation crowdsourcing platform for collecting demonstration data, matching its listing as a teleoperation dataset. · source: https://www.semanticscholar.org/paper/cda470bede832f2965e594f9bdee79d6973a91e9",
+      "notes": "(based on abstract only) Evidence describes RoboTurk as a crowdsourcing teleoperation platform for demonstration collection, matching its listing as a teleoperation dataset. · source: https://www.semanticscholar.org/paper/cda470bede832f2965e594f9bdee79d6973a91e9",
       "error": null,
       "labels": null
     },
@@ -8169,9 +8105,9 @@
           "url": "https://doi.org/10.1109/iros40897.2019.8968114"
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.72,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Evidence describes a human-teleoperated demonstration dataset effort with diversity concerns, supporting the RoboTurk teleoperation-dataset listing. · source: https://doi.org/10.1109/iros40897.2019.8968114",
+      "notes": "(based on abstract only) Evidence is a RoboTurk human-demonstration dataset collection effort, consistent with the teleoperation-dataset listing. · source: https://doi.org/10.1109/iros40897.2019.8968114",
       "error": null,
       "labels": null
     },
@@ -8250,15 +8186,21 @@
           "url": "https://www.semanticscholar.org/paper/d7f5aeb06f37bbaf6d47d560db2162665c7bdac6"
         },
         {
+          "kind": "full_text",
+          "source": "arxiv_html §IV-A Remote Teleoperation System",
+          "quote": "We develop our data collection system on top of RoboTurk [ 28 , 26 ] to allow remote operators to monitor policy execution and intervene when necessary. RoboTurk is a platform that allows users to collect task demonstrations through low-latency teleoperation. Users log on to a website that streams video from the robot workspace, and use a smartphone as a motion controller to control the robot. [2012.06733] Human-in-the-Loop Imitation Learning using Remote Teleoperation Human-in-the-Loop Imitation Learning using Remote Teleoperation",
+          "url": "https://ar5iv.org/abs/2012.06733"
+        },
+        {
           "kind": "abstract",
           "source": "2012.06733",
           "quote": "Imitation Learning is a promising paradigm for learning complex robot manipulation skills by reproducing behavior from human demonstrations. However, manipulation tasks often contain bottleneck regions that require a sequence of precise actions to make meaningful progress, such as a robot inserting a pod into a coffee machine to make coffee. Trained policies can fail in these regions because small deviations in actions can lead the policy into states not covered by the demonstrations. Intervention-based policy learning is an alternative that can address this issue -- it allows human operators …",
           "url": "https://www.semanticscholar.org/paper/d7f5aeb06f37bbaf6d47d560db2162665c7bdac6"
         }
       ],
-      "confidence": 0.68,
+      "confidence": 0.82,
       "model_tier": "judge",
-      "notes": "(based on abstract only) Intervention-based policy learning from human teleoperators supports its inclusion among RoboTurk teleoperation datasets. · source: https://www.semanticscholar.org/paper/d7f5aeb06f37bbaf6d47d560db2162665c7bdac6",
+      "notes": "(based on full text §IV-A Remote Teleoperation System) Evidence describes a RoboTurk-based remote teleoperation system for collecting robot task demonstrations, backing its listing as a teleoperation dataset/method; the 'costly/limited scale' editorial framing is the citing paper's own. · source: https://www.semanticscholar.org/paper/d7f5aeb06f37bbaf6d47d560db2162665c7bdac6",
       "error": null,
       "labels": null
     },
@@ -8367,9 +8309,9 @@
           "url": "http://arxiv.org/abs/2405.02292v1"
         }
       ],
-      "confidence": 0.78,
+      "confidence": 0.8,
       "model_tier": "judge",
-      "notes": "(based on abstract only) ALOHA 2 is an enhanced teleoperation platform for bimanual manipulation demonstration data, matching the claim. · source: http://arxiv.org/abs/2405.02292v1",
+      "notes": "(based on abstract only) Evidence describes ALOHA 2 as a teleoperation hardware/dataset platform for bimanual manipulation, matching the listing. · source: http://arxiv.org/abs/2405.02292v1",
       "error": null,
       "labels": null
     },
@@ -8462,7 +8404,7 @@
       ],
       "confidence": 0.82,
       "model_tier": "judge",
-      "notes": "(based on abstract only) TeleMoMa is explicitly a teleoperation interface for collecting mobile manipulation demonstrations, supporting its listing. · source: http://arxiv.org/abs/2403.07869v2",
+      "notes": "(based on abstract only) Evidence describes TeleMoMa as a whole-body teleoperation interface addressing the data bottleneck in imitation learning. · source: http://arxiv.org/abs/2403.07869v2",
       "error": null,
       "labels": null
     },
@@ -8514,67 +8456,107 @@
       "resolved": {
         "source": "s2",
         "match_method": "fuzzy_title",
-        "match_score": 0.884,
-        "title": "Open X-Embodiment: Robotic Learning Datasets and RT-X Models : Open X-Embodiment Collaboration0",
+        "match_score": 1.0,
+        "title": "Open X-Embodiment: Robotic Learning Datasets and RT-X Models : Open X-Embodiment Collaboration",
         "authors": [
+          "Abigail O'Neill",
+          "Abdul Rehman",
+          "Abhiram Maddukuri",
+          "Abhishek Gupta",
           "A. Padalkar",
+          "Abraham Lee",
           "A. Pooley",
+          "Agrim Gupta",
+          "A. Mandlekar",
           "Ajinkya Jain",
+          "Albert Tung",
           "Alex Bewley",
           "Alex Herzog",
           "A. Irpan",
           "Alexander Khazatsky",
           "Anant Rai",
+          "Anchit Gupta",
+          "Andrew Wang",
           "Anikait Singh",
+          "Animesh Garg",
+          "Aniruddha Kembhavi",
+          "Annie Xie",
           "Anthony Brohan",
           "A. Raffin",
+          "Archit Sharma",
+          "Arefeh Yavary",
+          "Arhan Jain",
+          "A. Balakrishna",
           "Ayzaan Wahid",
           "Ben Burgess-Limerick",
           "Beomjoon Kim",
           "Bernhard Schölkopf",
+          "Blake Wulfe",
           "Brian Ichter",
           "Cewu Lu",
           "Charles Xu",
+          "Charlotte Le",
           "Chelsea Finn",
+          "Chen Wang",
           "Chenfeng Xu",
           "Cheng Chi",
           "Chenguang Huang",
           "Christine Chan",
+          "Christopher Agia",
           "Chuer Pan",
           "Chuyuan Fu",
           "Coline Devin",
+          "Danfei Xu",
+          "Daniel Morton",
           "Danny Driess",
+          "Daphne Chen",
           "Deepak Pathak",
           "Dhruv Shah",
           "Dieter Büchler",
+          "D. Jayaraman",
           "Dmitry Kalashnikov",
           "Dorsa Sadigh",
           "Edward Johns",
+          "E. Foster",
+          "Fangchen Liu",
           "Federico Ceola",
           "Fei Xia",
+          "Feiyu Zhao",
           "F. Stulp",
           "Gaoyue Zhou",
           "G. Sukhatme",
           "Gautam Salhotra",
           "Ge Yan",
+          "Gilbert Feng",
           "Giulio Schiavi",
+          "Glen Berseth",
+          "G. Kahn",
+          "Guanzhi Wang",
           "Hao Su",
           "Haoshu Fang",
           "Haochen Shi",
-          "H. B. Amor",
-          "Henrik I Christensen",
+          "Henghui Bao",
+          "Heni Ben Amor",
+          "Henrik I. Christensen",
           "Hiroki Furuta",
           "H. Walke",
           "Hongjie Fang",
+          "Huy Ha",
           "Igor Mordatch",
           "Ilija Radosavovic",
           "Isabel Leal",
           "Jacky Liang",
+          "Jad Abou-Chakra",
           "Jaehyung Kim",
+          "Jaimyn Drake",
+          "Jan Peters",
           "Jan Schneider",
           "Jasmine Hsu",
           "Jeannette Bohg",
           "Jeff Bingham",
+          "Jeffrey Wu",
+          "Jensen Gao",
+          "Jiaheng Hu",
           "Jiajun Wu",
           "Jialin Wu",
           "Jiankai Sun",
@@ -8582,12 +8564,19 @@
           "Jiayuan Gu",
           "Jie Tan",
           "Jihoon Oh",
+          "Jimmy Wu",
+          "Jingpei Lu",
+          "Jingyun Yang",
           "Jitendra Malik",
+          "João Silvério",
+          "Joey Hejna",
+          "Jonathan Booher",
           "Jonathan Tompson",
           "Jonathan Yang",
+          "Jordi Salvador",
           "Joseph J. Lim",
-          "João Silvério",
           "Junhyek Han",
+          "Kaiyuan Wang",
           "Kanishka Rao",
           "Karl Pertsch",
           "Karol Hausman",
@@ -8597,20 +8586,41 @@
           "Kendra Byrne",
           "Kenneth Oslund",
           "Kento Kawaharazuka",
+          "Kevin Black",
+          "Kevin Lin",
           "Kevin Zhang",
-          "K. Majd",
+          "Kiana Ehsani",
+          "Kiran Lekkala",
+          "Kirsty Ellis",
           "Krishan Rana",
           "K. Srinivasan",
+          "Kuan Fang",
+          "K. Singh",
+          "Kuo-Hao Zeng",
+          "K. Hatch",
+          "Kyle Hsu",
+          "L. Itti",
           "L. Chen",
           "Lerrel Pinto",
+          "Fei-Fei Li",
           "Liam Tan",
+          "L. Fan",
           "Lionel Ott",
           "Lisa Lee",
+          "Luca Weihs",
+          "Magnum Chen",
+          "Marion Lepert",
+          "Marius Memmel",
           "Masayoshi Tomizuka",
+          "Masha Itkina",
+          "Mateo Guaman Castro",
+          "Max Spero",
           "Maximilian Du",
           "Michael Ahn",
+          "Michael C. Yip",
           "Mingtong Zhang",
           "Mingyu Ding",
+          "Minho Heo",
           "M. K. Srirama",
           "Mohit Sharma",
           "Moo Jin Kim",
@@ -8620,19 +8630,34 @@
           "N. Heess",
           "Nikhil J. Joshi",
           "Niko Suenderhauf",
+          "Ning Liu",
           "Norman Di Palo",
           "Nur Muhammad Shafiullah",
           "Oier Mees",
           "Oliver Kroemer",
+          "O. Bastani",
           "Pannag R. Sanketi",
+          "Patrick Miller",
+          "Patrick Yin",
           "Paul Wohlhart",
           "Peng Xu",
+          "P. Fagan",
+          "P. Mitrano",
           "P. Sermanet",
+          "Pieter Abbeel",
           "Priya Sundaresan",
-          "Q. Vuong",
+          "Qiuyu Chen",
+          "Quan Vuong",
           "Rafael Rafailov",
           "Ran Tian",
           "Ria Doshi",
+          "Roberto Martín-Martín",
+          "R. Baijal",
+          "Rosario Scalise",
+          "Rose Hendrix",
+          "Roy Lin",
+          "Runjia Qian",
+          "Ruohan Zhang",
           "R. Mendonca",
           "Rutav Shah",
           "Ryan Hoque",
@@ -8640,30 +8665,40 @@
           "Samuel Bustamante",
           "Sean Kirmani",
           "Sergey Levine",
+          "Shan Lin",
           "Sherry Moore",
           "Shikhar Bahl",
           "Shivin Dass",
+          "Shubham D. Sonawani",
           "Shuran Song",
           "Sichun Xu",
           "Siddhant Haldar",
+          "Siddharth Karamcheti",
           "S. Adebola",
           "Simon Guist",
           "Soroush Nasiriany",
-          "S. Schaal",
+          "Stefan Schaal",
           "Stefan Welker",
           "Stephen Tian",
+          "S. Ramamoorthy",
           "S. Dasari",
           "Suneel Belkhale",
+          "Sungjae Park",
+          "Suraj Nair",
+          "Suvir Mirchandani",
           "Takayuki Osa",
-          "Tatsuya Harada",
-          "T. Matsushima",
+          "Tanmay Gupta",
+          "Tanmay Gupta",
+          "Tatsuya Matsushima",
           "Ted Xiao",
+          "Thomas Kollar",
           "Tianhe Yu",
           "Tianli Ding",
           "Todor Davchev",
           "Tony Zhao",
           "Travis Armstrong",
-          "T. Darrell",
+          "Trevor Darrell",
+          "T. Chung",
           "Vidhi Jain",
           "Vincent Vanhoucke",
           "Wei Zhan",
@@ -8672,64 +8707,65 @@
           "Xi Chen",
           "Xiaolong Wang",
           "Xinghao Zhu",
+          "Xinyang Geng",
+          "Xiyuan Liu",
+          "Liangwei Xu",
           "Xuanlin Li",
           "Yao Lu",
+          "Y. Ma",
+          "Yejin Kim",
           "Yevgen Chebotar",
           "Yifan Zhou",
           "Yifeng Zhu",
+          "Y. Wu",
           "Ying Xu",
           "Yixuan Wang",
           "Yonatan Bisk",
           "Yoonyoung Cho",
           "Youngwoon Lee",
           "Yuchen Cui",
+          "Yue Cao",
           "Yueh-Hua Wu",
           "Yujin Tang",
           "Yuke Zhu",
+          "Yunchu Zhang",
+          "Yunfan Jiang",
+          "Yunshuang Li",
           "Yunzhu Li",
           "Yusuke Iwasawa",
           "Yutaka Matsuo",
+          "Zehan Ma",
           "Zhuo Xu",
-          "Zichen Jeff Cui"
+          "Zichen Jeff Cui",
+          "Zichen Zhang",
+          "Zipeng Lin"
         ],
-        "year": 2023,
+        "year": 2024,
         "venue": "IEEE International Conference on Robotics and Automation",
-        "doi": "10.1109/icra57147.2024.10611477",
-        "arxiv_id": "2310.08864",
-        "url": "https://www.semanticscholar.org/paper/ef7d31137ef06c5be8c2824ecc5af6ce3358cc8f",
+        "doi": null,
+        "arxiv_id": null,
+        "url": "https://www.semanticscholar.org/paper/5fc3830322f7eae2934c912c391ee5edded86a15",
         "url_valid": true,
-        "abstract": "Large, high-capacity models trained on diverse datasets have shown remarkable successes on efficiently tackling downstream applications. In domains from NLP to Computer Vision, this has led to a consolidation of pretrained models, with general pretrained backbones serving as a starting point for many applications. Can such a consolidation happen in robotics? Conventionally, robotic learning methods train a separate model for every application, every robot, and even every environment. Can we instead train \"generalist\" X-robot policy that can be adapted efficiently to new robots, tasks, and envi…"
+        "abstract": null
       },
       "metadata_issues": [
-        "first-author mismatch: cited 'Abby O’Neill' vs 'A. Padalkar'"
+        "first-author mismatch: cited 'Abby O’Neill' vs 'Abigail O'Neill'"
       ],
-      "supports_claim": "partial",
+      "supports_claim": "inconclusive",
       "priority": "obligatory",
-      "severity": "medium",
+      "severity": "low",
       "compared_against": null,
       "evidence": [
         {
           "kind": "metadata",
-          "source": "10.1109/icra57147.2024.10611477",
-          "quote": "Open X-Embodiment: Robotic Learning Datasets and RT-X Models : Open X-Embodiment Collaboration0 — A. Padalkar, A. Pooley, Ajinkya Jain, Alex Bewley, Alex Herzog, A. Irpan, Alexander Khazatsky, Anant Rai, Anikait Singh, Anthony Brohan, A. Raffin, Ayzaan Wahid, Ben Burgess-Limerick, Beomjoon Kim, Bernhard Schölkopf, Brian Ichter, Cewu Lu, Charles Xu, Chelsea Finn, Chenfeng Xu, Cheng Chi, Chenguang Huang, Christine Chan, Chuer Pan, Chuyuan Fu, Coline Devin, Danny Driess, Deepak Pathak, Dhruv Shah, Dieter Büchler, Dmitry Kalashnikov, Dorsa Sadigh, Edward Johns, Federico Ceola, Fei Xia, F. Stulp, G",
-          "url": "https://www.semanticscholar.org/paper/ef7d31137ef06c5be8c2824ecc5af6ce3358cc8f"
-        },
-        {
-          "kind": "full_text",
-          "source": "arxiv_html §Abstract",
-          "quote": "Figure 0 : The Open X-Embodiment Dataset. (a) : the dataset consists of 60 individual datasets across embodiments. (b) : the Franka robot has the largest diversity in visually distinct scenes due to the large number of Franka datasets, (c) : xArm and Google Robot contribute the most number of trajectories due to a few large datasets, (d, e) : the dataset contains a great diversity of skills and common objects. We introduce the Open X-Embodiment Repository ( robotics-transformer-x.github.io ) – an open-source repository which includes large-scale data along with pre-trained model checkpoints fo…",
-          "url": "https://arxiv.org/html/2310.08864"
-        },
-        {
-          "kind": "abstract",
-          "source": "10.1109/icra57147.2024.10611477",
-          "quote": "Large, high-capacity models trained on diverse datasets have shown remarkable successes on efficiently tackling downstream applications. In domains from NLP to Computer Vision, this has led to a consolidation of pretrained models, with general pretrained backbones serving as a starting point for many applications. Can such a consolidation happen in robotics? Conventionally, robotic learning methods train a separate model for every application, every robot, and even every environment. Can we instead train \"generalist\" X-robot policy that can be adapted efficiently to new robots, tasks, and envi…",
-          "url": "https://www.semanticscholar.org/paper/ef7d31137ef06c5be8c2824ecc5af6ce3358cc8f"
+          "source": "https://www.semanticscholar.org/paper/5fc3830322f7eae2934c912c391ee5edded86a15",
+          "quote": "Open X-Embodiment: Robotic Learning Datasets and RT-X Models : Open X-Embodiment Collaboration — Abigail O'Neill, Abdul Rehman, Abhiram Maddukuri, Abhishek Gupta, A. Padalkar, Abraham Lee, A. Pooley, Agrim Gupta, A. Mandlekar, Ajinkya Jain, Albert Tung, Alex Bewley, Alex Herzog, A. Irpan, Alexander Khazatsky, Anant Rai, Anchit Gupta, Andrew Wang, Anikait Singh, Animesh Garg, Aniruddha Kembhavi, Annie Xie, Anthony Brohan, A. Raffin, Archit Sharma, Arefeh Yavary, Arhan Jain, A. Balakrishna, Ayzaan Wahid, Ben Burgess-Limerick, Beomjoon Kim, Bernhard Schölkopf, Blake Wulfe, Brian Ichter, Cewu Lu, ",
+          "url": "https://www.semanticscholar.org/paper/5fc3830322f7eae2934c912c391ee5edded86a15"
         }
       ],
-      "confidence": 0.6,
+      "confidence": null,
       "model_tier": "judge",
-      "notes": "(based on full text §Abstract) Evidence confirms Open X-Embodiment is a large pooled real-robot trajectory dataset, but it emphasizes scale and diversity rather than the claim's costly/limited characterization. · source: https://www.semanticscholar.org/paper/ef7d31137ef06c5be8c2824ecc5af6ce3358cc8f",
+      "notes": "(based on abstract only) no abstract or introduction to judge from · source: https://www.semanticscholar.org/paper/5fc3830322f7eae2934c912c391ee5edded86a15",
       "error": null,
       "labels": null
     },
@@ -8844,9 +8880,7 @@
         "url_valid": true,
         "abstract": "We explore how scalable robot data can address real-world challenges for generalized robotic manipulation. Introducing AgiBot World, a large-scale platform comprising over 1 million trajectories across 217 tasks in five deployment scenarios, we achieve an order-of-magnitude increase in data scale compared to existing datasets. Accelerated by a standardized collection pipeline with human-in-the-loop verification, AgiBot World guarantees high-quality and diverse data distribution. It is extensible from grippers to dexterous hands and visuo-tactile sensors for fine-grained skill acquisition. Buil…"
       },
-      "metadata_issues": [
-        "first-author mismatch: cited 'Qingwen Bu' vs 'AgiBot-World-Contributors'"
-      ],
+      "metadata_issues": [],
       "supports_claim": "supports",
       "priority": "obligatory",
       "severity": "ok",
@@ -8865,9 +8899,9 @@
           "url": "https://www.semanticscholar.org/paper/9d60da11b2af826310882f1a81e0b125c0600a00"
         }
       ],
-      "confidence": 0.75,
+      "confidence": 0.78,
       "model_tier": "judge",
-      "notes": "(based on abstract only) AgiBot World is a large-scale human-collected robot trajectory dataset, supporting its listing among teleoperation datasets. · source: https://www.semanticscholar.org/paper/9d60da11b2af826310882f1a81e0b125c0600a00",
+      "notes": "(based on abstract only) Evidence describes AgiBot World as a large-scale human-collected (teleoperation) trajectory dataset, matching its listing. · source: https://www.semanticscholar.org/paper/9d60da11b2af826310882f1a81e0b125c0600a00",
       "error": null,
       "labels": null
     }

@@ -121,9 +121,13 @@ class LLMRelevanceJudge:
         )
         self.calls = 0  # number of LLM invocations (= chunks)
         self.usage = RunUsage(backend="agentic", model=self.model)
-        # Guards usage/calls accumulation and the intro cache across chunk threads.
+        # Detail claims (method/dataset/metric/result/config) that come back partial/
+        # inconclusive on abstract+intro are escalated to full-text and re-judged once.
+        self.escalate_full_text = bool(_setting(settings, "escalate_full_text", True))
+        # Guards usage/calls accumulation and the intro/full-text caches across threads.
         self._lock = threading.Lock()
         self._intro_cache: dict[str, str] = {}  # arXiv stem -> intro text ("" if none)
+        self._ft_cache: dict[str, str] = {}  # full-text key -> text ("" if none)
         self._client: Any = None  # lazily-built anthropic client (messages mode)
 
     # ── single-record entry (the per-record seam) ───────────────────
@@ -193,7 +197,11 @@ class LLMRelevanceJudge:
                 for idx, cid, _c in groups[ck]["members"]:
                     verdicts[idx] = per_claim.get(cid) or _abstain("batch judge returned no verdict")
 
-        return [v if v is not None else _abstain("no verdict") for v in verdicts]
+        out = [v if v is not None else _abstain("no verdict") for v in verdicts]
+        # Second pass: detail claims still partial/inconclusive escalate to full text.
+        if self.escalate_full_text:
+            self._escalate_full_text(items, out)
+        return out
 
     # ── evidence (L0 / L1) ───────────────────────────────────────────
     def _assemble_evidence(self, abstract: str, resolved: Any) -> tuple[str, str]:
@@ -235,6 +243,79 @@ class LLMRelevanceJudge:
         with self._lock:
             for stem, intro in zip(stems, fetched, strict=False):
                 self._intro_cache[stem] = intro if intro is not None else ""
+
+    # ── full-text escalation (L2): detail claim still partial/inconclusive ──
+    def _escalate_full_text(self, items: list[dict], verdicts: list[RelevanceVerdict]) -> None:
+        """Re-judge DETAIL claims (method/dataset/metric/result/config) that came back
+        ``partial``/``inconclusive`` on abstract+intro against full-text excerpts.
+
+        In place. Best-effort: any fetch/parse/judge failure keeps the abstract-only
+        verdict, so escalation only ever *adds* coverage (and makes the does_not
+        "searched, not found" case reachable). One full-text fetch + one re-judge call
+        per citation, run concurrently.
+        """
+        cand = [
+            i
+            for i, v in enumerate(verdicts)
+            if v
+            and getattr(v.supports_claim, "value", v.supports_claim)
+            in (SupportsClaim.PARTIAL.value, SupportsClaim.INCONCLUSIVE.value)
+            and _is_detail_claim(items[i].get("claim") or "")
+        ]
+        if not cand:
+            return
+        by_ck: dict[str, list[int]] = {}
+        for i in cand:
+            by_ck.setdefault(items[i].get("cite_key") or f"__row{i}", []).append(i)
+
+        def _rejudge(pair: tuple[str, list[int]]):
+            from ..grounding.fulltext import select_evidence_chunks, split_sections
+
+            ck, idxs = pair
+            full = self._full_text_for(items[idxs[0]].get("resolved"))
+            if not full:
+                return None
+            sections = split_sections(full)
+            chunks: list[tuple[str, str]] = []
+            members = []
+            for idx in idxs:
+                claim = items[idx].get("claim") or ""
+                members.append((idx, items[idx].get("claim_id") or str(idx), claim))
+                chunks += select_evidence_chunks(claim, sections, k=3, max_chars=600)
+            evidence = _format_chunks(chunks)
+            if not evidence.strip():
+                return None
+            got = self._judge_citation_chunk([(ck, {"evidence": evidence, "members": members})])
+            return (ck, idxs, got)
+
+        for res in _parallel_map(list(by_ck.items()), _rejudge, self.chunk_concurrency):
+            if not res:
+                continue
+            ck, idxs, got = res
+            per_claim = (got or {}).get(ck, {})
+            for idx in idxs:
+                nv = per_claim.get(items[idx].get("claim_id") or str(idx))
+                if nv:  # the full-text verdict supersedes the abstract-only one
+                    verdicts[idx] = nv
+
+    def _full_text_for(self, resolved: Any) -> str:
+        """Cached full text for a resolved paper (arXiv HTML/eprint/PDF, then an OA URL)."""
+        from ..grounding.fulltext import fetch_full_text_from_url, fetch_full_text_with_source
+
+        stem = _arxiv_stem(resolved)
+        url = (getattr(resolved, "url", "") or "").strip()
+        key = stem or url
+        if not key:
+            return ""
+        with self._lock:
+            if key in self._ft_cache:
+                return self._ft_cache[key]
+        text = fetch_full_text_with_source(stem).text if stem else ""
+        if not text and url:
+            text = fetch_full_text_from_url(url)
+        with self._lock:
+            self._ft_cache[key] = text
+        return text
 
     # ── one chunk of CITATIONS -> {cite_key: {claim_id: verdict}} ─────
     def _judge_citation_chunk(
@@ -337,21 +418,27 @@ _GROUP_SYSTEM = (
     "or method (do not infer from prior knowledge).\n"
     "- 'partial': the evidence is on-topic and related but weaker or narrower than "
     "the claim asserts.\n"
-    "- 'does_not': you HAVE evidence and it does NOT support THIS specific claim — "
-    "it contradicts the claim, OR the cited work's actual topic/scope is materially "
-    "different from or narrower than the claim so it cannot back it (e.g. a paper "
-    "about a text-generation language model cited for a claim about healthcare or "
-    "customer-service deployment). Use 'does_not' whenever the retrieved evidence "
-    "fails to support the claim — NOT only on explicit contradiction.\n"
-    "- 'inconclusive': ONLY when the retrieved evidence is INSUFFICIENT to judge — "
-    "the work is on the SAME topic as the claim but the specific detail is absent "
-    "from the retrieved text and could plausibly appear elsewhere in the paper you "
-    "could not read. Do NOT use 'inconclusive' as a soft 'does_not' for an off-topic "
-    "source.\n"
-    "Calibrate to how much you can see: if the evidence is only an abstract and the "
-    "paper is plainly on the claim's topic, prefer 'inconclusive'/'partial' over "
-    "'does_not' (the body may still support it); if the evidence includes full-text "
-    "excerpts, or the source is clearly off the claim's topic, prefer 'does_not'. "
+    "- 'does_not': RESERVED for three cases — and you MUST name which in the "
+    "justification: (a) CONTRADICTION — the evidence states the opposite of the "
+    "claim; (b) OFF-TOPIC / WRONG OBJECT — the cited work is plainly about a "
+    "materially different object, task, or domain than the claim, so it cannot back "
+    "it (e.g. a text-generation language model cited for a healthcare- or "
+    "customer-service-deployment claim); (c) SEARCHED, NOT FOUND — the evidence "
+    "includes full-text excerpts ([section] tags) and, having read them, the specific "
+    "claimed fact/result is supported NOWHERE in them. Mere ABSENCE of the detail "
+    "from an ON-TOPIC abstract is NOT 'does_not' (use 'inconclusive') — but an "
+    "abstract that itself shows the work is OFF-TOPIC IS 'does_not' (case b).\n"
+    "- 'inconclusive': the work is on the SAME topic as the claim but the specific "
+    "detail is absent from the retrieved text (an abstract, or partial excerpts) and "
+    "could plausibly appear elsewhere in the paper you could not fully read. This is "
+    "the default when you hold only an abstract and cannot confirm the specific "
+    "claim — never a soft 'does_not' for an on-topic source.\n"
+    "Calibrate to COVERAGE: with only an abstract on an on-topic paper, use "
+    "supports/partial if it backs the claim, else 'inconclusive' — do NOT use "
+    "'does_not' unless the evidence CONTRADICTS or is clearly OFF-TOPIC. Reserve the "
+    "'searched, not found' does_not for when you actually hold full-text excerpts. In "
+    "the justification state the basis: 'contradicts: …', 'off-topic: cited work is "
+    "about X not Y', or 'searched full-text §A/§B — <claimed result> absent'. "
     "Never guess 'supports'. Classify each claim's "
     "priority: 'obligatory' (the claim depends on this source — a method "
     "used/extended, a baseline, a dataset, a specific result/quote) or 'helpful' "
@@ -424,6 +511,31 @@ def _abstain(reason: str) -> RelevanceVerdict:
     return RelevanceVerdict(
         supports_claim=SupportsClaim.INCONCLUSIVE, justification=reason, model_tier=ModelTier.JUDGE
     )
+
+
+def _is_detail_claim(claim: str) -> bool:
+    """A claim about methods/data/metrics/results/config — the answer lives past the
+    abstract, so a partial/inconclusive verdict on it warrants full-text escalation.
+    Reuses the grounding heuristic that already gates experimental-section retrieval."""
+    from ..grounding.fulltext import _needs_experimental
+
+    return _needs_experimental(claim or "")
+
+
+def _format_chunks(chunks: list[tuple[str, str]]) -> str:
+    """Render selected ``(heading, chunk)`` full-text evidence with ``[section]`` tags
+    (deduped) — the [section] markers let the rubric apply its "searched, not found"
+    does_not case."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for heading, chunk in chunks:
+        c = (chunk or "").strip()
+        if not c or c in seen:
+            continue
+        seen.add(c)
+        tag = (heading or "").strip()
+        out.append(f"[{tag}]\n{c}" if tag else c)
+    return "\n\n".join(out)
 
 
 _VERDICT_ALIASES = {
