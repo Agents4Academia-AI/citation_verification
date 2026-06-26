@@ -82,20 +82,23 @@ For each reference decide **Exists?** = `yes` / `no` / `unresolved`, then list
 
 ## Relevance rubric
 
-**Supports claim?** = one of:
+**Supports claim?** (relevance) renders as one of — the **machine tokens are
+unchanged**, only the displayed label is the relevance vocabulary:
 
-- `supports` — the cited paper clearly backs the specific claim (quote evidence).
-- `partial` — related but weaker than the claim implies (e.g. claim says
-  "proven", paper only shows it empirically on one dataset).
-- `does not` — the paper does not support, or even contradicts, the claim.
-  Serious. *(Machine token: `does_not`.)*
-- `inconclusive` — you could not retrieve enough of the cited paper to judge.
-- `skipped` — the citation sits in a results **table or figure**, not a prose
+- `Relevant` — the cited paper clearly backs the specific claim (quote evidence).
+  *(Token: `supports`.)*
+- `Partly Relevant` — related but weaker than the claim implies (e.g. claim says
+  "proven", paper only shows it empirically on one dataset). *(Token: `partial`.)*
+- `Irrelevant` — the paper does not support, or even contradicts, the claim.
+  Serious. *(Token: `does_not`.)*
+- `Inconclusive` — you could not retrieve enough of the cited paper to judge.
+  *(Token: `inconclusive`.)*
+- `Skipped` — the citation sits in a results **table or figure**, not a prose
   claim, so it carries **no** relevance verdict (existence/metadata are still
-  checked). Distinct from `inconclusive` (an attempted-but-undetermined judgement):
-  a `skipped` row is **excluded from the supports/partial/does_not/inconclusive
-  distribution** and listed in a separate report appendix. Set from `in_table`, not
-  judged by the model.
+  checked). Distinct from `Inconclusive` (an attempted-but-undetermined judgement):
+  a `Skipped` row is **excluded from the relevance distribution** and listed in a
+  separate report appendix. Set from `in_table`, not judged by the model.
+  *(Token: `skipped`.)*
 
 ### Constructing the relevance justification (STEP 2)
 
@@ -159,11 +162,14 @@ high-severity items in priority order.
 | Column            | Machine tokens (schema)                         | Rendered strings (table)                    |
 |-------------------|-------------------------------------------------|---------------------------------------------|
 | Exists?           | `yes` / `no` / `unresolved`                     | yes / no / unresolved                       |
-| Supports claim?   | `supports` / `partial` / `does_not` / `inconclusive` / `skipped` | supports / partial / **does not** / inconclusive / skipped |
+| Supports claim?   | `supports` / `partial` / `does_not` / `inconclusive` / `skipped` | Relevant / Partly Relevant / Irrelevant / Inconclusive / Skipped |
 
-Only `does_not` differs between token and rendered string (`does_not` -> `does not`).
-`skipped` (table/figure citation sites — no relevance verdict) renders only in the
-report's "Skipped" appendix, never in the main table or the verdict distribution.
+The rendered relevance labels are the **relevance vocabulary** (`supports` ->
+`Relevant`, `partial` -> `Partly Relevant`, `does_not` -> `Irrelevant`,
+`inconclusive` -> `Inconclusive`, `skipped` -> `Skipped`); the **machine tokens are
+unchanged**. `Skipped` (table/figure citation sites — no relevance verdict) renders
+only in the report's "Skipped" appendix, never in the main table or the verdict
+distribution.
 
 `priority` (`obligatory` / `helpful`) and `severity` (`high` / `medium` / `low` /
 `ok`) remain schema enums but are no longer per-row columns: severity is shown in

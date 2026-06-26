@@ -459,8 +459,9 @@ function showReport(ev){
   chips += chip('claim·cite pairs', s.pairs||0);
   if (ex['no']) chips += chip('fabricated', ex['no']);
   if (ex['unresolved']) chips += chip('unresolved', ex['unresolved']);
-  if (sc['does_not']) chips += chip('does not support', sc['does_not']);
-  if (sc['supports']) chips += chip('supports', sc['supports']);
+  if (sc['does_not']) chips += chip('irrelevant', sc['does_not']);
+  if (sc['partial']) chips += chip('partly relevant', sc['partial']);
+  if (sc['supports']) chips += chip('relevant', sc['supports']);
   if (s.high) chips += chip('high-severity', s.high);
   chips += chip('cost', '$'+(ev.cost_usd??0));
   chips += chip('time', fmt(ev.wall_s||0));

@@ -17,12 +17,12 @@ EXPECTED_HEADER = (
     "| Exists? | Match notes | Supports claim? | Explanation |"
 )
 
-# Machine token -> human string rendered in the table. Only does_not differs.
+# Machine token -> human relevance label rendered in the table.
 SUPPORTS_TABLE_STRINGS = {
-    "supports": "supports",
-    "partial": "partial",
-    "does_not": "does not",
-    "inconclusive": "inconclusive",
+    "supports": "Relevant",
+    "partial": "Partly Relevant",
+    "does_not": "Irrelevant",
+    "inconclusive": "Inconclusive",
 }
 
 
@@ -51,8 +51,8 @@ def test_header_is_exact(render, sample_records) -> None:
     assert lines[0].strip() == EXPECTED_HEADER
 
 
-def test_does_not_renders_as_two_words(render) -> None:
-    """does_not (token) must render as 'does not' (table string), never 'does_not'."""
+def test_does_not_renders_as_irrelevant(render) -> None:
+    """does_not (token) must render as the relevance label 'Irrelevant', never 'does_not'."""
     from citation_verifier.schema import (
         CitationRecord,
         CitedAs,
@@ -71,7 +71,7 @@ def test_does_not_renders_as_two_words(render) -> None:
         priority=Priority.OBLIGATORY,
     )
     table = _render_table(render, [rec])
-    assert "does not" in table
+    assert "Irrelevant" in table
     body = "\n".join(
         ln for ln in table.splitlines()
         if ln.strip().startswith("|") and ln.strip() != EXPECTED_HEADER
