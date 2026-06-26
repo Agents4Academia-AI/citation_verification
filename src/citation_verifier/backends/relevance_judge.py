@@ -124,6 +124,10 @@ class LLMRelevanceJudge:
         # Detail claims (method/dataset/metric/result/config) that come back partial/
         # inconclusive on abstract+intro are escalated to full-text and re-judged once.
         self.escalate_full_text = bool(_setting(settings, "escalate_full_text", True))
+        # Cost cap: fetch full text for at most this many distinct citations per paper
+        # (the highest-ROI ones — most pending detail claims first). <=0 = unlimited.
+        _mc = _setting(settings, "escalate_max_cites", 8)
+        self.escalate_max_cites = int(_mc) if _mc is not None else 8
         # Guards usage/calls accumulation and the intro/full-text caches across threads.
         self._lock = threading.Lock()
         self._intro_cache: dict[str, str] = {}  # arXiv stem -> intro text ("" if none)
@@ -251,8 +255,10 @@ class LLMRelevanceJudge:
 
         In place. Best-effort: any fetch/parse/judge failure keeps the abstract-only
         verdict, so escalation only ever *adds* coverage (and makes the does_not
-        "searched, not found" case reachable). One full-text fetch + one re-judge call
-        per citation, run concurrently.
+        "searched, not found" case reachable). Two phases: full text is fetched
+        per citation concurrently, then the citations are re-judged in BATCHES
+        (``batch_size`` per LLM call, like the main pass) — far fewer round-trips
+        than one call per citation.
         """
         cand = [
             i
@@ -261,14 +267,26 @@ class LLMRelevanceJudge:
             and getattr(v.supports_claim, "value", v.supports_claim)
             in (SupportsClaim.PARTIAL.value, SupportsClaim.INCONCLUSIVE.value)
             and _is_detail_claim(items[i].get("claim") or "")
+            # Skip clearly off-topic papers: if the abstract shares almost nothing with
+            # the claim, its body won't contain the claim either — don't spend a fetch.
+            and not _abstract_off_topic(items[i].get("claim") or "", items[i].get("abstract") or "")
         ]
         if not cand:
             return
         by_ck: dict[str, list[int]] = {}
         for i in cand:
             by_ck.setdefault(items[i].get("cite_key") or f"__row{i}", []).append(i)
+        # Cost cap: fetch full text for at most ``escalate_max_cites`` distinct papers,
+        # keeping the highest-ROI ones (most pending detail claims first).
+        if 0 < self.escalate_max_cites < len(by_ck):
+            by_ck = dict(
+                sorted(by_ck.items(), key=lambda kv: len(kv[1]), reverse=True)[: self.escalate_max_cites]
+            )
 
-        def _rejudge(pair: tuple[str, list[int]]):
+        # Phase 1 — fetch full text + select claim-relevant chunks PER citation,
+        # concurrently (the slow network step). Build one (cite_key, group) payload
+        # each; skip cites with no fetchable text or no relevant chunks.
+        def _build(pair: tuple[str, list[int]]):
             from ..grounding.fulltext import select_evidence_chunks, split_sections
 
             ck, idxs = pair
@@ -285,18 +303,30 @@ class LLMRelevanceJudge:
             evidence = _format_chunks(chunks)
             if not evidence.strip():
                 return None
-            got = self._judge_citation_chunk([(ck, {"evidence": evidence, "members": members})])
-            return (ck, idxs, got)
+            return (ck, {"evidence": evidence, "members": members})
 
-        for res in _parallel_map(list(by_ck.items()), _rejudge, self.chunk_concurrency):
-            if not res:
-                continue
-            ck, idxs, got = res
-            per_claim = (got or {}).get(ck, {})
-            for idx in idxs:
-                nv = per_claim.get(items[idx].get("claim_id") or str(idx))
-                if nv:  # the full-text verdict supersedes the abstract-only one
-                    verdicts[idx] = nv
+        payloads = [
+            p for p in _parallel_map(list(by_ck.items()), _build, self.chunk_concurrency) if p
+        ]
+        if not payloads:
+            return
+
+        # Phase 2 — judge the escalated citations in BATCHES (batch_size cites per
+        # LLM call, like the main pass) instead of one call per citation; chunks run
+        # concurrently. Same verdicts, far fewer round-trips.
+        idx_by: dict[tuple[str, str], int] = {
+            (ck, cid): idx for ck, grp in payloads for idx, cid, _c in grp["members"]
+        }
+        chunk_lists = list(_chunks(payloads, self.batch_size))
+        results = _parallel_map(
+            chunk_lists, lambda chunk: self._judge_citation_chunk(chunk), self.chunk_concurrency
+        )
+        for got in results:
+            for ck, per_claim in (got or {}).items():
+                for cid, nv in per_claim.items():
+                    idx = idx_by.get((ck, cid))
+                    if nv and idx is not None:  # full-text verdict supersedes abstract-only
+                        verdicts[idx] = nv
 
     def _full_text_for(self, resolved: Any) -> str:
         """Cached full text for a resolved paper (arXiv HTML/eprint/PDF, then an OA URL)."""
@@ -520,6 +550,23 @@ def _is_detail_claim(claim: str) -> bool:
     from ..grounding.fulltext import _needs_experimental
 
     return _needs_experimental(claim or "")
+
+
+def _abstract_off_topic(claim: str, abstract: str, thresh: float = 0.12) -> bool:
+    """True when the cited ABSTRACT shares almost no content tokens with the claim.
+
+    Such a paper is off-topic for this claim, so reading its body won't help — skip
+    the full-text fetch (the abstract-only verdict stands). Conservative: fires only
+    on near-zero overlap, and never when there is no abstract to assess.
+    """
+    from ..grounding.fulltext import _tokens
+
+    if not (abstract or "").strip():
+        return False
+    ct = _tokens(claim)
+    if not ct:
+        return False
+    return len(ct & _tokens(abstract)) / len(ct) < thresh
 
 
 def _format_chunks(chunks: list[tuple[str, str]]) -> str:
