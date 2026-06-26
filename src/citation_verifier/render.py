@@ -353,7 +353,7 @@ def _render_skipped(records: list[CitationRecord]) -> str:
         "",
         f"These **{len(skipped)}** citations sit in a results table or figure, not a prose "
         "claim, so relevance is not judged (existence/metadata still checked). Not counted in "
-        "the supports/partial/does_not/inconclusive distribution.",
+        "the Relevant / Partly Relevant / Irrelevant / Inconclusive distribution.",
         "",
         "| # | Citation (authors, title, year) | Cited where | Exists? | Match notes |",
         "|---|---|---|---|---|",
