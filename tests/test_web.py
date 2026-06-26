@@ -101,3 +101,39 @@ def test_download_md_and_json_after_report(client):
 
 def test_download_unknown_job_is_404(client):
     assert client.get("/download/nope").status_code == 404
+
+
+def test_status_unknown_job_is_404(client):
+    r = client.get("/status/nope")
+    assert r.status_code == 404
+    assert r.json() == {"known": False}
+
+
+def test_refresh_reconnect_replays_progress_and_report(client):
+    """The bug: refreshing mid-run lost everything. Now the event log is replayable —
+    reopening /events for the same job (as a refreshed page does) replays the whole
+    history (progress + report), and /status reports the job as known + done."""
+    jid = client.post("/verify", data={"arxiv": "https://arxiv.org/abs/2310.06825"}).json()["job_id"]
+
+    first = client.get(f"/events/{jid}").text          # original stream → runs the job to completion
+    assert '"stage": "report"' in first
+
+    again = client.get(f"/events/{jid}").text           # a "refreshed page" reconnects → full replay
+    assert '"stage": "ingesting"' in again
+    assert '"stage": "verifying"' in again
+    assert '"stage": "report"' in again
+    assert "id: 0" in again                              # events carry ids (Last-Event-ID resume support)
+
+    st = client.get(f"/status/{jid}").json()
+    assert st["known"] is True and st["done"] is True and st["label"] == "2310.06825"
+    assert isinstance(st["elapsed"], (int, float))  # drives an accurate resumed timer
+
+
+def test_last_event_id_resumes_past_seen_events(client):
+    """An auto-reconnect that sends Last-Event-ID gets only newer events (no full replay)."""
+    jid = client.post("/verify", data={"arxiv": "https://arxiv.org/abs/2310.06825"}).json()["job_id"]
+    client.get(f"/events/{jid}")  # let the job finish so the full log exists
+    # Pretend we already saw event 0 (ingesting); resume should skip it but still reach the report.
+    resumed = client.get(f"/events/{jid}", headers={"Last-Event-ID": "0"}).text
+    assert '"stage": "ingesting"' not in resumed
+    assert '"stage": "report"' in resumed
