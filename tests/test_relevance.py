@@ -246,3 +246,82 @@ def test_full_text_escalation_rejudges_only_detail_partial_claims(monkeypatch):
     assert SupportsClaim(verdicts[0].supports_claim) is SupportsClaim.SUPPORTS       # re-judged
     assert SupportsClaim(verdicts[1].supports_claim) is SupportsClaim.INCONCLUSIVE   # non-detail, untouched
     assert SupportsClaim(verdicts[2].supports_claim) is SupportsClaim.SUPPORTS       # was already supports
+
+
+def test_full_text_escalation_batches_one_call_for_many_cites(monkeypatch):
+    """Many escalating citations are re-judged in ONE batched LLM call (batch_size per
+    call), not one call per citation — the time/cost fix. Verdicts are unchanged."""
+    from citation_verifier.backends.relevance_judge import LLMRelevanceJudge
+    from citation_verifier.schema import SupportsClaim
+    from citation_verifier.stages.relevance import RelevanceVerdict
+
+    j = LLMRelevanceJudge(settings=None)
+    monkeypatch.setattr(j, "_full_text_for", lambda resolved: "[Results]\nWe report 92.0 F1 on SQuAD.")
+    calls: list[int] = []
+
+    def fake_chunk(chunk):  # a single call may now carry MANY citations
+        calls.append(len(chunk))
+        return {
+            ck: {cid: RelevanceVerdict(supports_claim="supports") for _i, cid, _c in grp["members"]}
+            for ck, grp in chunk
+        }
+
+    monkeypatch.setattr(j, "_judge_citation_chunk", fake_chunk)
+    items = [
+        {"cite_key": f"c{i}", "claim_id": f"q{i}",
+         "claim": "Model achieves 92 F1 accuracy on the SQuAD benchmark dataset", "resolved": object()}
+        for i in range(5)
+    ]
+    verdicts = [RelevanceVerdict(supports_claim=SupportsClaim.PARTIAL) for _ in range(5)]
+    j._escalate_full_text(items, verdicts)
+    assert calls == [5]  # ONE batched call covering all 5 escalated cites (was 5 separate calls)
+    assert all(SupportsClaim(v.supports_claim) is SupportsClaim.SUPPORTS for v in verdicts)
+
+
+def test_full_text_escalation_skips_off_topic_abstract(monkeypatch):
+    """A detail claim whose cited abstract is clearly off-topic is NOT escalated — no
+    full-text fetch (reading the body of an off-topic paper won't help)."""
+    from citation_verifier.backends.relevance_judge import LLMRelevanceJudge
+    from citation_verifier.schema import SupportsClaim
+    from citation_verifier.stages.relevance import RelevanceVerdict
+
+    j = LLMRelevanceJudge(settings=None)
+    fetched: list[int] = []
+    monkeypatch.setattr(j, "_full_text_for", lambda resolved: (fetched.append(1), "x")[1])
+    monkeypatch.setattr(j, "_judge_citation_chunk", lambda chunk: {})
+    items = [{
+        "cite_key": "a", "claim_id": "c1",
+        "claim": "Model achieves 92 F1 accuracy on the SQuAD benchmark dataset",   # detail
+        "abstract": "A study of medieval poetry and its rhyme schemes in old manuscripts.",  # off-topic
+        "resolved": object(),
+    }]
+    verdicts = [RelevanceVerdict(supports_claim=SupportsClaim.INCONCLUSIVE)]
+    j._escalate_full_text(items, verdicts)
+    assert fetched == []  # off-topic abstract -> no full-text fetch
+    assert SupportsClaim(verdicts[0].supports_claim) is SupportsClaim.INCONCLUSIVE  # unchanged
+
+
+def test_full_text_escalation_caps_distinct_cites(monkeypatch):
+    """At most ``escalate_max_cites`` distinct papers are fetched, even when more
+    citations qualify — the per-paper cost cap."""
+    from citation_verifier.backends.relevance_judge import LLMRelevanceJudge
+    from citation_verifier.schema import SupportsClaim
+    from citation_verifier.stages.relevance import RelevanceVerdict
+
+    j = LLMRelevanceJudge(settings=None)
+    j.escalate_max_cites = 2
+    fetched: list[int] = []
+    monkeypatch.setattr(j, "_full_text_for", lambda resolved: (fetched.append(1), "[Results] F1 92 on the dataset")[1])
+    monkeypatch.setattr(
+        j, "_judge_citation_chunk",
+        lambda chunk: {ck: {cid: RelevanceVerdict(supports_claim="supports")
+                            for _i, cid, _c in grp["members"]} for ck, grp in chunk},
+    )
+    claim = "Model achieves 92 F1 accuracy on the SQuAD benchmark dataset"
+    abstract = "We evaluate models on the SQuAD benchmark and report F1 accuracy."  # on-topic
+    items = [{"cite_key": f"c{i}", "claim_id": f"q{i}", "claim": claim, "abstract": abstract,
+              "resolved": object()} for i in range(4)]
+    verdicts = [RelevanceVerdict(supports_claim=SupportsClaim.INCONCLUSIVE) for _ in range(4)]
+    j._escalate_full_text(items, verdicts)
+    assert len(fetched) == 2  # capped at 2 distinct papers (4 qualified)
+    assert sum(SupportsClaim(v.supports_claim) is SupportsClaim.SUPPORTS for v in verdicts) == 2
