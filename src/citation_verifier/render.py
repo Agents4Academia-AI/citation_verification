@@ -11,8 +11,9 @@ This module is pure (no LLM, no network). It turns a list of
 
 The SKILL.md table is the FROZEN contract. Every column maps to a schema field
 and NO column exists that is not a schema field. Enum machine tokens are mapped
-to the human strings the table uses (notably ``does_not`` -> ``does not``) via
-the ``*_STR`` maps below.
+to the human strings the table uses — the relevance verdict renders as
+``Relevant`` / ``Partly Relevant`` / ``Irrelevant`` / ``Inconclusive`` / ``Skipped``
+(e.g. ``does_not`` -> ``Irrelevant``) — via the ``*_STR`` maps below.
 """
 
 from __future__ import annotations
@@ -51,12 +52,14 @@ EXISTS_STR: dict[str, str] = {
     Exists.UNRESOLVED.value: "unresolved",
 }
 
+# Display labels for the relevance verdict (the schema tokens are unchanged; this is
+# the human-facing relevance vocabulary shown in the report table + summary).
 SUPPORTS_STR: dict[str, str] = {
-    SupportsClaim.SUPPORTS.value: "supports",
-    SupportsClaim.PARTIAL.value: "partial",
-    SupportsClaim.DOES_NOT.value: "does not",  # token does_not -> table string
-    SupportsClaim.INCONCLUSIVE.value: "inconclusive",
-    SupportsClaim.SKIPPED.value: "skipped",  # table/figure site — not judged
+    SupportsClaim.SUPPORTS.value: "Relevant",
+    SupportsClaim.PARTIAL.value: "Partly Relevant",
+    SupportsClaim.DOES_NOT.value: "Irrelevant",  # token does_not -> "Irrelevant"
+    SupportsClaim.INCONCLUSIVE.value: "Inconclusive",
+    SupportsClaim.SKIPPED.value: "Skipped",  # table/figure site — not judged
 }
 
 PRIORITY_STR: dict[str, str] = {
@@ -211,7 +214,7 @@ def render_table(records: list[CitationRecord]) -> str:
             _cell(_claim_cell(rec, marker=marker)),
             EXISTS_STR.get(_enum_value(rec.exists), "unresolved"),
             _cell(_metadata_cell(rec)),
-            SUPPORTS_STR.get(_enum_value(rec.supports_claim), "inconclusive"),
+            SUPPORTS_STR.get(_enum_value(rec.supports_claim), SUPPORTS_STR[SupportsClaim.INCONCLUSIVE.value]),
             _cell(_explanation_cell(rec)),
         ]
         lines.append("| " + " | ".join(row) + " |")
@@ -291,18 +294,18 @@ def render_summary(records: list[CitationRecord]) -> str:
         f"**{n}** (claim, citation) pairs over **{refs}** unique references · "
         f"**{meta}** with metadata issues · **{len(high)}** high-severity.",
         "",
-        "| References — Exists? | n |  | Claims — Supports? | n |",
+        "| References — Exists? | n |  | Claims — Relevance | n |",
         "|:---|---:|:-:|:---|---:|",
-        f"| yes | {ex.get(Exists.YES.value, 0)} |  | supports | {sc.get(SupportsClaim.SUPPORTS.value, 0)} |",
-        f"| unresolved | {ex.get(Exists.UNRESOLVED.value, 0)} |  | partial | {sc.get(SupportsClaim.PARTIAL.value, 0)} |",
-        f"| no (fabricated) | {ex.get(Exists.NO.value, 0)} |  | does not | {sc.get(SupportsClaim.DOES_NOT.value, 0)} |",
-        f"| **total refs** | **{refs}** |  | inconclusive | {sc.get(SupportsClaim.INCONCLUSIVE.value, 0)} |",
+        f"| yes | {ex.get(Exists.YES.value, 0)} |  | {SUPPORTS_STR[SupportsClaim.SUPPORTS.value]} | {sc.get(SupportsClaim.SUPPORTS.value, 0)} |",
+        f"| unresolved | {ex.get(Exists.UNRESOLVED.value, 0)} |  | {SUPPORTS_STR[SupportsClaim.PARTIAL.value]} | {sc.get(SupportsClaim.PARTIAL.value, 0)} |",
+        f"| no (fabricated) | {ex.get(Exists.NO.value, 0)} |  | {SUPPORTS_STR[SupportsClaim.DOES_NOT.value]} | {sc.get(SupportsClaim.DOES_NOT.value, 0)} |",
+        f"| **total refs** | **{refs}** |  | {SUPPORTS_STR[SupportsClaim.INCONCLUSIVE.value]} | {sc.get(SupportsClaim.INCONCLUSIVE.value, 0)} |",
     ]
     breakdown = _inconclusive_breakdown(records)
     if breakdown:
         lines += [
             "",
-            '*"inconclusive" = relevance could not be determined (an abstention, not a '
+            '*"Inconclusive" = relevance could not be determined (an abstention, not a '
             "refutation) — by cause:*",
             *[f"- {label}: **{cnt}**" for label, cnt in breakdown],
         ]
