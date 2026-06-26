@@ -297,6 +297,10 @@ _INDEX_HTML = r"""<!doctype html>
   .stage { color:var(--fg); font-weight:600; }
   /* result */
   #out { margin-top:28px; }
+  /* Results break OUT of the 880px form column to use the page width for the wide
+     report table — centered on the viewport, capped so it stays readable. The form
+     and intro keep their comfortable 880px measure. */
+  #out:not(:empty) { width:min(95vw,1400px); margin-left:calc(50% - min(47.5vw,700px)); }
   .chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
   .chip { background:var(--soft); border:1px solid var(--line); border-radius:99px;
           padding:6px 13px; font-size:13px; color:var(--mut); }
