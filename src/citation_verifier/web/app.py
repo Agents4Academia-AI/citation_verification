@@ -3,17 +3,19 @@ web/app.py — FastAPI front-end: upload a PDF or paste an arXiv link, watch a
 progress bar, read the rendered report in the browser.
 
 The whole verification is the public ``run_verification`` call, run in a worker
-thread (it is blocking and takes minutes). Its ``progress_cb`` events are pushed
-onto a per-job queue and relayed to the browser as Server-Sent Events, so the
-page shows real stages ("found N citations", "verifying …") plus a live timer.
-Nothing here re-implements verification — it only sequences the existing seams.
+thread (it is blocking and takes minutes). Its ``progress_cb`` events are appended
+to a per-job, append-only event log and relayed to the browser as Server-Sent
+Events, so the page shows real stages ("found N citations", "verifying …") plus a
+live timer. Because the log is replayable (not a consume-once queue) and the browser
+remembers its ``job_id``, a page refreshed mid-run reconnects and rebuilds its UI
+from the full history instead of losing the run. Nothing here re-implements
+verification — it only sequences the existing seams.
 """
 
 from __future__ import annotations
 
 import asyncio
 import json
-import queue
 import re
 import threading
 import time
@@ -23,7 +25,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import FastAPI, File, Form, Header, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 
 from ..config import apply_auth, load_settings
@@ -37,13 +39,24 @@ class _Job:
     job_id: str
     label: str  # what's being verified (arXiv id or filename), for the UI
     started: float = field(default_factory=time.monotonic)
-    q: queue.Queue[dict] = field(default_factory=queue.Queue)
+    events: list[dict] = field(default_factory=list)  # append-only SSE log, replayable on reconnect
     done: bool = False
     report_md: str | None = None    # rendered Markdown report, kept for download
     report_json: str | None = None  # canonical report.json text, kept for download
 
 
 _JOBS: dict[str, _Job] = {}
+_JOBS_CAP = 64  # bound memory; oldest jobs are pruned (their reports stop being downloadable)
+
+
+def _emit(job: _Job, event: dict) -> None:
+    """Append an event to the job's replayable log (the SSE stream reads from it).
+
+    Unlike a consume-once queue, the log lets a browser that refreshed mid-run
+    reopen ``/events/{job_id}`` and replay the whole history — progress events and
+    the final report — to rebuild its UI from scratch.
+    """
+    job.events.append(event)
 
 
 def _records_json(result: Any) -> str | None:
@@ -103,7 +116,7 @@ def _summary(records: list) -> dict[str, Any]:
     }
 
 
-# ── the worker: one full verification, emitting progress onto the job queue ──
+# ── the worker: one full verification, emitting progress onto the job's event log ──
 def _run_job(job: _Job, source: str, settings: Any) -> None:
     from .. import run_verification  # lazy: keeps web import light
     from ..render import render_report
@@ -114,13 +127,14 @@ def _run_job(job: _Job, source: str, settings: Any) -> None:
             backend="agentic",
             settings=settings,
             resume=False,
-            progress_cb=lambda ev: job.q.put(ev),
+            progress_cb=lambda ev: _emit(job, ev),
         )
         md = render_report(result)
         # Keep the report artifacts so the page can offer file downloads.
         job.report_md = md
         job.report_json = _records_json(result)
-        job.q.put(
+        _emit(
+            job,
             {
                 "stage": "report",
                 "html": _md_to_html(md),
@@ -132,10 +146,10 @@ def _run_job(job: _Job, source: str, settings: Any) -> None:
             }
         )
     except Exception as exc:  # noqa: BLE001 — surface any failure to the page
-        job.q.put({"stage": "error", "message": f"{type(exc).__name__}: {exc}"})
+        _emit(job, {"stage": "error", "message": f"{type(exc).__name__}: {exc}"})
     finally:
         job.done = True
-        job.q.put({"stage": "__end__"})
+        _emit(job, {"stage": "__end__"})
 
 
 # ── app factory ──────────────────────────────────────────────────────────────
@@ -175,6 +189,9 @@ def create_app(settings: Any | None = None):
 
         job = _Job(job_id=uuid.uuid4().hex[:12], label=label)
         _JOBS[job.job_id] = job
+        # Bound memory: keep only the most recent jobs (dict preserves insertion order).
+        while len(_JOBS) > _JOBS_CAP:
+            _JOBS.pop(next(iter(_JOBS)), None)
         threading.Thread(target=_run_job, args=(job, source, settings), daemon=True).start()
         return {"job_id": job.job_id, "label": label}
 
@@ -197,30 +214,51 @@ def create_app(settings: Any | None = None):
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
 
+    @app.get("/status/{job_id}")
+    def status(job_id: str):
+        """Lightweight existence/done check so a refreshed page can decide whether to
+        reconnect (the page then reopens ``/events`` to replay progress + report)."""
+        job = _JOBS.get(job_id)
+        if job is None:
+            return JSONResponse({"known": False}, status_code=404)
+        return {
+            "known": True,
+            "done": job.done,
+            "label": job.label,
+            "elapsed": round(time.monotonic() - job.started, 1),  # so a resumed timer continues, not restarts
+        }
+
     @app.get("/events/{job_id}")
-    async def events(job_id: str):
+    async def events(job_id: str, last_event_id: str | None = Header(default=None)):
         job = _JOBS.get(job_id)
         if job is None:
             return JSONResponse({"error": "unknown job"}, status_code=404)
+        # Replay from the start by default; on an EventSource auto-reconnect the browser
+        # sends Last-Event-ID, so we resume just past what it already received.
+        try:
+            start_i = int(last_event_id) + 1 if last_event_id is not None else 0
+        except ValueError:
+            start_i = 0
 
         async def stream():
+            i = max(0, start_i)
             last = time.monotonic()
             while True:
-                try:
-                    ev = job.q.get_nowait()
-                except queue.Empty:
-                    if job.done:
+                if i < len(job.events):
+                    ev = job.events[i]
+                    if ev.get("stage") == "__end__":
                         break
-                    # keep proxies/connections alive during the long verify phase
-                    if time.monotonic() - last > 12:
-                        last = time.monotonic()
-                        yield ": heartbeat\n\n"
-                    await asyncio.sleep(0.4)
+                    yield f"id: {i}\ndata: {json.dumps(ev)}\n\n"
+                    i += 1
+                    last = time.monotonic()
                     continue
-                if ev.get("stage") == "__end__":
+                if job.done:
                     break
-                last = time.monotonic()
-                yield f"data: {json.dumps(ev)}\n\n"
+                # keep proxies/connections alive during the long verify phase
+                if time.monotonic() - last > 12:
+                    last = time.monotonic()
+                    yield ": heartbeat\n\n"
+                await asyncio.sleep(0.4)
             yield "event: end\ndata: {}\n\n"
 
         return StreamingResponse(stream(), media_type="text/event-stream")
@@ -340,17 +378,17 @@ _INDEX_HTML = r"""<!doctype html>
 <div class="wrap">
   <button id="theme" class="theme-toggle" aria-label="Toggle light/dark theme" title="Toggle light/dark"></button>
   <h1 class="title">RefWarden</h1>
-  <p class="sub">Upload a PDF or a LaTeX source .zip, or paste an arXiv link / PDF URL — checks every reference exists, has correct metadata, and actually supports the claim it's attached to. <span style="opacity:.7">auth: {{AUTH}}</span></p>
+  <p class="sub">Upload a PDF or a LaTeX source archive (.zip / .tar.gz), or paste an arXiv link / PDF URL — checks every reference exists, has correct metadata, and actually supports the claim it's attached to. <span style="opacity:.7">auth: {{AUTH}}</span></p>
 
   <div class="card" id="form">
     <div class="row">
-      <input id="arxiv" type="text" placeholder="arXiv link/id, or a PDF URL  —  e.g. https://arxiv.org/abs/2310.06825" />
+      <input id="arxiv" type="text" placeholder="arXiv link/id, or a PDF URL  —  e.g. https://arxiv.org/abs/2504.13837" />
       <button id="go">Verify</button>
     </div>
     <div class="or">— OR —</div>
     <label class="drop" id="drop">
       <input id="file" type="file" accept="application/pdf,.pdf,.zip,.gz,.tgz,.tar" class="hidden"/>
-      <span id="droptext">Drop a PDF or a LaTeX .zip here, or click to choose a file</span>
+      <span id="droptext">Drop a PDF or a LaTeX source archive (.zip / .tar.gz) here, or click to choose a file</span>
     </label>
   </div>
 
@@ -382,7 +420,7 @@ const drop = $('#drop'), fileIn = $('#file');
 // natively — do NOT also call fileIn.click() here (that double-fires and the
 // dialog reopens after you pick a file).
 fileIn.addEventListener('change', () => { picked = fileIn.files[0] || null;
-  $('#droptext').textContent = picked ? ('📄 ' + picked.name) : 'Drop a PDF or a LaTeX .zip here, or click to choose a file'; });
+  $('#droptext').textContent = picked ? ('📄 ' + picked.name) : 'Drop a PDF or a LaTeX source archive (.zip / .tar.gz) here, or click to choose a file'; });
 ['dragover','dragenter'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('hot'); }));
 ['dragleave','drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('hot'); }));
 drop.addEventListener('drop', ev => { picked = ev.dataTransfer.files[0] || null;
@@ -432,11 +470,40 @@ async function start(){
   }, 250);
 
   curJob = r.job_id;
-  es = new EventSource('/events/' + r.job_id);
+  try { localStorage.setItem('cv-job', curJob); } catch(e) {}  // survive a page refresh
+  listen(curJob);
+}
+
+// Open (or re-open) the SSE stream for a job. Reopening replays the whole history,
+// so the handlers rebuild the UI idempotently — that's what makes refresh-resume work.
+function listen(jobId){
+  if (es) { try { es.close(); } catch(e) {} }
+  es = new EventSource('/events/' + jobId);
   es.onmessage = ev => onEvent(JSON.parse(ev.data));
   es.addEventListener('end', () => { es.close(); clearInterval(timer); $('#go').disabled = false; });
-  es.onerror = () => { /* keep waiting; server sends heartbeats */ };
+  es.onerror = () => { /* keep waiting; server heartbeats + EventSource auto-reconnect (Last-Event-ID) */ };
 }
+
+// Recover an in-flight (or just-finished) job after a page refresh: the job id is
+// remembered in localStorage, /status says whether the server still has it, and
+// reopening the stream replays progress + the final report.
+(function resume(){
+  let jid = null; try { jid = localStorage.getItem('cv-job'); } catch(e) {}
+  if (!jid) return;
+  fetch('/status/' + jid).then(r => r.ok ? r.json() : null).then(s => {
+    if (!s || !s.known) { try { localStorage.removeItem('cv-job'); } catch(e) {} return; }
+    curJob = jid;
+    $('#prog').classList.remove('hidden');
+    $('#go').disabled = true;
+    $('#stage').textContent = 'Reconnecting…';
+    t0 = Date.now() - Math.max(0, s.elapsed || 0) * 1000;   // continue real elapsed time, not from 0
+    timer = setInterval(() => {
+      const el = (Date.now()-t0)/1000; $('#time').textContent = fmt(el);
+      if (etaS) setWidth(Math.min(92, 12 + 80*el/etaS));
+    }, 250);
+    listen(jid);
+  }).catch(() => {});
+})();
 
 function onEvent(ev){
   switch(ev.stage){
