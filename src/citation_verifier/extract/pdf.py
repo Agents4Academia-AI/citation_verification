@@ -452,9 +452,12 @@ _GNF_AND_RE = re.compile(
 # A lone given-name-first author ("Harrison Chase. Langchain …"): 2–3 full-word
 # Title-case tokens (optional middle initial) then ". " + title. Full words (each
 # [A-Z][a-z]+) distinguish it from a Vancouver "Surname I." (whose last token is a
-# bare initial), so this never fires on the numbered/Vancouver style.
+# bare initial), so this never fires on the numbered/Vancouver style. The first token
+# may be hyphenated ("Chin-Yew Lin", "Wen-tau Yih") — else a single hyphenated-given-
+# name author stays unsplit and the whole reference lands in authors[0].
 _GNF_SOLO_RE = re.compile(
-    r"^\s*(?P<authors>[A-Z][a-z]+(?:\s+[A-Z]\.?)?(?:\s+[A-Z][a-z][A-Za-z'’-]*){1,2})"
+    r"^\s*(?P<authors>[A-Z][a-z]+(?:[-'’][A-Za-z][a-z]*)*"
+    r"(?:\s+[A-Z]\.?)?(?:\s+[A-Z][a-z][A-Za-z'’-]*){1,2})"
     r"\.\s+(?P<rest>[A-Z0-9].+)$",
     re.DOTALL,
 )
@@ -501,7 +504,14 @@ def _title_from(title_raw: str) -> str | None:
     # 2025. The relationship …"); strip a leading year token so the title isn't
     # read as "2025" (the ACL/EMNLP and AAAI "Authors. YEAR. Title." structure).
     title_raw = re.sub(r"^\s*(?:19|20)\d{2}[a-z]?\.\s+(?=\S)", "", title_raw)
-    title = re.split(r"\.\s+(?=[A-Z0-9])|\s+In:\s", title_raw, maxsplit=1)[0].strip(" .,")
+    # Cut at a sentence boundary before the title, or a venue marker. A "?"/"!" title
+    # ("How attentive are graph attention networks?") is followed by " In <Venue>"
+    # with no period — the lookbehind keeps the "?" but drops the leaked venue.
+    title = re.split(
+        r"\.\s+(?=[A-Z0-9])|(?<=[?!])\s+(?=In\s+[A-Z])|\s+In:\s",
+        title_raw,
+        maxsplit=1,
+    )[0].strip(" .,")
     # Cut a journal trailer that started lowercase so the split above missed it
     # ("… knowledge. nature, 550(7676):354–359, 2017") — keyed on a volume(issue):page.
     title = re.split(r"\.\s+\S.*?\b\d{1,4}\s*\(\d{1,4}\)\s*:\s*\d", title, maxsplit=1)[0].strip(" .,")
@@ -517,6 +527,16 @@ def _title_from(title_raw: str) -> str | None:
 _LNCS_COLON_RE = re.compile(
     rf"^\s*(?P<authors>{_AY_NAME}(?:\s*,\s*(?:and\s+)?{_AY_NAME})*"
     rf"(?:\s*,\s*et\s+al\.?)?)\s*:\s+(?P<rest>{_TITLE_START}.+)$",
+    re.DOTALL,
+)
+# Author-year period anchor ("OpenAI. 2024. Title", "xAI. 2025. Title", "X et al. 2024.
+# Title"): the ACL/EMNLP style puts the year BETWEEN authors and title. A single-token
+# org author (OpenAI/xAI) or an "et al." run the name tiers miss is recovered by
+# anchoring on the first ". YEAR. " — else the lossy capital-boundary fallback glues the
+# year (and the venue) into a field. ``auth`` is short and period-free so it can't span a
+# real title; the tier runs only after the surname/GNF tiers fail.
+_AY_PERIOD_RE = re.compile(
+    r"^\s*(?P<auth>[A-Za-z][^.]{0,58}?)\.\s+(?:19|20)\d{2}[a-z]?\.\s+(?P<rest>[A-Za-z0-9“”\"'(].+)$",
     re.DOTALL,
 )
 
@@ -575,6 +595,16 @@ def _split_author_title(body: str) -> tuple[list[str], str | None]:
         author_str = _ETAL_TAIL_RE.sub("", m.group("authors")).strip(" .,")
         if " " in author_str:  # a genuine list, not a stray leading initial
             return _split_authors(author_str.replace(",", " and ")), _title_from(m.group("rest"))
+
+    # Tier 2b: author-year period anchor — recover a single-token org author ("OpenAI.
+    # 2024. …") or an "et al." run the tiers above missed, by anchoring on the year
+    # between authors and title, before the lossy capital-boundary fallback below.
+    m = _AY_PERIOD_RE.match(head)
+    if m:
+        author_str = _ETAL_TAIL_RE.sub("", m.group("auth")).strip(" .,")
+        if author_str:
+            authors = _split_authors(author_str.replace(",", " and ")) or [author_str]
+            return authors, _title_from(m.group("rest"))
 
     toks = head.split()
     cut = None
@@ -946,7 +976,14 @@ def _bind_author_year(cite_key: str, references: dict[str, CitedAs]) -> CitedAs 
             if c.authors and any(_surname_matches(surname, rs) for rs in _ay_surnames(c.authors[0]))
         ]
         if len(by_surname) == 1:
-            return by_surname[0]  # a unique surname binds (cited year may differ slightly)
+            only = by_surname[0]
+            # A unique surname binds even when the cited year drifts (arXiv vs
+            # published), BUT a large gap means a different same-surname author who
+            # simply isn't in this list — the common-surname trap ("Lin, 2004" = ROUGE
+            # vs the bib's only Lin, "Zeming Lin, 2022"). Then stay unresolved, never
+            # bind the wrong paper (an 18-year gap is not "slight").
+            if only.year is None or abs(only.year - year) <= 3:
+                return only
         if by_surname:
             # Author-year citations carry the EXACT year, so disambiguate among
             # same-surname refs by exact year FIRST. The ±1 tolerance (for arXiv-vs-

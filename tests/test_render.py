@@ -164,19 +164,52 @@ def test_summary_breaks_down_inconclusive_by_cause() -> None:
         )
 
     records = [
-        rec("t1", Exists.YES, SupportsClaim.INCONCLUSIVE, in_table=True),
+        rec("t1", Exists.YES, SupportsClaim.SKIPPED, in_table=True),
         rec("u1", Exists.UNRESOLVED, SupportsClaim.INCONCLUSIVE),
         rec("f1", Exists.YES, SupportsClaim.INCONCLUSIVE, notes="(based on full text §X) ..."),
         rec("a1", Exists.YES, SupportsClaim.INCONCLUSIVE, notes="(based on abstract only) ..."),
         rec("s1", Exists.YES, SupportsClaim.SUPPORTS),
     ]
     out = render_summary(records)
-    assert "an abstention, not a refutation" in out  # the de-misleading gloss
-    assert "table/figure" in out  # the dominant benign cause is surfaced
+    assert "an abstention, not a refutation" in out  # the inconclusive de-misleading gloss
     assert "reference unresolved" in out
     assert "full text checked" in out
     assert "abstract is on-topic" in out
+    # table/figure is now SKIPPED (its own summary note), no longer an inconclusive bucket
+    assert "skipped" in out and "table/figure" in out
 
     # No inconclusive rows -> no breakdown block at all.
     plain = render_summary([rec("s1", Exists.YES, SupportsClaim.SUPPORTS)])
     assert "an abstention" not in plain
+
+
+def test_skipped_table_figure_appendix_and_distribution_exclusion() -> None:
+    """Table/figure citations are SKIPPED: kept out of the main relevance table AND the
+    supports/partial/does_not/inconclusive distribution, and listed in their own appendix."""
+    from citation_verifier.interfaces import RunUsage, VerificationResult
+    from citation_verifier.render import render_report
+    from citation_verifier.schema import (
+        CitationRecord,
+        CitedAs,
+        Claim,
+        Exists,
+        SupportsClaim,
+    )
+
+    def rec(key, sc, in_table=False):
+        return CitationRecord(
+            paper_id="p", claim_id=key, cite_key=key,
+            claim=Claim(claim_id=key, text="A claim."),
+            cited_as=CitedAs(raw="r", title=f"Title {key}", authors=["A B"], year=2020),
+            exists=Exists.YES, supports_claim=sc, in_table=in_table,
+        )
+
+    recs = [rec("good", SupportsClaim.SUPPORTS), rec("tab", SupportsClaim.SKIPPED, in_table=True)]
+    md = render_report(
+        VerificationResult(paper_id="p", backend="agentic", records=recs, errors=[], usage=RunUsage(backend="agentic"))
+    )
+    main, sep, appendix = md.partition("## Skipped — table/figure")
+    assert sep  # the appendix section exists
+    assert "Title good" in main and "Title tab" not in main  # skipped row out of the main table
+    assert "Title tab" in appendix  # ...but present in the appendix
+    assert "table/figure citation site" in md  # the summary note

@@ -56,6 +56,7 @@ SUPPORTS_STR: dict[str, str] = {
     SupportsClaim.PARTIAL.value: "partial",
     SupportsClaim.DOES_NOT.value: "does not",  # token does_not -> table string
     SupportsClaim.INCONCLUSIVE.value: "inconclusive",
+    SupportsClaim.SKIPPED.value: "skipped",  # table/figure site — not judged
 }
 
 PRIORITY_STR: dict[str, str] = {
@@ -173,6 +174,9 @@ def render_table(records: list[CitationRecord]) -> str:
     Returns:
         A Markdown string: a scope line, a blank line, then the table.
     """
+    # Table/figure citation sites carry no relevance verdict — they are listed in a
+    # separate appendix (_render_skipped), not the main judged-relevance table.
+    records = [r for r in records if _enum_value(r.supports_claim) != SupportsClaim.SKIPPED.value]
     scope = _scope_line(records)
     lines = [scope, "", TABLE_HEADER, _TABLE_DIVIDER]
     # A claim cited by >1 reference shares a char_span across its rows; mark each
@@ -232,12 +236,11 @@ def _scope_line(records: list[CitationRecord]) -> str:
 
 def _inconclusive_breakdown(records: list[CitationRecord]) -> list[tuple[str, int]]:
     """Bucket the ``inconclusive`` rows by WHY, so the count isn't misread as
-    "bad citations". Inconclusive is an abstention, not a refutation — and most are
-    benign (a citation sitting in a table/figure, which is not assessed for relevance
-    by design). Returns ``[(reason, count), …]`` in a fixed order, omitting empties.
+    "bad citations". Inconclusive is an abstention, not a refutation. (Table/figure
+    sites are no longer here — they are ``skipped``, in their own appendix.) Returns
+    ``[(reason, count), …]`` in a fixed order, omitting empties.
     """
     labels = {
-        "table": "cited in a table/figure — relevance not assessed by design",
         "unresolved": "reference unresolved — no verified paper to judge against",
         "fulltext": "full text checked — the specific claim still wasn't confirmed",
         "abstract": "abstract is on-topic, but the specific claim isn't stated in it",
@@ -246,15 +249,13 @@ def _inconclusive_breakdown(records: list[CitationRecord]) -> list[tuple[str, in
     for r in records:
         if _enum_value(r.supports_claim) != SupportsClaim.INCONCLUSIVE.value:
             continue
-        if r.in_table:
-            counts["table"] += 1
-        elif _enum_value(r.exists) != Exists.YES.value:
+        if _enum_value(r.exists) != Exists.YES.value:
             counts["unresolved"] += 1
         elif "full text" in (r.notes or ""):
             counts["fulltext"] += 1
         else:
             counts["abstract"] += 1
-    return [(labels[k], counts[k]) for k in ("table", "unresolved", "fulltext", "abstract") if counts[k]]
+    return [(labels[k], counts[k]) for k in ("unresolved", "fulltext", "abstract") if counts[k]]
 
 
 def render_summary(records: list[CitationRecord]) -> str:
@@ -305,6 +306,13 @@ def render_summary(records: list[CitationRecord]) -> str:
             "refutation) — by cause:*",
             *[f"- {label}: **{cnt}**" for label, cnt in breakdown],
         ]
+    skipped_n = sc.get(SupportsClaim.SKIPPED.value, 0)
+    if skipped_n:
+        lines += [
+            "",
+            f"*Plus **{skipped_n}** table/figure citation site(s): skipped (not a prose claim, "
+            "no relevance verdict) — excluded from the distribution above; see the appendix.*",
+        ]
     if high:
         lines += ["", "### Fix before submission"]
         for r in high:
@@ -331,8 +339,41 @@ def _usage_footer(result: VerificationResult) -> str:
     return "\n".join(lines)
 
 
+def _render_skipped(records: list[CitationRecord]) -> str:
+    """Appendix listing the ``skipped`` table/figure citation sites (existence/metadata
+    still checked, relevance not judged). ``""`` when there are none."""
+    skipped = [r for r in records if _enum_value(r.supports_claim) == SupportsClaim.SKIPPED.value]
+    if not skipped:
+        return ""
+    lines = [
+        "## Skipped — table/figure citation sites",
+        "",
+        f"These **{len(skipped)}** citations sit in a results table or figure, not a prose "
+        "claim, so relevance is not judged (existence/metadata still checked). Not counted in "
+        "the supports/partial/does_not/inconclusive distribution.",
+        "",
+        "| # | Citation (authors, title, year) | Cited where | Exists? | Match notes |",
+        "|---|---|---|---|---|",
+    ]
+    first_seen: dict[str, int] = {}
+    for i, rec in enumerate(skipped):
+        first_seen.setdefault(rec.cite_key, i)
+    order = sorted(range(len(skipped)), key=lambda i: (first_seen[skipped[i].cite_key], i))
+    for n, idx in enumerate(order, start=1):
+        rec = skipped[idx]
+        row = [
+            str(n),
+            _cell(_citation_cell(rec)),
+            _cell(_claim_cell(rec)),
+            EXISTS_STR.get(_enum_value(rec.exists), "unresolved"),
+            _cell(_metadata_cell(rec)),
+        ]
+        lines.append("| " + " | ".join(row) + " |")
+    return "\n".join(lines)
+
+
 def render_report(result: VerificationResult) -> str:
-    """Render a full Markdown report: scope + table + summary + usage footer.
+    """Render a full Markdown report: scope + table + summary + (skipped appendix) + footer.
 
     Args:
         result: The :class:`VerificationResult` from the orchestrator.
@@ -341,14 +382,15 @@ def render_report(result: VerificationResult) -> str:
         The complete Markdown report string.
     """
     records = list(result.records)
-    return "\n\n".join(
-        [
-            f"# Citation verification — `{result.paper_id}`",
-            render_table(records),
-            render_summary(records),
-            _usage_footer(result),
-        ]
-    )
+    parts = [
+        f"# Citation verification — `{result.paper_id}`",
+        render_table(records),
+        render_summary(records),
+    ]
+    if skipped := _render_skipped(records):
+        parts.append(skipped)
+    parts.append(_usage_footer(result))
+    return "\n\n".join(parts)
 
 
 def to_json(records: list[CitationRecord], path: str | Path | None = None) -> str:

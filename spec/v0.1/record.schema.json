@@ -542,7 +542,8 @@
         "supports",
         "partial",
         "does_not",
-        "inconclusive"
+        "inconclusive",
+        "skipped"
       ],
       "title": "SupportsClaim",
       "type": "string"

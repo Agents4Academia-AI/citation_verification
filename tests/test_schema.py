@@ -29,7 +29,7 @@ from citation_verifier.schema import (
 # The enum vocabularies exactly as the SKILL.md table promises (machine tokens).
 EXPECTED_ENUMS = {
     "exists": ["yes", "no", "unresolved"],
-    "supports_claim": ["supports", "partial", "does_not", "inconclusive"],
+    "supports_claim": ["supports", "partial", "does_not", "inconclusive", "skipped"],
     "priority": ["obligatory", "helpful"],
     "severity": ["high", "medium", "low", "ok"],
 }
