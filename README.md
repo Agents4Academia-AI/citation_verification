@@ -1,4 +1,4 @@
-# citation_verification
+# RefWarden
 
 > Given an arXiv link or a PDF, **verify the citations in a paper draft** and emit a
 > verification table: which references are real, whether their metadata is correct,
