@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+title: "RefWarden: citation verification for paper drafts"
+message: "If you use RefWarden, please cite it."
+type: software
+authors:
+  - given-names: Yunqiao
+    family-names: Yang
+  - given-names: Po-Hung
+    family-names: Yeh
+  - given-names: Mingye
+    family-names: Zhu
+repository-code: "https://github.com/Agents4Academia-AI/citation_verification"
+url: "https://github.com/Agents4Academia-AI/citation_verification"
+abstract: "For every (claim, citation) pair, checks the reference exists, the metadata is right, and the cited paper actually supports the claim."
+keywords:
+  - citation verification
+  - academic writing
+  - factuality
+  - research agents
+  - refwarden
