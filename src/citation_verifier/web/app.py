@@ -232,7 +232,16 @@ def create_app(settings: Any | None = None):
     async def events(job_id: str, last_event_id: str | None = Header(default=None)):
         job = _JOBS.get(job_id)
         if job is None:
-            return JSONResponse({"error": "unknown job"}, status_code=404)
+            # Unknown job — e.g. the server restarted and dropped its in-memory jobs, and
+            # an old tab's EventSource (or a resumed page) reconnects to a now-gone id.
+            # Return a *valid* SSE stream that emits one `gone` event and ends, NOT a 404:
+            # a 404 makes EventSource treat the stream as failed and reconnect — some
+            # browsers (Safari/macOS) reconnect aggressively, hammering the endpoint and
+            # freezing the tab. A clean `gone` lets the page clear its saved id and reset.
+            async def _gone():
+                yield "event: gone\ndata: {}\n\n"
+
+            return StreamingResponse(_gone(), media_type="text/event-stream")
         # Replay from the start by default; on an EventSource auto-reconnect the browser
         # sends Last-Event-ID, so we resume just past what it already received.
         try:
@@ -481,7 +490,24 @@ function listen(jobId){
   es = new EventSource('/events/' + jobId);
   es.onmessage = ev => onEvent(JSON.parse(ev.data));
   es.addEventListener('end', () => { es.close(); clearInterval(timer); $('#go').disabled = false; });
-  es.onerror = () => { /* keep waiting; server heartbeats + EventSource auto-reconnect (Last-Event-ID) */ };
+  es.addEventListener('gone', () => resetToIdle());   // server: this job no longer exists (restart) → stop, don't reconnect
+  es.onerror = () => {
+    // A dropped stream is usually transient — the browser auto-reconnects with backoff.
+    // If it's terminally CLOSED, stop and reset rather than let anything spin.
+    if (es && es.readyState === EventSource.CLOSED) resetToIdle();
+  };
+}
+
+// Tear down a run's UI and forget its id — return to the idle form. Used when the job
+// is gone (e.g. the server restarted), so a reload starts clean instead of reconnecting.
+function resetToIdle(){
+  if (es) { try { es.close(); } catch(e) {} es = null; }
+  clearInterval(timer);
+  curJob = null;
+  try { localStorage.removeItem('cv-job'); } catch(e) {}
+  $('#go').disabled = false;
+  $('#prog').classList.add('hidden');
+  $('#stage').textContent = 'Starting…';
 }
 
 // Recover an in-flight (or just-finished) job after a page refresh: the job id is
