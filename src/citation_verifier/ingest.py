@@ -15,13 +15,18 @@ reference. Whether a LaTeX e-print is *available* is probed cheaply (a HEAD-ish
 GET) but the actual e-print download/extraction is the extract layer's job — we
 only set ``tex_available`` so the orchestrator can pick the LaTeX extractor.
 
-Pure stdlib (``urllib``) and fail-soft: a download/probe failure never raises;
-it degrades (no pdf_path / tex_available=False) so the run can continue.
+Pure stdlib (``urllib``) and fail-soft at the edges: an individual download/probe
+error is logged and degrades (no pdf_path / tex_available=False) so the run can
+continue. The one exception is a *total* arXiv retrieval failure — no cached PDF and
+both the PDF download and the e-print probe fail — which raises ``ValueError`` rather
+than yielding an empty, 0-citation "success" that hides the cause (typically missing
+TLS root certificates).
 """
 
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 import urllib.error
 import urllib.request
@@ -37,6 +42,7 @@ ARXIV_ID_RE = re.compile(r"(\d{4}\.\d{4,5})(v\d+)?")
 
 _USER_AGENT = "citation-verifier/0.1 (+https://github.com/Agents4Academia/citation_verification)"
 _TIMEOUT = 60
+_log = logging.getLogger(__name__)
 
 
 def parse_arxiv_id(value: str) -> str | None:
@@ -63,27 +69,39 @@ def _safe_paper_id(value: str) -> str:
     return f"pdf-{digest}"
 
 
-def _download(url: str, dest: Path) -> bool:
-    """Download ``url`` to ``dest`` (fail-soft). Return True on success."""
+def _download(url: str, dest: Path, errors: list[str] | None = None) -> bool:
+    """Download ``url`` to ``dest`` (fail-soft). Return True on success.
+
+    On failure the underlying error is logged and, if ``errors`` is given, appended to
+    it — so the caller can surface the cause instead of it vanishing (a swallowed SSL /
+    certificate error used to look identical to a paper with no citations).
+    """
     try:
         req = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
         with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
             data = resp.read()
         if not data:
+            _log.warning("arXiv download returned no data: %s", url)
+            if errors is not None:
+                errors.append(f"{url}: empty response")
             return False
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(data)
         return True
-    except (urllib.error.URLError, OSError, ValueError):
+    except (urllib.error.URLError, OSError, ValueError) as exc:
+        _log.warning("arXiv download failed: %s: %s: %s", url, type(exc).__name__, exc)
+        if errors is not None:
+            errors.append(f"{url}: {type(exc).__name__}: {exc}")
         return False
 
 
-def _probe_tex_available(arxiv_id: str) -> bool:
+def _probe_tex_available(arxiv_id: str, errors: list[str] | None = None) -> bool:
     """Cheaply probe whether an arXiv e-print (LaTeX source) seems available.
 
     arXiv serves source at ``/e-print/<id>``. We do a tiny ranged GET and treat
     any successful, non-empty response as "available". Fail-soft: returns False
-    on any error so the orchestrator falls back to the PDF extractor.
+    on any error so the orchestrator falls back to the PDF extractor; the error is
+    logged and (if ``errors`` is given) recorded so a total failure can be surfaced.
     """
     url = f"https://arxiv.org/e-print/{arxiv_id}"
     try:
@@ -95,7 +113,10 @@ def _probe_tex_available(arxiv_id: str) -> bool:
             status = getattr(resp, "status", 200)
             # 200 (full) or 206 (partial) both indicate the resource exists.
             return status in (200, 206)
-    except (urllib.error.URLError, OSError, ValueError):
+    except (urllib.error.URLError, OSError, ValueError) as exc:
+        _log.warning("arXiv e-print probe failed: %s: %s: %s", url, type(exc).__name__, exc)
+        if errors is not None:
+            errors.append(f"{url}: {type(exc).__name__}: {exc}")
         return False
 
 
@@ -133,14 +154,28 @@ def _extract_archive(archive: Path, dest: Path) -> bool:
 
 
 def _ingest_arxiv(arxiv_id: str, papers_dir: Path) -> PaperSource:
-    """Download the arXiv PDF + probe LaTeX availability (the original arXiv path)."""
+    """Download the arXiv PDF + probe LaTeX availability (the original arXiv path).
+
+    Raises ``ValueError`` if the paper can't be retrieved at all — no cached PDF and both
+    the PDF download and the e-print probe fail. That used to degrade to an empty,
+    0-citation "success" indistinguishable from a paper with no references (the classic
+    cause is missing TLS root certificates, swallowed by the fail-soft download paths).
+    """
     work_dir = papers_dir / arxiv_id
     work_dir.mkdir(parents=True, exist_ok=True)
     pdf_dest = work_dir / f"{arxiv_id}.pdf"
     pdf_path: str | None = str(pdf_dest) if pdf_dest.exists() else None
-    if pdf_path is None and _download(f"https://arxiv.org/pdf/{arxiv_id}", pdf_dest):
+    errs: list[str] = []
+    if pdf_path is None and _download(f"https://arxiv.org/pdf/{arxiv_id}", pdf_dest, errors=errs):
         pdf_path = str(pdf_dest)
-    tex_available = _probe_tex_available(arxiv_id)
+    tex_available = _probe_tex_available(arxiv_id, errors=errs)
+    if pdf_path is None and not tex_available:
+        detail = "; ".join(errs) or "no response from arxiv.org"
+        raise ValueError(
+            f"could not retrieve arXiv {arxiv_id}: the PDF download and the e-print probe "
+            f"both failed ({detail}). Check network connectivity and TLS root certificates "
+            f"""— e.g. export SSL_CERT_FILE="$(python -c 'import certifi; print(certifi.where())')"."""
+        )
     return PaperSource(
         paper_id=arxiv_id,
         kind="arxiv_latex" if tex_available else "arxiv_pdf",
@@ -206,8 +241,12 @@ def ingest(source: str, *, settings: Settings | None = None) -> PaperSource:
         resolvable — ``pdf_path``, ``arxiv_id`` and ``tex_available`` set.
 
     Raises:
-        ValueError: only when ``source`` is neither an existing PDF nor a
-            parseable arXiv reference (a genuine input error, not a soft failure).
+        ValueError: when ``source`` is neither an existing PDF nor a parseable arXiv
+            reference (a genuine input error); when a generic URL can't be downloaded
+            or isn't a PDF; or when an arXiv paper can't be retrieved at all (no cached
+            PDF and both the PDF download and the e-print probe fail — surfaced rather
+            than degraded to an empty report so the cause, e.g. missing TLS certs, is
+            visible).
     """
     settings = settings or load_settings()
     papers_dir = Path(settings.papers_dir)
