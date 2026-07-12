@@ -62,7 +62,45 @@ def test_non_pdf_url_raises_actionable_error(tmp_path, monkeypatch):
 
 def test_arxiv_url_still_takes_the_arxiv_path(tmp_path, monkeypatch):
     # arxiv.org URLs must NOT fall into the generic-URL branch.
-    monkeypatch.setattr(ing, "_download", lambda url, dest: False)  # no network
-    monkeypatch.setattr(ing, "_probe_tex_available", lambda aid: False)
+    def ok_dl(url, dest, errors=None):
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(b"%PDF-1.4 fake")
+        return True
+
+    monkeypatch.setattr(ing, "_download", ok_dl)
+    monkeypatch.setattr(ing, "_probe_tex_available", lambda aid, errors=None: False)
     src = ing.ingest("https://arxiv.org/abs/2310.06825", settings=_settings(tmp_path))
     assert src.arxiv_id == "2310.06825" and src.kind == "arxiv_pdf"
+
+
+def test_arxiv_total_retrieval_failure_raises_not_empty(tmp_path, monkeypatch):
+    """A paper we can't fetch at all (PDF download AND e-print probe both fail — e.g. a
+    missing-SSL-certs box) must RAISE with an actionable message, not degrade to an empty
+    0-citation 'success' that looks like a paper with no references. Regression: the SSL
+    error used to be swallowed and the run 'succeeded' in 0.5s with a 0-pair report."""
+    def bad_dl(url, dest, errors=None):
+        if errors is not None:
+            errors.append(f"{url}: URLError: <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED]>")
+        return False
+
+    def bad_probe(aid, errors=None):
+        if errors is not None:
+            errors.append("e-print: URLError: <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED]>")
+        return False
+
+    monkeypatch.setattr(ing, "_download", bad_dl)
+    monkeypatch.setattr(ing, "_probe_tex_available", bad_probe)
+    with pytest.raises(ValueError) as ei:
+        ing.ingest("2504.13837", settings=_settings(tmp_path))
+    msg = str(ei.value)
+    assert "could not retrieve arXiv 2504.13837" in msg
+    assert "CERTIFICATE_VERIFY_FAILED" in msg  # the swallowed cause is surfaced
+    assert "SSL_CERT_FILE" in msg               # and the workaround is named
+
+
+def test_arxiv_ok_when_only_eprint_available(tmp_path, monkeypatch):
+    """No PDF but the LaTeX e-print exists → still a valid source (no raise)."""
+    monkeypatch.setattr(ing, "_download", lambda url, dest, errors=None: False)
+    monkeypatch.setattr(ing, "_probe_tex_available", lambda aid, errors=None: True)
+    src = ing.ingest("2504.13837", settings=_settings(tmp_path))
+    assert src.tex_available is True and src.kind == "arxiv_latex" and src.pdf_path is None

@@ -80,8 +80,14 @@ def test_pdf_upload_flow(client):
     assert '"stage": "report"' in stream
 
 
-def test_unknown_job_is_404(client):
-    assert client.get("/events/nope").status_code == 404
+def test_unknown_job_events_returns_gone_stream_not_404(client):
+    """A 404 on /events makes EventSource reconnect-storm (froze Safari tabs after a
+    server restart). Unknown jobs now get a valid SSE stream with a single `gone` event
+    so the page can reset to idle. (/status still 404s — a plain fetch the page handles.)"""
+    r = client.get("/events/nope")
+    assert r.status_code == 200
+    assert "event: gone" in r.text
+    assert client.get("/status/nope").status_code == 404  # /status stays a 404 for a gone id
 
 
 def test_download_md_and_json_after_report(client):
@@ -126,7 +132,7 @@ def test_refresh_reconnect_replays_progress_and_report(client):
 
     st = client.get(f"/status/{jid}").json()
     assert st["known"] is True and st["done"] is True and st["label"] == "2310.06825"
-    assert isinstance(st["elapsed"], (int, float))  # drives an accurate resumed timer
+    assert isinstance(st["elapsed"], int | float)  # drives an accurate resumed timer
 
 
 def test_last_event_id_resumes_past_seen_events(client):
@@ -137,3 +143,22 @@ def test_last_event_id_resumes_past_seen_events(client):
     resumed = client.get(f"/events/{jid}", headers={"Last-Event-ID": "0"}).text
     assert '"stage": "ingesting"' not in resumed
     assert '"stage": "report"' in resumed
+
+
+def test_worker_surfaces_ingest_error_as_sse_error_stage(monkeypatch):
+    """If run_verification raises — e.g. a total arXiv retrieval failure from missing TLS
+    certs (issue #1) — the worker must surface it to the page as an SSE `error` stage that
+    carries the cause, not a silent empty report. (Own mock: this one raises, not the
+    success-mocking `client` fixture.)"""
+    def boom(source, *, backend, settings, resume, progress_cb=None):
+        raise ValueError(
+            "could not retrieve arXiv 2504.13837: the PDF download and the e-print probe "
+            "both failed (<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED]>)."
+        )
+
+    monkeypatch.setattr(citation_verifier, "run_verification", boom)
+    client = TestClient(create_app())
+    jid = client.post("/verify", data={"arxiv": "2504.13837"}).json()["job_id"]
+    stream = client.get(f"/events/{jid}").text
+    assert '"stage": "error"' in stream                 # surfaced, not a silent empty report
+    assert "CERTIFICATE_VERIFY_FAILED" in stream        # the underlying cause reaches the page
