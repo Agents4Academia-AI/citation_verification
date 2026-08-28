@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING, Any
 
 from ..interfaces import Candidate
 from ..schema import MatchMethod, Resolved
-from . import paper_lookup
+from . import paper_lookup, resolve_cache
 
 if TYPE_CHECKING:  # avoid importing config eagerly; it is an optional sibling
     from ..config import Settings
@@ -162,6 +162,17 @@ _TITLE_TOKEN_STOPWORDS = {
 _ARXIV_HINTS = {
     "arxiv",
     "preprint",
+    # Venue names. Papers at these venues are overwhelmingly mirrored on arXiv, but a
+    # reference that cites the proceedings ("… ICML. 2021") mentions neither "arxiv" nor
+    # a topic keyword, so arXiv was never queried for them. Measured on one paper's
+    # bibliography: 41 of 59 references skipped arXiv entirely. That is invisible while
+    # Semantic Scholar answers, and collapses resolution the moment S2 rate-limits.
+    "icml", "iclr", "neurips", "nips", "aistats", "uai", "colt", "tmlr", "jmlr",
+    "cvpr", "iccv", "eccv", "wacv", "bmvc", "siggraph",
+    "acl", "emnlp", "naacl", "eacl", "coling", "conll", "tacl",
+    "aaai", "ijcai", "kdd", "sigir", "www", "wsdm", "recsys",
+    "icra", "iros", "rss", "corl",
+    "usenix", "ndss", "ccs", "oakland", "asplos", "osdi", "sosp", "nsdi", "sigcomm",
     "attention",
     "bert",
     "chatgpt",
@@ -231,6 +242,17 @@ def _looks_like_author_clause(clause: str) -> bool:
     segs = [s.strip() for s in c.split(",") if s.strip()]
     if len(segs) >= 2 and all(
         len(s.split()) <= 4 and _VANCOUVER_AUTHOR_RE.fullmatch(s) for s in segs
+    ):
+        return True
+    # "Given Surname and Given Surname" — an ACL/ICLR two-author list has NO comma, no
+    # single-letter initials and one segment, so every check above misses it and the
+    # author names are taken for the title ("Shahriar Golchin and Mihai Surdeanu"), which
+    # makes the reference unresolvable. Each name group must be 2-4 capitalised words so
+    # a genuine short title joined by "and" ("Vision and Language") is not swallowed.
+    groups = [g.strip() for g in re.split(r"\s*(?:,|\band\b|&)\s*", c) if g.strip()]
+    if 2 <= len(groups) <= 6 and all(
+        2 <= len(g.split()) <= 4 and all(w[:1].isupper() for w in g.split() if w[:1].isalpha())
+        for g in groups
     ):
         return True
     return False
@@ -601,7 +623,22 @@ class MultiSourceResolver:
 
         ``cite_key`` is accepted for Protocol symmetry; matching is driven by
         ``reference`` content.
+
+        Successful resolutions are cached on disk (see
+        :mod:`citation_verifier.grounding.resolve_cache`) — the cascade costs seconds per
+        reference and bibliographic records do not change. Set
+        ``CITATION_VERIFIER_CACHE=""`` to disable.
         """
+        cached = resolve_cache.read(reference, Resolved)
+        if cached is not None:
+            return cached
+        found = self._resolve_uncached(reference)
+        if found is not None:
+            resolve_cache.write(reference, found)
+        return found
+
+    def _resolve_uncached(self, reference: str) -> Resolved | None:
+        """:meth:`resolve` without the disk cache — the network cascade itself."""
         # 1) identifier, abstract-bearing first; stop at the first exact match.
         for fn, args in self._id_query_steps(reference):
             match = self._match(reference, self._fetch(fn, *args))

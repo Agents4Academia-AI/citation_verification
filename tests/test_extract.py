@@ -1187,3 +1187,27 @@ def test_split_author_title_org_and_etal_year_anchor():
     assert _split_author_title("Radford A, Wu J. Language models are unsupervised. OpenAI Blog. 2019")[0] == [
         "Radford A", "Wu J",
     ]
+
+def test_initials_first_authors_do_not_swallow_the_title():
+    """"Y. You, W. Liu, and C. Lu. Title." is the house style of IEEE/CVPR/ICRA.
+
+    Without a tier of its own the given-name-first tier splits it on commas, cannot see
+    where the run ends, and cuts mid-name — "and J" became an author and "Scholz" the
+    title. Measured: two of eight cited rows in one comparison table resolved to a venue
+    name and to an author's surname instead of the paper.
+    """
+    authors, title = _split_author_title(
+        "Y. You, W. Liu, Y. Ze, Y.-L. Li, W. Wang, and C. Lu. Ukpgan: A general "
+        "self-supervised keypoint detector. In Proceedings of the IEEE/CVF Conference "
+        "on Computer Vision and Pattern Recognition, pages 17042-17051, 2022."
+    )
+    assert authors == ["Y. You", "W. Liu", "Y. Ze", "Y.-L. Li", "W. Wang", "C. Lu"]
+    assert title == "Ukpgan: A general self-supervised keypoint detector"
+
+    # a lowercase title is normal for system names, and this tier's boundary is
+    # unambiguous without requiring a capital
+    _a, t = _split_author_title(
+        "L. Manuelli, W. Gao, P. Florence, and R. Tedrake. kpam: Keypoint affordances "
+        "for category-level robotic manipulation. In ISRR, pages 132-157, 2019."
+    )
+    assert t == "kpam: Keypoint affordances for category-level robotic manipulation"

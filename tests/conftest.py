@@ -104,3 +104,14 @@ class _StubResolver:
 def stub_resolver() -> _StubResolver:
     """An offline resolver honoring the Resolver protocol (no network)."""
     return _StubResolver()
+
+
+@pytest.fixture(autouse=True)
+def _no_resolution_cache(monkeypatch):
+    """Keep the suite hermetic: never read or write the developer's resolution cache.
+
+    Tests inject fake sources and must exercise the real cascade; a cached entry from a
+    live run would satisfy the call before any fake was consulted, and the test would
+    pass or fail on what happens to be in ~/.cache.
+    """
+    monkeypatch.setenv("CITATION_VERIFIER_CACHE", "")

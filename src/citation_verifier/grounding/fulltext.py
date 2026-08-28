@@ -21,6 +21,8 @@ import re
 import tarfile
 from dataclasses import dataclass
 
+from . import fulltext_cache
+
 __all__ = [
     "FullTextResult",
     "split_sections",
@@ -275,6 +277,21 @@ def fetch_full_text_with_source(
     stem = _arxiv_stem(arxiv_id)
     if not stem:
         return FullTextResult("")
+    # Served from disk when we have fetched this paper before: the content does not
+    # change, and re-fetching it is also a source of run-to-run variance — which channel
+    # answers first can differ, and a different channel yields different text, from which
+    # different passages are then selected. Set CITATION_VERIFIER_CACHE="" to disable.
+    hit = fulltext_cache.read(f"arxiv:{stem}")
+    if hit is not None:
+        return FullTextResult(hit[0], hit[1], hit[2])
+    got = _fetch_arxiv_full_text(stem, timeout=timeout, max_chars=max_chars)
+    if got.text:
+        fulltext_cache.write(f"arxiv:{stem}", got.text, got.source, got.url)
+    return got
+
+
+def _fetch_arxiv_full_text(stem: str, *, timeout: int, max_chars: int) -> FullTextResult:
+    """:func:`fetch_full_text_with_source` without the disk cache — the fetch cascade."""
     # arXiv's HTML rendering first — clean text, no LaTeX/PDF parsing (adapted from
     # Klara Kaleb's prior/fulltext.py); fall back to the LaTeX e-print, then PDF.
     from .oa_fulltext import arxiv_html_text_with_url
@@ -314,10 +331,16 @@ def fetch_full_text_from_url(
     """
     if not (url or "").strip():
         return ""
+    hit = fulltext_cache.read(f"url:{url}")
+    if hit is not None:
+        return hit[0]
     data = _http_get_bytes(url, timeout)
     if data[:5] != b"%PDF-":  # not a PDF (HTML landing page, paywall, error) -> skip
         return ""
-    return _pdf_bytes_to_text(data)[:max_chars]
+    text = _pdf_bytes_to_text(data)[:max_chars]
+    if text:
+        fulltext_cache.write(f"url:{url}", text, "resolved_url", url)
+    return text
 
 
 # Title-token overlap required between the cited title and a fetched PDF before we

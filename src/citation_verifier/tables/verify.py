@@ -28,16 +28,18 @@ in tests with no network and no SDK.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from typing import Any
 
-from .dimensions import dimension_is_checkable
+from .dimensions import DEFAULT_TEST_QUESTION, dimension_is_checkable
 from .model import (
     CellFinding,
     CellMark,
     CellVerdict,
     ComparisonTable,
     Dimension,
+    DimensionKind,
     GlossSource,
     TableReport,
     derive_cell_severity,
@@ -45,19 +47,64 @@ from .model import (
 
 __all__ = ["verify_table", "asymmetry_summary", "build_row_payload"]
 
+# Cross-references survive into a gloss quoted from the source ("(task F in
+# Figure~\ref{fig:intro}c)") and tell the judge nothing about the property, while eating
+# context and inviting it to reason about a figure it cannot see.
+_XREF_RE = re.compile(
+    # A whole parenthetical that points at a float goes first — otherwise only the macro
+    # inside it is removed and a stub survives ("(tasks C, D and E in b)").
+    r"\([^()]{0,90}(?:Figure|Fig\.|Table|Tab\.|Section|Sec\.|Eq\.|Equation|Appendix)[^()]{0,90}\)"
+    r"|\\(?:ref|cref|Cref|autoref|eqref|label|cite\w*)\s*\{[^}]*\}"
+    r"|\b(?:Figure|Fig\.|Table|Tab\.|Section|Sec\.|Appendix)~?\s*\\?\w*\{?[\w:.-]*\}?",
+)
+
+
+def clean_property_text(text: str) -> str:
+    """Tidy a gloss for the judge without changing what it asserts.
+
+    Only cross-references and TeX bookkeeping are removed — the wording, including any
+    equation, is left exactly as the paper wrote it, because the judge is required to
+    match the definition at its own level of precision.
+    """
+    out = _XREF_RE.sub(" ", text or "")
+    out = re.sub(r"\s*\(\s*\)", "", out)          # brackets emptied by the above
+    out = re.sub(r"\s+", " ", out).strip(" .,;:")
+    # Removing a reference can leave the clause that introduced it dangling
+    # ("…, as reported in"). Drop back to the last complete clause.
+    out = re.sub(
+        r"[,;]?\s*(?:as\s+)?(?:reported|shown|listed|described|summari[sz]ed|illustrated|given)?"
+        r"\s*(?:in|on|by|from|of|see)\s*$",
+        "", out, flags=re.IGNORECASE,
+    )
+    return out.strip(" .,;:")
+
 # What the judge may answer about one (paper, property) pair.
 _HAS, _LACKS, _UNCLEAR = "has", "lacks", "unclear"
 
 # (claimed mark, judged answer) -> verdict
+# "The whole paper never claims this property." Silence read across the full text, which
+# is informative — a paper advertises what its method does — without refuting anything.
+_ABSENT = "absent"
+# "The evidence is about some other work." A pipeline failure, not a finding about the
+# paper: the cell was never checked. Mixed into the ordinary "not enough evidence" bucket
+# it reads as though the cited work had been consulted and come up short — measured, a
+# cell whose retrieval returned an unrelated paper was reported exactly that way.
+_WRONG_PAPER = "wrong_paper"
+
 _DECISION: dict[tuple[str, str], str] = {
     (CellMark.YES.value, _HAS): CellVerdict.SUPPORTED.value,
     (CellMark.YES.value, _LACKS): CellVerdict.CONTRADICTED.value,
+    # A ✓ the cited paper never claims anywhere: not refuted, but not backed either.
+    (CellMark.YES.value, _ABSENT): CellVerdict.MAY_NOT_SUPPORT.value,
     (CellMark.YES.value, _UNCLEAR): CellVerdict.UNVERIFIABLE.value,
     (CellMark.NO.value, _HAS): CellVerdict.CONTRADICTED.value,   # understates prior work
     (CellMark.NO.value, _LACKS): CellVerdict.SUPPORTED.value,
+    # A ✗ the cited paper never contradicts: silence and the mark agree.
+    (CellMark.NO.value, _ABSENT): CellVerdict.SUPPORTED.value,
     (CellMark.NO.value, _UNCLEAR): CellVerdict.UNVERIFIABLE.value,
     (CellMark.PARTIAL.value, _HAS): CellVerdict.SUPPORTED.value,
     (CellMark.PARTIAL.value, _LACKS): CellVerdict.CONTRADICTED.value,
+    (CellMark.PARTIAL.value, _ABSENT): CellVerdict.MAY_NOT_SUPPORT.value,
     (CellMark.PARTIAL.value, _UNCLEAR): CellVerdict.UNVERIFIABLE.value,
 }
 
@@ -79,15 +126,27 @@ def build_row_payload(
         "cite_key": row.cite_keys[0] if row.cite_keys else None,
         "evidence": evidence,
         "properties": [
-            {
-                "col_index": d.col_index,
-                "name": d.header,
-                "definition": d.gloss or d.header,
-                "question": d.test_question,
-            }
-            for d in dims
+            _property_entry(d) for d in dims
         ],
     }
+
+
+def _property_entry(dim: Dimension) -> dict:
+    """One property for the judge: its name and what the paper says it means.
+
+    ``test_question`` is included only when it carries information. Without a glosser it
+    is a template ("Does the cited work satisfy '<header>'?") that merely restates the
+    header, so sending it adds a line of noise to every property.
+    """
+    entry = {
+        "col_index": dim.col_index,
+        "name": dim.header,
+        "definition": clean_property_text(dim.gloss) or dim.header,
+    }
+    templated = f"Does the cited work satisfy '{dim.header}'?"
+    if dim.test_question and dim.test_question not in (templated, DEFAULT_TEST_QUESTION):
+        entry["question"] = dim.test_question
+    return entry
 
 
 def _skip(table: ComparisonTable, row, dim: Dimension, cell, reason: str, verdict: str) -> CellFinding:
@@ -103,6 +162,19 @@ def _skip(table: ComparisonTable, row, dim: Dimension, cell, reason: str, verdic
         severity=derive_cell_severity(cell.mark, verdict, is_self=row.is_self),
         justification=reason,
     )
+
+
+# Gloss grades too weak to license a CONTRADICTED verdict. A contradiction says "the
+# paper's ✓/✗ is wrong", which presupposes knowing what the column asserts; these two
+# grades mean precisely that the paper never said.
+_WEAK_GLOSS = frozenset(
+    {
+        GlossSource.MENTION.value,
+        GlossSource.RECOVERED.value,
+        GlossSource.HEADER_ONLY.value,
+        GlossSource.NONE.value,
+    }
+)
 
 
 def verify_table(
@@ -219,22 +291,55 @@ def verify_table(
                 continue
             got = answers.get(dim.col_index) or {}
             answer = str(got.get("answer", _UNCLEAR)).strip().lower()
-            if answer not in (_HAS, _LACKS, _UNCLEAR):
+            if answer not in (_HAS, _LACKS, _ABSENT, _UNCLEAR, _WRONG_PAPER):
                 answer = _UNCLEAR
             verdict = _DECISION.get((cell.mark, answer), CellVerdict.UNVERIFIABLE.value)
             if not evidence.strip():
                 verdict = CellVerdict.UNVERIFIABLE.value
                 got = {"justification": "no evidence could be retrieved for the cited work"}
 
-            severity = derive_cell_severity(cell.mark, verdict, is_self=row.is_self)
             note = str(got.get("justification", "") or "")[:500]
-            # A column the paper only ever MENTIONS was judged against a sentence that
-            # merely uses the term, so a contradiction on it is weakly grounded: cap the
-            # severity and say why, rather than headline it like a defined column.
-            if dim.gloss_source == GlossSource.MENTION.value and severity == "high":
-                severity = "medium"
-                note = ("[weakly grounded: the paper mentions this column but never "
-                        "defines it] ") + note
+            if answer == _WRONG_PAPER:
+                note = (
+                    "[retrieval failure: the retrieved text is about a different work, so "
+                    "this cell was never checked against the cited paper] "
+                ) + note
+            # An accusation is only as good as the column definition it rests on. When the
+            # paper merely MENTIONS a column and never defines it, the judge was comparing
+            # the cited work against a sentence that happens to use the term — and a
+            # measured 12-of-15 false-positive rate traced back to exactly that. Downgrade
+            # the contradiction to "unverifiable" and say which half failed: the claim is
+            # not refuted, it is uncheckable because the column has no stated criterion.
+            # In a CATEGORICAL column most cells name a technique ("ILP", "SMT",
+            # "Heuristics") and a ✗ means "no technique reported for this phase" — a
+            # weaker claim than "cannot do this". The judge was asked the binary question
+            # ("does the work allocate resources at all?") and answered it, refuting
+            # something the table never asserted. Measured: three high-severity
+            # accusations against compilers whose ✗ only meant the paper names no
+            # allocation technique.
+            if (
+                verdict == CellVerdict.CONTRADICTED.value
+                and cell.mark == CellMark.NO.value
+                and dim.kind == DimensionKind.CATEGORICAL.value
+            ):
+                # Also a statement about the citing paper's table rather than about our
+                # reach: the ✗ in a column of technique names is not a capability claim.
+                verdict = CellVerdict.UNDEFINED.value
+                note = (
+                    "[in this column a ✗ means the citing paper reports no technique for "
+                    "that phase, not that the cited work cannot do it] "
+                ) + note
+            if verdict == CellVerdict.CONTRADICTED.value and dim.gloss_source in _WEAK_GLOSS:
+                # UNDEFINED, not UNVERIFIABLE: this is a finding about the CITING paper —
+                # it drew a column and never said what earns a mark in it — not a report
+                # that we failed to check something. Filed under "we could not verify" it
+                # read as our shortcoming and the reader had no way to tell the two apart.
+                verdict = CellVerdict.UNDEFINED.value
+                note = (
+                    "[the citing paper never states what earns a mark in this column, so "
+                    "the cell asserts nothing checkable] "
+                ) + note
+            severity = derive_cell_severity(cell.mark, verdict, is_self=row.is_self)
 
             findings.append(
                 CellFinding(
@@ -278,6 +383,9 @@ def asymmetry_summary(report: TableReport) -> dict[str, Any]:
 
     * ``self_all_yes``           — the authors' row is ✓ on every column.
     * ``understated_prior_work`` — refuted ✗ marks on cited competitors (the headline).
+    * ``unbacked_ticks``         — ✓ marks the cited paper never claims anywhere in its
+      full text: weaker than a refutation, but the citing paper credited prior work with
+      something its own paper does not assert.
     * ``undefined_columns``      — columns marked ✓/✗ that the paper never defines.
     """
     table = report.table
@@ -290,6 +398,7 @@ def asymmetry_summary(report: TableReport) -> dict[str, Any]:
 
     understated = [f for f in report.findings if f.understates_prior_work]
     contradicted = [f for f in report.findings if f.verdict == CellVerdict.CONTRADICTED.value]
+    unbacked = [f for f in report.findings if f.verdict == CellVerdict.MAY_NOT_SUPPORT.value]
     undefined_cols = sorted(
         {d.header for d in table.dimensions if d.gloss_source == GlossSource.HEADER_ONLY.value}
     )
@@ -299,6 +408,11 @@ def asymmetry_summary(report: TableReport) -> dict[str, Any]:
         "columns": len(table.dimensions),
         "self_all_yes": self_all_yes,
         "contradicted": len(contradicted),
+        "unbacked_ticks": len(unbacked),
+        "unbacked_cells": [
+            {"row": f.row_label, "column": f.dimension, "cite_key": f.cite_key}
+            for f in unbacked
+        ],
         "understated_prior_work": len(understated),
         "understated_cells": [
             {"row": f.row_label, "column": f.dimension, "cite_key": f.cite_key}
