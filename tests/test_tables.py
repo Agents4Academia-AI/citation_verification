@@ -44,6 +44,7 @@ from citation_verifier.tables.dimensions import (
     grade_from_meaning,
     header_variants,
 )
+from citation_verifier.tables.evidence import _full_text_of
 from citation_verifier.tables.latex_grid import included_sources
 from citation_verifier.tables.pdf_grid import (
     mark_from_pdf_cell,
@@ -1541,3 +1542,35 @@ def test_the_glosser_cannot_veto_a_definition_the_paper_states_outright():
     )
     assert guessed[0].gloss_source == GlossSource.HEADER_ONLY.value
     assert guessed[0].gloss == ""
+
+
+def test_the_full_text_cascade_matches_the_prose_stage():
+    """Stopping after arXiv and the resolved URL reduces a whole class of papers to their
+    abstract: an ICCV or ICRA reference resolves to a `doi.org/10.1109/…` link that is a
+    landing page, not a PDF, while an open-access copy exists. The table path now walks the
+    same four steps the prose stage does — arXiv, resolved URL, the DOI's OA copy, then a
+    title search."""
+    import citation_verifier.grounding.fulltext as ft
+    import citation_verifier.grounding.oa_fulltext as oa
+
+    calls = []
+
+    class R:
+        arxiv_id = None
+        url = ""
+        doi = "10.1109/iccv.2019.00045"
+        title = "USIP"
+        year = 2019
+
+    def fake_oa(doi, **kw):
+        calls.append(("doi", doi))
+        return type("F", (), {"text": "the body", "source": "unpaywall", "url": "u"})()
+
+    monkey = pytest.MonkeyPatch()
+    try:
+        monkey.setattr(oa, "fulltext_by_doi_with_source", fake_oa)
+        monkey.setattr(ft, "fetch_full_text_from_url", lambda u, **kw: "")
+        assert _full_text_of(R()) == "the body"
+        assert calls == [("doi", "10.1109/iccv.2019.00045")]
+    finally:
+        monkey.undo()

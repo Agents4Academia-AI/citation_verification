@@ -153,28 +153,59 @@ def build_evidence_provider(
     return evidence_for
 
 
+def _full_text_of(resolved: Any) -> str:
+    """The cited paper's body, through every channel the project has.
+
+    The same four-step cascade the prose stage uses: arXiv, then the resolved URL, then
+    the DOI's open-access copy (Unpaywall / OpenAlex / publisher meta tags), then a title
+    search. Stopping after the first two — as this module did — silently reduces a whole
+    class of papers to their abstract: an ICCV or ICRA reference resolves to a
+    ``doi.org/10.1109/…`` link that is a landing page, not a PDF, so every cell citing it
+    came back "we only saw the abstract" while an open-access copy existed. Measured:
+    nine of USEEK's cells, whose citations are almost all IEEE-published.
+    """
+    from ..grounding.fulltext import (  # noqa: PLC0415 — lazy: keeps import network-free
+        fetch_full_text_from_url,
+        fetch_full_text_via_search_with_source,
+        fetch_full_text_with_source,
+    )
+
+    arxiv_id = getattr(resolved, "arxiv_id", None)
+    if arxiv_id:
+        text = getattr(fetch_full_text_with_source(arxiv_id), "text", "") or ""
+        if text:
+            return text
+    url = (getattr(resolved, "url", "") or "").strip()
+    if url:
+        got = fetch_full_text_from_url(url)
+        text = got if isinstance(got, str) else (getattr(got, "text", "") or "")
+        if text:
+            return text
+    doi = (getattr(resolved, "doi", "") or "").strip()
+    if doi:
+        from ..grounding.oa_fulltext import fulltext_by_doi_with_source  # noqa: PLC0415
+
+        text = getattr(fulltext_by_doi_with_source(doi), "text", "") or ""
+        if text:
+            return text
+    title = (getattr(resolved, "title", "") or "").strip()
+    if title:
+        got = fetch_full_text_via_search_with_source(title, year=getattr(resolved, "year", None))
+        return getattr(got, "text", "") or ""
+    return ""
+
+
 def _full_text_chunks(
     resolved: Any, queries: list[str], per_query: int, chunk_chars: int
 ) -> list[tuple[str, str]]:
     """Excerpts of the cited paper's body, selected once per column query."""
+    text = _full_text_of(resolved)
+    if not text:
+        return []
     from ..grounding.fulltext import (  # noqa: PLC0415 — lazy: keeps import network-free
-        fetch_full_text_from_url,
-        fetch_full_text_with_source,
         select_evidence_chunks,
         split_sections,
     )
-
-    text = ""
-    arxiv_id = getattr(resolved, "arxiv_id", None)
-    if arxiv_id:
-        text = getattr(fetch_full_text_with_source(arxiv_id), "text", "") or ""
-    if not text:
-        url = (getattr(resolved, "url", "") or "").strip()
-        if url:
-            got = fetch_full_text_from_url(url)
-            text = got if isinstance(got, str) else (getattr(got, "text", "") or "")
-    if not text:
-        return []
     sections = split_sections(text)
     out: list[tuple[str, str]] = []
     for q in queries:

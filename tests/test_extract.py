@@ -9,6 +9,7 @@ from __future__ import annotations
 from citation_verifier.extract.latex import (
     _parse_bibitems,
     _strip_line_comments,
+    decode_tex_accents,
     parse_inline_bib,
 )
 from citation_verifier.extract.pdf import (
@@ -20,6 +21,7 @@ from citation_verifier.extract.pdf import (
     _sentence_around,
     _split_author_title,
 )
+from citation_verifier.grounding.resolver import _likely_titles
 
 
 def test_split_author_title_is_style_agnostic():
@@ -1211,3 +1213,34 @@ def test_initials_first_authors_do_not_swallow_the_title():
         "for category-level robotic manipulation. In ISRR, pages 132-157, 2019."
     )
     assert t == "kpam: Keypoint affordances for category-level robotic manipulation"
+
+
+def test_latex_accents_are_decoded_before_the_reference_is_parsed():
+    r"""An accent is a command whose argument is part of a word.
+
+    Left undecoded, the backslash in ``Roth\"orl`` splits the reference mid-name and
+    everything downstream shifts: one nine-author entry had "orl, Thomas, Hadsell, Raia,
+    …" taken as its title, so the paper never resolved even though it was sitting in the
+    arXiv results. European names make this routine, not exotic.
+    """
+    assert decode_tex_accents(r'Roth\"orl') == "Rothörl"
+    assert decode_tex_accents(r'Sch\"{o}lkopf') == "Schölkopf"
+    assert decode_tex_accents(r"Cort\'es") == "Cortés"
+    assert decode_tex_accents(r"Ang\`ele") == "Angèle"
+    assert decode_tex_accents(r"Mu\~noz") == "Muñoz"
+    assert decode_tex_accents(r"Erd\H{o}s") == "Erdős"
+    assert decode_tex_accents(r"Vre\v{c}ko") == "Vrečko"
+    assert decode_tex_accents(r"\c{C}elik") == "Çelik"
+    assert decode_tex_accents(r"Stra\ss e") == "Straße"
+    assert decode_tex_accents(r"\o{}stergaard") == "østergaard"
+    assert decode_tex_accents("plain text") == "plain text"
+
+
+def test_a_reference_with_an_accented_author_still_yields_its_title():
+    """The end-to-end consequence of the decoding above."""
+    raw = (
+        r'Vecerik, Mel, Regli, Jean-Baptiste, Roth\"orl, Thomas, Scholz, Jonathan. '
+        '"S3K: Self-Supervised Semantic Keypoints for Robotic Manipulation via '
+        'Multi-View Consistency". Conference on Robot Learning. 2021'
+    )
+    assert _likely_titles(decode_tex_accents(raw))[0].startswith("S3K: Self-Supervised")

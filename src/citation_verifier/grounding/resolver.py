@@ -352,7 +352,26 @@ def _should_search_arxiv(reference: str) -> bool:
     if year is not None and year < 2007:
         return False
     toks = _tokens(reference)
-    return bool(toks & _ARXIV_HINTS)
+    if toks & _ARXIV_HINTS:
+        return True
+    # A bibliography that spells the venue out rather than abbreviating it —
+    # "Proceedings of the IEEE/CVF International Conference on Computer Vision" instead of
+    # "ICCV" — carries none of the acronyms above, so arXiv was never queried for it even
+    # though the paper is mirrored there. Both spellings are common in one bibliography.
+    return bool(_SPELLED_OUT_VENUE_RE.search(reference or ""))
+
+
+# Venue names written out in full. Deliberately anchored on the conference/journal words
+# together with a field word, so a title that merely mentions "computer vision" does not
+# route every reference to arXiv.
+_SPELLED_OUT_VENUE_RE = re.compile(
+    r"\b(?:conference|symposium|workshop|proceedings|transactions|journal)\b[^.]{0,80}?"
+    r"\b(?:machine\s+learning|computer\s+vision|pattern\s+recognition|artificial\s+"
+    r"intelligence|computational\s+linguistics|natural\s+language|neural\s+information|"
+    r"learning\s+representations|robotics|automation|knowledge\s+discovery|data\s+mining|"
+    r"information\s+retrieval|robot\s+learning|empirical\s+methods)\b",
+    re.IGNORECASE,
+)
 
 
 def _should_search_dblp(reference: str) -> bool:
@@ -451,6 +470,32 @@ def _fuzzy_title_score(reference: str, candidate_title: str) -> float:
 # ───────────────────────────────────────────────────────────────
 # The resolver
 # ───────────────────────────────────────────────────────────────
+def _arxiv_from_siblings(winner: Candidate, siblings: list[Candidate] | None) -> str:
+    """The winner's arXiv id, recovered from another source that returned the same paper.
+
+    A conference paper resolves to its publisher record — Crossref's ``10.1109/…`` — which
+    carries a DOI and no arXiv id, while Semantic Scholar returns the same paper WITH its
+    arXiv id in the very same fetch. Dropping it costs the full text: the DOI link is a
+    landing page, so the paper is reduced to its abstract even though a preprint is one
+    request away. Measured: nine cells of one table, whose citations are almost all
+    IEEE-published, came back "we only saw the abstract".
+
+    Gated on an exact normalised-title match, never a fuzzy one — a near-namesake's arXiv
+    id would send the reader, and the judge, to the wrong paper.
+    """
+    if winner.arxiv_id or not siblings:
+        return ""
+    want = _norm_title(winner.title)
+    if not want:
+        return ""
+    for other in siblings:
+        if other is winner or not other.arxiv_id:
+            continue
+        if _norm_title(other.title) == want:
+            return other.arxiv_id
+    return ""
+
+
 class MultiSourceResolver:
     """Resolve a cited reference to a canonical record via a match cascade.
 
@@ -695,7 +740,7 @@ class MultiSourceResolver:
         if ref_doi:
             for c in cands:
                 if c.doi and c.doi.lower() == ref_doi and not _title_tokens_contradict(reference, c.title):
-                    return self._to_resolved(c, MatchMethod.DOI, 1.0)
+                    return self._to_resolved(c, MatchMethod.DOI, 1.0, cands)
 
         # 2) arXiv-id exact match.
         if ref_arxiv:
@@ -706,7 +751,7 @@ class MultiSourceResolver:
                     and c.arxiv_id.lower().split("v")[0] == stem
                     and not _title_tokens_contradict(reference, c.title)
                 ):
-                    return self._to_resolved(c, MatchMethod.ARXIV, 1.0)
+                    return self._to_resolved(c, MatchMethod.ARXIV, 1.0, cands)
 
         # 3) Fuzzy title, corroborated (not vetoed) by author overlap + year.
         #    Bibliography author/year fields are often abbreviated, stale, or
@@ -737,7 +782,7 @@ class MultiSourceResolver:
             # gate is None  -> no signal to check, require the stricter threshold.
             threshold = FUZZY_TITLE_GATED_THRESHOLD if gate is True else FUZZY_TITLE_THRESHOLD
             if score >= threshold:
-                return self._to_resolved(c, MatchMethod.FUZZY_TITLE, round(score / 100.0, 3))
+                return self._to_resolved(c, MatchMethod.FUZZY_TITLE, round(score / 100.0, 3), cands)
 
         return None
 
@@ -789,7 +834,7 @@ class MultiSourceResolver:
             return True
         return None
 
-    def _to_resolved(self, c: Candidate, method: MatchMethod, score: float) -> Resolved:
+    def _to_resolved(self, c: Candidate, method: MatchMethod, score: float, siblings: list[Candidate] | None = None) -> Resolved:
         # Prefer S2's curated open-access PDF as the resolved URL: it points at the
         # actual paper text (so Stage-2 relevance can fetch full text for off-arXiv
         # papers, see stages/relevance.py) and is a strictly more useful "source"
@@ -799,6 +844,7 @@ class MultiSourceResolver:
         if self.validate_urls and url:
             url_valid = paper_lookup.validate_url(url)
         abstract = c.abstract or self._abstract_top_up(c)
+        arxiv_id = c.arxiv_id or _arxiv_from_siblings(c, siblings)
         return Resolved(
             source=c.source,
             match_method=method,
@@ -808,7 +854,7 @@ class MultiSourceResolver:
             year=c.year,
             venue=c.venue or None,
             doi=c.doi or None,
-            arxiv_id=c.arxiv_id or None,
+            arxiv_id=arxiv_id or None,
             url=url,
             url_valid=url_valid,
             abstract=abstract or None,

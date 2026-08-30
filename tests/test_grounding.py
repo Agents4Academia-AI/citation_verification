@@ -9,10 +9,12 @@ from __future__ import annotations
 from citation_verifier.grounding import paper_lookup
 from citation_verifier.grounding.resolver import (
     MultiSourceResolver,
+    _arxiv_from_siblings,
     _dict_to_candidate,
     _likely_title,
     _likely_titles,
     _looks_like_author_clause,
+    _should_search_arxiv,
 )
 from citation_verifier.interfaces import Candidate
 from citation_verifier.schema import MatchMethod
@@ -513,3 +515,41 @@ def test_oa_fulltext_by_doi_returns_first_extractable(monkeypatch):
     # provenance variant carries the channel + URL that succeeded
     res = oa.fulltext_by_doi_with_source("10.1/abc")
     assert (res.text, res.source, res.url) == ("FULL TEXT", "unpaywall", "https://b/y.pdf")
+
+
+def test_the_arxiv_id_survives_when_another_source_wins_the_match():
+    r"""A conference paper resolves to its publisher record, which has no arXiv id.
+
+    Crossref answers with the ``10.1109/…`` record while Semantic Scholar returns the same
+    paper WITH its arXiv id in the very same fetch. Dropping it costs the full text: the
+    DOI link is a landing page, so the paper is reduced to its abstract even though a
+    preprint is one request away. Gated on an exact normalised-title match — a
+    near-namesake's arXiv id would send the judge to the wrong paper.
+    """
+    winner = Candidate(source="crossref", title="USIP: Unsupervised Stable Interest Point",
+                       doi="10.1109/iccv.2019.00045")
+    sibling = Candidate(source="s2", title="USIP:  unsupervised stable interest point",
+                        arxiv_id="1904.00229")
+    other = Candidate(source="s2", title="A different paper entirely", arxiv_id="9999.99999")
+    assert _arxiv_from_siblings(winner, [sibling, other]) == "1904.00229"
+    # a candidate that already has one is left alone
+    assert _arxiv_from_siblings(sibling, [other]) == ""
+    # and a near-namesake never contributes its id
+    assert _arxiv_from_siblings(winner, [other]) == ""
+
+
+def test_a_spelled_out_venue_routes_the_reference_to_arxiv():
+    """A bibliography that writes the venue out rather than abbreviating it carries none of
+    the acronyms, so arXiv was never queried for it even though the paper is mirrored
+    there. Both spellings occur in one bibliography."""
+    assert _should_search_arxiv(
+        'Li, Jiaxin. "USIP". Proceedings of the IEEE/CVF international conference on '
+        "computer vision. 2019"
+    )
+    assert _should_search_arxiv(
+        "A. B. A study. Transactions of the Association for Computational Linguistics, 2023."
+    )
+    # a title that merely mentions the field must not route every reference to arXiv
+    assert not _should_search_arxiv(
+        "J. Doe. Deep learning for computer vision applications. My Book, 2019."
+    )
