@@ -101,3 +101,8 @@ chbench_data/
 
 # cverify-bot runtime log (from `python -m citation_verifier.bot`)
 logs_bot.log
+
+# NeurIPS workshop paper — a *separate* Overleaf git repo cloned here.
+# It has its own history and pushes to git.overleaf.com; never nest it in this
+# repo's history (that would create a stray gitlink/submodule entry).
+neurips_workshop/
