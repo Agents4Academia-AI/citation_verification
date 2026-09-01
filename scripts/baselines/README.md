@@ -20,8 +20,15 @@ the comparison isolates one variable.
 python scripts/baselines/build_manifest.py   # archived Refari run -> out/cells.json
 python scripts/baselines/closed_book.py      # the no-retrieval baseline -> out/closed_book.json
 python scripts/baselines/summarize.py --latex
-python scripts/baselines/score_human.py      # both systems vs. the human labels
+python scripts/baselines/scitance.py          # literature baseline -> out/scitance.json
+python scripts/baselines/scitance.py --gloss  # charitable variant (+ column definition)
+python scripts/baselines/refari_judge_cost.py # price Refari's judging stage
+python scripts/baselines/score_human.py       # every system vs. the human labels
 ```
+
+Build the manifest from **`table_audit_percell_0829.md`**, not the older
+`table_audit_percell.md`: the newer run rewrote 96 of 106 column definitions, so a
+baseline judged against the old ones is no longer matched to Refari.
 
 `build_manifest.py` parses the archived per-cell audit
 (`/scratch/datasets/citation_verification_outputs/table_audit_percell.md`) rather than
@@ -32,6 +39,24 @@ re-running extraction, precisely so the denominator cannot drift.
 - **`closed_book.py`** — no retrieval, no tools. The judge answers from its own
   knowledge of the cited work. This is both the headline baseline (what you get by
   just asking a model) and Refari's retrieval ablation.
+- **`scitance.py`** — the literature baseline: Alvarez, Bennett and Wang (SDP 2024),
+  prompt and label set verbatim in their best GPT-4 configuration. Chosen because it is
+  a *prompting procedure*; `zhang2025atomic` and `minicheck2024` both need fine-tuning,
+  so running them with our judge would measure the port rather than the method.
+
+## Cost
+
+`refari_judge_cost.py` replays Refari's own `build_cell_judge` over the frozen
+definitions and evidence, so the system we propose has a figure beside the baselines.
+Per judged cell: SCitance $0.083, closed-book $0.042, Refari ≥$0.038.
+
+The Refari number is a **lower bound twice over** — it omits retrieval and column
+grounding, and it feeds only the evidence *sentence* the report quotes rather than the
+passage the live run held. That second restriction costs a lot: the same judge under it
+reproduces only 54/91 (59.3%) of the archived verdicts. Since `scitance.py` is given
+that same sentence, **the literature baseline is evidence-starved relative to Refari**,
+and its scores are a lower bound on the method. The full retrieved passages are not in
+the archive, so closing this needs a fresh Refari run.
 
 ## Reading the output
 
