@@ -59,6 +59,15 @@ _REF = re.compile(r"^- \*\*被引论文\*\*：(.*?)\s*$")
 _KEY = re.compile(r"^- \*\*引用键\*\*：`(.+?)`\s*$")
 _CELL = re.compile(r"^\|\s*(\d+)\s*\|\s*(.+?)\s*\|\s*\*\*(.+?)\*\*\s*\|\s*(.)")
 _GLOSS = re.compile(r"^\|\s*\*\*(.+?)\*\*\s*\|\s*(.+?)\s*\|\s*(.*?)\s*\|\s*$")
+# Inside a cell row's 5th column: the sentence Refari actually retrieved from the cited
+# work, and (when retrieval fell short) the italic note saying how. Carried through so a
+# baseline can be handed the SAME evidence and the comparison isolates the method.
+_EVIDENCE = re.compile(r"\*\*被引论文原句\*\*：[“\"](.+?)[”\"]", re.DOTALL)
+_RETR_NOTE = re.compile(r"\*(证据不足[^*]*|检索失败[^*]*)\*")
+# The mark-flip probe's outcome for this cell, from the row's last column. "正确翻转"
+# means the verdict flipped as the decision table requires; "模型改口" means the judge
+# gave a different answer to byte-identical evidence, which is the failure we report.
+_PERTURB = re.compile(r"(✔ 正确翻转（经闸门）|✔ 正确翻转|✘ \*\*模型改口\*\*)")
 
 
 def parse(md: str) -> list[dict]:
@@ -112,6 +121,9 @@ def parse(md: str) -> list[dict]:
         if section == "cells" and (m := _CELL.match(line)):
             idx, header, claimed, glyph = (g.strip() for g in m.groups())
             g = glosses.get(header, {"gloss": "", "gloss_source": "none", "gloss_source_raw": ""})
+            ev = _EVIDENCE.search(line)
+            note = _RETR_NOTE.search(line)
+            pert = _PERTURB.search(line)
             cells.append(
                 {
                     "cell_uid": f"{paper}:{idx}",
@@ -126,6 +138,9 @@ def parse(md: str) -> list[dict]:
                     "dimension": header,
                     "claimed": MARK.get(claimed, "unknown"),
                     "refari_verdict": VERDICT.get(glyph, "unknown"),
+                    "evidence": ev.group(1).strip() if ev else "",
+                    "retrieval_note": note.group(1).strip() if note else "",
+                    "perturbation_ok": (pert.group(1) != "✘ **模型改口**") if pert else None,
                     **g,
                 }
             )

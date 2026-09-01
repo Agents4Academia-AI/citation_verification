@@ -1,0 +1,3512 @@
+{
+ "meta": {
+  "model": "claude-opus-4-8",
+  "transport": "query",
+  "passes": 2,
+  "llm_calls": 48,
+  "usage": {
+   "backend": "agentic",
+   "model": "claude-opus-4-8",
+   "input_tokens": 204364,
+   "output_tokens": 189303,
+   "cache_read_tokens": 849356,
+   "cache_creation_tokens": 68185,
+   "cost_usd": 6.902658999999999,
+   "num_turns": 50,
+   "tool_calls": 0,
+   "wall_seconds": 0.0,
+   "by_tier": {}
+  },
+  "elapsed_s": 465.7,
+  "cells_judged": 92,
+  "cited_works": 24
+ },
+ "cells": [
+  {
+   "cell_uid": "LLM-FE:1",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 1,
+   "row_label": "AutoFeat",
+   "cited_title": "The autofeat python library for automated feature engineering and selection",
+   "cited_meta": "Horn, Franziska, Pack, Robert, Rieger, Michael · 2020 · Machine Learning and Knowledge Dis",
+   "cite_key": "horn2020autofeat",
+   "dimension": "Complex — Features",
+   "claimed": "yes",
+   "refari_verdict": "undefined",
+   "gloss": "",
+   "gloss_source": "header_only",
+   "gloss_source_raw": "论文未定义",
+   "baseline_verdict": "undefined",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "LLM-FE:2",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 2,
+   "row_label": "AutoFeat",
+   "cited_title": "The autofeat python library for automated feature engineering and selection",
+   "cited_meta": "Horn, Franziska, Pack, Robert, Rieger, Michael · 2020 · Machine Learning and Knowledge Dis",
+   "cite_key": "horn2020autofeat",
+   "dimension": "Domain — Knowledge",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "A method earns a ✓ if its feature engineering incorporates domain-specific knowledge or insights about the dataset, rather than generating/combining features in a purely domain-agnostic way.",
+   "gloss_source": "mention",
+   "gloss_source_raw": "仅提及",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching 'incorporates domain-specific knowledge ... rather than generating/combining features in a purely domain-agnostic way.' AutoFeat's core mechanism generates candidate features by applying a fixed library of non-linear mathematical operators (log, sqrt, products, ratios, etc.) to numeric columns without semantic understanding of the dataset — a domain-agnostic approach. Its optional units parameter is a dimensional constraint, not domain/semantic insight.",
+    "Matching 'incorporates domain-specific knowledge or insights about the dataset, rather than generating/combining features in a purely domain-agnostic way.' AutoFeat's core feature engineering is a domain-agnostic combinatorial expansion: it iteratively applies a fixed set of generic mathematical operators (log, sqrt, exp, powers, products, ratios, etc.) to the raw columns without any semantic understanding of what the dataset represents. It does offer an optional `units` parameter that constrain"
+   ],
+   "baseline_confidences": [
+    0.6,
+    0.52
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "LLM-FE:3",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 3,
+   "row_label": "AutoFeat",
+   "cited_title": "The autofeat python library for automated feature engineering and selection",
+   "cited_meta": "Horn, Franziska, Pack, Robert, Rieger, Michael · 2020 · Machine Learning and Knowledge Dis",
+   "cite_key": "horn2020autofeat",
+   "dimension": "Feedback — Driven",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "A method earns a ✓ if it uses data-driven feedback from evaluating candidate features' predictive performance (e.g., validation-set results) to steer its subsequent feature generation.",
+   "gloss_source": "mention",
+   "gloss_source_raw": "仅提及",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching 'uses data-driven feedback from evaluating candidate features' predictive performance ... to steer its subsequent feature generation.' AutoFeat is a generate-then-select pipeline: transformations are applied systematically/combinatorially to generate features, and target-aware L1-based selection is a separate downstream stage. Generation is not adaptively steered by predictive-performance feedback.",
+    "Matching 'uses data-driven feedback from evaluating candidate features' predictive performance ... to steer its subsequent feature generation.' AutoFeat separates the pipeline into (1) a predetermined number of feature-engineering steps that exhaustively generate non-linear candidate features, followed by (2) a feature-selection stage using L1-regularized (Lasso) linear models compared against noise features. The generation phase is a fixed combinatorial expansion; predictive-performance results"
+   ],
+   "baseline_confidences": [
+    0.55,
+    0.6
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "LLM-FE:4",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 4,
+   "row_label": "AutoFeat",
+   "cited_title": "The autofeat python library for automated feature engineering and selection",
+   "cited_meta": "Horn, Franziska, Pack, Robert, Rieger, Michael · 2020 · Machine Learning and Knowledge Dis",
+   "cite_key": "horn2020autofeat",
+   "dimension": "Multi-Feature — Refinement",
+   "claimed": "no",
+   "refari_verdict": "undefined",
+   "gloss": "A method earns a ✓ if it iteratively/evolutionarily refines features across multiple rounds so that earlier-discovered features are composed into higher-order multi-feature combinations, rather than being generated in a single pass.",
+   "gloss_source": "mention",
+   "gloss_source_raw": "仅提及",
+   "baseline_verdict": "undefined",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "LLM-FE:5",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 5,
+   "row_label": "OpenFE",
+   "cited_title": "OpenFE: automated feature generation with expert-level performance",
+   "cited_meta": "Zhang, Tianping, Zhang, Zheyu Aqa, Fan, Zhiyuan · 2023 · International Conference on Machin",
+   "cite_key": "zhang2023openfe",
+   "dimension": "Complex — Features",
+   "claimed": "yes",
+   "refari_verdict": "undefined",
+   "gloss": "",
+   "gloss_source": "header_only",
+   "gloss_source_raw": "论文未定义",
+   "baseline_verdict": "undefined",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "LLM-FE:6",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 6,
+   "row_label": "OpenFE",
+   "cited_title": "OpenFE: automated feature generation with expert-level performance",
+   "cited_meta": "Zhang, Tianping, Zhang, Zheyu Aqa, Fan, Zhiyuan · 2023 · International Conference on Machin",
+   "cite_key": "zhang2023openfe",
+   "dimension": "Domain — Knowledge",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "A method earns a ✓ if its feature engineering incorporates domain-specific knowledge or insights about the dataset, rather than generating/combining features in a purely domain-agnostic way.",
+   "gloss_source": "mention",
+   "gloss_source_raw": "仅提及",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Definition part: 'incorporates domain-specific knowledge or insights about the dataset, rather than ... domain-agnostic.' OpenFE generates candidates by applying a fixed, general-purpose operator set (arithmetic, GroupBy aggregations, frequency encoding) to raw columns regardless of dataset semantics. It carries no domain/world knowledge — its features are produced in a purely domain-agnostic combinatorial way.",
+    "Matching 'incorporates domain-specific knowledge/insights rather than generating features in a purely domain-agnostic way' (qualitative). OpenFE constructs candidate features by exhaustively enumerating combinations of raw features with a fixed operator set (arithmetic + GroupBy/aggregation operators). This generation is purely combinatorial and domain-agnostic; it uses no dataset semantics or domain knowledge to guide feature construction. So it LACKS the property."
+   ],
+   "baseline_confidences": [
+    0.85,
+    0.85
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "LLM-FE:7",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 7,
+   "row_label": "OpenFE",
+   "cited_title": "OpenFE: automated feature generation with expert-level performance",
+   "cited_meta": "Zhang, Tianping, Zhang, Zheyu Aqa, Fan, Zhiyuan · 2023 · International Conference on Machin",
+   "cite_key": "zhang2023openfe",
+   "dimension": "Feedback — Driven",
+   "claimed": "no",
+   "refari_verdict": "unverifiable",
+   "gloss": "A method earns a ✓ if it uses data-driven feedback from evaluating candidate features' predictive performance (e.g., validation-set results) to steer its subsequent feature generation.",
+   "gloss_source": "mention",
+   "gloss_source_raw": "仅提及",
+   "baseline_answers": [
+    "lacks",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Definition part: 'uses data-driven feedback ... to steer its SUBSEQUENT feature generation.' OpenFE does evaluate candidate features' predictive performance (FeatureBoost estimates incremental gain), but this feedback is used to prune/select from a candidate pool that is fixed by exhaustive enumeration. It is an expand-then-reduce pipeline; performance feedback does not loop back to guide the generation of new candidates. The evaluation steers selection, not subsequent generation.",
+    "Matching 'uses data-driven feedback from evaluating candidate features' predictive performance.' OpenFE's core mechanism, FeatureBoost, evaluates each candidate feature by estimating its incremental reduction in the model's prediction loss (fitting against residuals/gradients), then applies two-stage successive pruning driven by these performance estimates. This is data-driven feedback on candidate features' predictive contribution that determines which features the method outputs. The 'steer su"
+   ],
+   "baseline_confidences": [
+    0.55,
+    0.5
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "contradicted"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": false
+  },
+  {
+   "cell_uid": "LLM-FE:8",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 8,
+   "row_label": "OpenFE",
+   "cited_title": "OpenFE: automated feature generation with expert-level performance",
+   "cited_meta": "Zhang, Tianping, Zhang, Zheyu Aqa, Fan, Zhiyuan · 2023 · International Conference on Machin",
+   "cite_key": "zhang2023openfe",
+   "dimension": "Multi-Feature — Refinement",
+   "claimed": "no",
+   "refari_verdict": "unverifiable",
+   "gloss": "A method earns a ✓ if it iteratively/evolutionarily refines features across multiple rounds so that earlier-discovered features are composed into higher-order multi-feature combinations, rather than being generated in a single pass.",
+   "gloss_source": "mention",
+   "gloss_source_raw": "仅提及",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Definition part: 'iteratively/evolutionarily refines features across multiple rounds so that earlier-discovered features are composed into higher-order multi-feature combinations, rather than a single pass.' OpenFE's design is a single-pass generation of the candidate space followed by efficient evaluation and two-stage pruning; it is not a genetic/evolutionary search that recombines previously selected features into higher-order features across rounds.",
+    "Matching 'iteratively/evolutionarily refines features across multiple rounds so that earlier-discovered features are composed into higher-order combinations, rather than being generated in a single pass.' OpenFE is designed as an efficient one-pass generate-then-prune method: it enumerates a candidate feature space and evaluates it with FeatureBoost + two-stage pruning, explicitly avoiding the expensive evolutionary/iterative retraining loops used by methods like AutoFeat or genetic programming."
+   ],
+   "baseline_confidences": [
+    0.55,
+    0.6
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "LLM-FE:9",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 9,
+   "row_label": "FeatLLM",
+   "cited_title": "Large Language Models Can Automatically Engineer Features for Few-Shot Tabular Learning",
+   "cited_meta": "Han, Sungwon, Yoon, Jinsung, Arik, Sercan O · 2024 · International Conference on Machin",
+   "cite_key": "han2024large",
+   "dimension": "Complex — Features",
+   "claimed": "no",
+   "refari_verdict": "undefined",
+   "gloss": "",
+   "gloss_source": "header_only",
+   "gloss_source_raw": "论文未定义",
+   "baseline_verdict": "undefined",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "LLM-FE:10",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 10,
+   "row_label": "FeatLLM",
+   "cited_title": "Large Language Models Can Automatically Engineer Features for Few-Shot Tabular Learning",
+   "cited_meta": "Han, Sungwon, Yoon, Jinsung, Arik, Sercan O · 2024 · International Conference on Machin",
+   "cite_key": "han2024large",
+   "dimension": "Domain — Knowledge",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "A method earns a ✓ if its feature engineering incorporates domain-specific knowledge or insights about the dataset, rather than generating/combining features in a purely domain-agnostic way.",
+   "gloss_source": "mention",
+   "gloss_source_raw": "仅提及",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'feature engineering incorporates domain-specific knowledge or insights about the dataset.' FeatLLM feeds the LLM the task description and semantic feature/column descriptions, and the LLM leverages its prior/domain knowledge about those columns to infer meaningful predictive rules rather than combining features in a purely domain-agnostic, statistical way. This is the core of the method.",
+    "Matching 'feature engineering incorporates domain-specific knowledge or insights about the dataset.' FeatLLM feeds the LLM the dataset's task description, feature names/semantics, and few-shot examples, and prompts it to reason about which conditions are predictive. This leverages the LLM's domain/world knowledge and dataset semantics rather than blindly combining columns."
+   ],
+   "baseline_confidences": [
+    0.86,
+    0.85
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "LLM-FE:11",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 11,
+   "row_label": "FeatLLM",
+   "cited_title": "Large Language Models Can Automatically Engineer Features for Few-Shot Tabular Learning",
+   "cited_meta": "Han, Sungwon, Yoon, Jinsung, Arik, Sercan O · 2024 · International Conference on Machin",
+   "cite_key": "han2024large",
+   "dimension": "Feedback — Driven",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "A method earns a ✓ if it uses data-driven feedback from evaluating candidate features' predictive performance (e.g., validation-set results) to steer its subsequent feature generation.",
+   "gloss_source": "mention",
+   "gloss_source_raw": "仅提及",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching 'uses data-driven feedback from evaluating candidate features' predictive performance (e.g., validation-set results) to steer its subsequent feature generation.' FeatLLM generates rule/feature sets in a single pass (an ensemble of independent LLM generations) and then fits a linear model on the induced binary features. The LLM generation is not looped/steered by validation-performance feedback of candidate features; the linear weights are not returned to the LLM to guide the next round ",
+    "Matching 'uses data-driven feedback from evaluating candidate features' predictive performance to steer subsequent feature generation.' FeatLLM generates binary-condition rules in a single LLM query pass and ensembles multiple such rule sets, then fits a simple linear model on the resulting features. The LLM generation itself is not steered by validation-performance feedback loops; this is a key contrast with iterative-feedback methods."
+   ],
+   "baseline_confidences": [
+    0.68,
+    0.7
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "LLM-FE:12",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 12,
+   "row_label": "FeatLLM",
+   "cited_title": "Large Language Models Can Automatically Engineer Features for Few-Shot Tabular Learning",
+   "cited_meta": "Han, Sungwon, Yoon, Jinsung, Arik, Sercan O · 2024 · International Conference on Machin",
+   "cite_key": "han2024large",
+   "dimension": "Multi-Feature — Refinement",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "A method earns a ✓ if it iteratively/evolutionarily refines features across multiple rounds so that earlier-discovered features are composed into higher-order multi-feature combinations, rather than being generated in a single pass.",
+   "gloss_source": "mention",
+   "gloss_source_raw": "仅提及",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching 'iteratively/evolutionarily refines features across multiple rounds so that earlier-discovered features are composed into higher-order multi-feature combinations, rather than being generated in a single pass.' FeatLLM produces rules in a single (ensembled but non-iterative) generation step; it does not run an evolutionary/multi-round loop that composes previously found features into higher-order combinations.",
+    "Matching 'iteratively/evolutionarily refines features across multiple rounds so that earlier-discovered features are composed into higher-order multi-feature combinations.' FeatLLM produces its rules in a single-pass generation (with ensembling of independent rule sets), not an evolutionary loop that composes earlier features into higher-order combinations across rounds."
+   ],
+   "baseline_confidences": [
+    0.7,
+    0.68
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "LLM-FE:13",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 13,
+   "row_label": "CAAFE",
+   "cited_title": "Large language models for automated data science: Introducing caafe for context-aware automated feature engineering",
+   "cited_meta": "Hollmann, Noah, M\\\"uller, Samuel, Hutter, Frank · 2024 · Advances in Neural Information Pro",
+   "cite_key": "hollmann2024large",
+   "dimension": "Complex — Features",
+   "claimed": "no",
+   "refari_verdict": "undefined",
+   "gloss": "",
+   "gloss_source": "header_only",
+   "gloss_source_raw": "论文未定义",
+   "baseline_verdict": "undefined",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "LLM-FE:14",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 14,
+   "row_label": "CAAFE",
+   "cited_title": "Large language models for automated data science: Introducing caafe for context-aware automated feature engineering",
+   "cited_meta": "Hollmann, Noah, M\\\"uller, Samuel, Hutter, Frank · 2024 · Advances in Neural Information Pro",
+   "cite_key": "hollmann2024large",
+   "dimension": "Domain — Knowledge",
+   "claimed": "yes",
+   "refari_verdict": "unverifiable",
+   "gloss": "A method earns a ✓ if its feature engineering incorporates domain-specific knowledge or insights about the dataset, rather than generating/combining features in a purely domain-agnostic way.",
+   "gloss_source": "mention",
+   "gloss_source_raw": "仅提及",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'incorporates domain-specific knowledge or insights about the dataset.' CAAFE (Context-Aware Automated Feature Engineering) is explicitly built to leverage an LLM's world/domain knowledge plus a natural-language dataset description to generate semantically meaningful features (e.g., deriving domain-relevant columns), rather than domain-agnostic feature crossing. This 'context-awareness' is its central contribution.",
+    "Matching 'incorporates domain-specific knowledge or insights about the dataset.' CAAFE is explicitly 'context-aware': it feeds the LLM the dataset description and column semantics (names, meanings) so generated feature-engineering code exploits domain knowledge about what the columns represent, not purely domain-agnostic arithmetic combinations. This is the central premise of the method."
+   ],
+   "baseline_confidences": [
+    0.95,
+    0.95
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "LLM-FE:15",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 15,
+   "row_label": "CAAFE",
+   "cited_title": "Large language models for automated data science: Introducing caafe for context-aware automated feature engineering",
+   "cited_meta": "Hollmann, Noah, M\\\"uller, Samuel, Hutter, Frank · 2024 · Advances in Neural Information Pro",
+   "cite_key": "hollmann2024large",
+   "dimension": "Feedback — Driven",
+   "claimed": "yes",
+   "refari_verdict": "unverifiable",
+   "gloss": "A method earns a ✓ if it uses data-driven feedback from evaluating candidate features' predictive performance (e.g., validation-set results) to steer its subsequent feature generation.",
+   "gloss_source": "mention",
+   "gloss_source_raw": "仅提及",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'uses data-driven feedback from evaluating candidate features' predictive performance (e.g., validation-set results) to steer subsequent generation.' CAAFE evaluates each generated feature-engineering code block by measuring the change in downstream predictive performance (accuracy/ROC AUC on held-out/validation splits, using a model like TabPFN), keeps features that improve performance, and feeds these performance results back to the LLM to guide the next iteration.",
+    "Matching 'uses data-driven feedback from evaluating candidate features' predictive performance ... to steer its subsequent feature generation.' CAAFE runs an iterative loop where each generated feature's effect on classifier (TabPFN) cross-validation performance is measured; features that don't improve accuracy are dropped, and the performance results are passed back to the LLM to guide the next iteration."
+   ],
+   "baseline_confidences": [
+    0.9,
+    0.9
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "LLM-FE:16",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 16,
+   "row_label": "CAAFE",
+   "cited_title": "Large language models for automated data science: Introducing caafe for context-aware automated feature engineering",
+   "cited_meta": "Hollmann, Noah, M\\\"uller, Samuel, Hutter, Frank · 2024 · Advances in Neural Information Pro",
+   "cite_key": "hollmann2024large",
+   "dimension": "Multi-Feature — Refinement",
+   "claimed": "no",
+   "refari_verdict": "unverifiable",
+   "gloss": "A method earns a ✓ if it iteratively/evolutionarily refines features across multiple rounds so that earlier-discovered features are composed into higher-order multi-feature combinations, rather than being generated in a single pass.",
+   "gloss_source": "mention",
+   "gloss_source_raw": "仅提及",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'iteratively... refines features across multiple rounds so that earlier-discovered features are composed... rather than generated in a single pass.' CAAFE runs multiple iterations of code generation; accepted features accumulate in the dataframe and prior code is included in context, so later iterations can build on/combine earlier-added features. It is iterative, not single-pass, though it is not strictly evolutionary (no population/crossover), and composing higher-order multi-feature ",
+    "Matching 'iteratively refines features across multiple rounds ... rather than being generated in a single pass.' CAAFE runs multiple iterations (default ~10), and each iteration's code operates on the current dataframe that already contains previously added features, so later features can reference/compose earlier-generated ones rather than being produced in one pass. Confidence is moderate because CAAFE has no explicit evolutionary population/composition operator; the higher-order composition i"
+   ],
+   "baseline_confidences": [
+    0.6,
+    0.55
+   ],
+   "baseline_verdicts": [
+    "contradicted",
+    "contradicted"
+   ],
+   "baseline_verdict": "contradicted",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "LLM-FE:17",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 17,
+   "row_label": "OCTree",
+   "cited_title": "Optimized feature generation for tabular data via llms with decision tree reasoning",
+   "cited_meta": "Nam, Jaehyun, Kim, Kyuyoung, Oh, Seunghyuk · 2024 · Advances in neural information pro",
+   "cite_key": "nam2024optimized",
+   "dimension": "Complex — Features",
+   "claimed": "no",
+   "refari_verdict": "undefined",
+   "gloss": "",
+   "gloss_source": "header_only",
+   "gloss_source_raw": "论文未定义",
+   "baseline_verdict": "undefined",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "LLM-FE:18",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 18,
+   "row_label": "OCTree",
+   "cited_title": "Optimized feature generation for tabular data via llms with decision tree reasoning",
+   "cited_meta": "Nam, Jaehyun, Kim, Kyuyoung, Oh, Seunghyuk · 2024 · Advances in neural information pro",
+   "cite_key": "nam2024optimized",
+   "dimension": "Domain — Knowledge",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "A method earns a ✓ if its feature engineering incorporates domain-specific knowledge or insights about the dataset, rather than generating/combining features in a purely domain-agnostic way.",
+   "gloss_source": "mention",
+   "gloss_source_raw": "仅提及",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Property (domain-specific knowledge in feature engineering): OCTree uses an LLM prompted with the dataset's task description and semantic feature names to propose new features, leveraging the LLM's prior/world knowledge about the domain rather than combining columns in a purely domain-agnostic way. This is qualitative and matches on substance.",
+    "Property (qualitative): feature engineering incorporates domain-specific knowledge/insights about the dataset. OCTree uses an LLM to propose new features conditioned on the dataset's semantic context (task description, column/feature names), leveraging the LLM's prior world knowledge to construct meaningful, semantically-grounded features rather than purely domain-agnostic arithmetic combinations. This matches the property."
+   ],
+   "baseline_confidences": [
+    0.9,
+    0.8
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "LLM-FE:19",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 19,
+   "row_label": "OCTree",
+   "cited_title": "Optimized feature generation for tabular data via llms with decision tree reasoning",
+   "cited_meta": "Nam, Jaehyun, Kim, Kyuyoung, Oh, Seunghyuk · 2024 · Advances in neural information pro",
+   "cite_key": "nam2024optimized",
+   "dimension": "Feedback — Driven",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "A method earns a ✓ if it uses data-driven feedback from evaluating candidate features' predictive performance (e.g., validation-set results) to steer its subsequent feature generation.",
+   "gloss_source": "mention",
+   "gloss_source_raw": "仅提及",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Property (data-driven feedback from candidate features' predictive performance steering subsequent generation): OCTree is an iterative optimization loop where each proposed feature/rule is evaluated with a downstream model's validation score, and that score together with decision-tree-derived reasoning is fed back to the LLM to guide the next feature proposal. This directly matches the feedback-driven definition.",
+    "Property (qualitative): uses data-driven feedback from evaluating candidate features' predictive performance to steer subsequent generation. OCTree is an iterative optimization loop: candidate features are evaluated on validation performance, and decision-tree-derived reasoning/rules plus the performance scores are fed back to the LLM to guide the next round of feature generation, keeping the best-scoring feature. This is exactly the feedback-driven property."
+   ],
+   "baseline_confidences": [
+    0.92,
+    0.85
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "LLM-FE:20",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 20,
+   "row_label": "OCTree",
+   "cited_title": "Optimized feature generation for tabular data via llms with decision tree reasoning",
+   "cited_meta": "Nam, Jaehyun, Kim, Kyuyoung, Oh, Seunghyuk · 2024 · Advances in neural information pro",
+   "cite_key": "nam2024optimized",
+   "dimension": "Multi-Feature — Refinement",
+   "claimed": "no",
+   "refari_verdict": "undefined",
+   "gloss": "A method earns a ✓ if it iteratively/evolutionarily refines features across multiple rounds so that earlier-discovered features are composed into higher-order multi-feature combinations, rather than being generated in a single pass.",
+   "gloss_source": "mention",
+   "gloss_source_raw": "仅提及",
+   "baseline_verdict": "undefined",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "LLM-FE:21",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 21,
+   "row_label": "LLM-FE",
+   "cited_title": "LLM-FE",
+   "cited_meta": "",
+   "cite_key": "（该行无引用）",
+   "dimension": "Domain — Knowledge",
+   "claimed": "yes",
+   "refari_verdict": "skipped",
+   "gloss": "A method earns a ✓ if its feature engineering incorporates domain-specific knowledge or insights about the dataset, rather than generating/combining features in a purely domain-agnostic way.",
+   "gloss_source": "mention",
+   "gloss_source_raw": "仅提及",
+   "baseline_verdict": "skipped",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "LLM-FE:22",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 22,
+   "row_label": "LLM-FE",
+   "cited_title": "LLM-FE",
+   "cited_meta": "",
+   "cite_key": "（该行无引用）",
+   "dimension": "Feedback — Driven",
+   "claimed": "yes",
+   "refari_verdict": "skipped",
+   "gloss": "A method earns a ✓ if it uses data-driven feedback from evaluating candidate features' predictive performance (e.g., validation-set results) to steer its subsequent feature generation.",
+   "gloss_source": "mention",
+   "gloss_source_raw": "仅提及",
+   "baseline_verdict": "skipped",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "LLM-FE:23",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 23,
+   "row_label": "LLM-FE",
+   "cited_title": "LLM-FE",
+   "cited_meta": "",
+   "cite_key": "（该行无引用）",
+   "dimension": "Complex — Features",
+   "claimed": "yes",
+   "refari_verdict": "skipped",
+   "gloss": "",
+   "gloss_source": "header_only",
+   "gloss_source_raw": "论文未定义",
+   "baseline_verdict": "skipped",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "LLM-FE:24",
+   "paper": "LLM-FE",
+   "citing_url": "https://arxiv.org/abs/2503.14434",
+   "table_id": "tab:accents",
+   "index": 24,
+   "row_label": "LLM-FE",
+   "cited_title": "LLM-FE",
+   "cited_meta": "",
+   "cite_key": "（该行无引用）",
+   "dimension": "Multi-Feature — Refinement",
+   "claimed": "yes",
+   "refari_verdict": "skipped",
+   "gloss": "A method earns a ✓ if it iteratively/evolutionarily refines features across multiple rounds so that earlier-discovered features are composed into higher-order multi-feature combinations, rather than being generated in a single pass.",
+   "gloss_source": "mention",
+   "gloss_source_raw": "仅提及",
+   "baseline_verdict": "skipped",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "ATU:1",
+   "paper": "ATU",
+   "citing_url": "https://arxiv.org/abs/2206.04335",
+   "table_id": "tab:related_work",
+   "index": 1,
+   "row_label": "MetaAug",
+   "cited_title": "Meta-learning requires meta-augmentation",
+   "cited_meta": "Rajendran, Janarthanan, Irpan, Alex, Jang, Eric · 2020 · arXiv preprint arXiv:2007.05549",
+   "cite_key": "rajendran2020meta",
+   "dimension": "Task-aware",
+   "claimed": "yes",
+   "refari_verdict": "unverifiable",
+   "gloss": "A method earns a ✓ if its augmented tasks stay within the immediate vicinity of the sampled meta-training tasks, remaining faithful to the underlying task distribution (e.g. barely altering the support-to-query mapping) rather than producing erroneous tasks that violate it.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "unclear"
+   ],
+   "baseline_justifications": [
+    "Matching the core clause 'remaining faithful to the underlying task distribution ... rather than producing erroneous tasks that violate it.' Meta-augmentation (Rajendran, Irpan, Jang 2020) augments by adding a random, task-specific transformation/noise to the labels and applies the SAME transformation consistently to both support and query. This keeps each augmented task a valid, self-consistent, still-solvable meta-learning task (support determines the correct query mapping) rather than an erro",
+    "Matching 'stay within the immediate vicinity... barely altering the support-to-query mapping ... rather than producing erroneous tasks.' MetaAug's CE augmentation keeps tasks valid/solvable (satisfying the 'not erroneous' clause), but its defining purpose is to DELIBERATELY alter the support-to-query dependency (breaking mutual-exclusivity), which directly contradicts 'barely altering the support-to-query mapping.' The mechanism half-matches and half-contradicts the definition, and I cannot sett"
+   ],
+   "baseline_confidences": [
+    0.45,
+    0.45
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "unverifiable"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": false
+  },
+  {
+   "cell_uid": "ATU:2",
+   "paper": "ATU",
+   "citing_url": "https://arxiv.org/abs/2206.04335",
+   "table_id": "tab:related_work",
+   "index": 2,
+   "row_label": "MetaAug",
+   "cited_title": "Meta-learning requires meta-augmentation",
+   "cited_meta": "Rajendran, Janarthanan, Irpan, Alex, Jang, Eric · 2020 · arXiv preprint arXiv:2007.05549",
+   "cite_key": "rajendran2020meta",
+   "dimension": "Task-imaginary",
+   "claimed": "no",
+   "refari_verdict": "unverifiable",
+   "gloss": "A method earns a ✓ if its augmented tasks embrace diversity by covering a substantial portion of the true task distribution, beyond the immediate neighbourhood that task-awareness alone would guarantee.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'covering a substantial portion of the true task distribution, beyond the immediate neighbourhood.' Meta-augmentation expands tasks only by random encodings/noise in the LABEL space of already-sampled tasks (e.g., random phase/amplitude shifts for sinusoids, label permutations for classification). This is a local perturbation to prevent memorization, not a generative mechanism that covers broad novel regions of the underlying task distribution, so it does not go meaningfully beyond the ",
+    "Matching 'embrace diversity by covering a substantial portion of the true task distribution, beyond the immediate neighbourhood.' MetaAug's explicit stated goal is to combat memorization by multiplying task diversity — generating many new tasks from each base task via random label transformations/permutations, substantially expanding coverage of the task space rather than only local perturbation."
+   ],
+   "baseline_confidences": [
+    0.45,
+    0.5
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "contradicted"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": false
+  },
+  {
+   "cell_uid": "ATU:3",
+   "paper": "ATU",
+   "citing_url": "https://arxiv.org/abs/2206.04335",
+   "table_id": "tab:related_work",
+   "index": 3,
+   "row_label": "MetaAug",
+   "cited_title": "Meta-learning requires meta-augmentation",
+   "cited_meta": "Rajendran, Janarthanan, Irpan, Alex, Jang, Eric · 2020 · arXiv preprint arXiv:2007.05549",
+   "cite_key": "rajendran2020meta",
+   "dimension": "Model-adaptive",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "A method earns a ✓ if its augmented tasks are generated in response to the current meta-knowledge, timely targeting tasks that the model before augmentation struggles to generalize to.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching 'generated in response to the current meta-knowledge, timely targeting tasks that the model before augmentation struggles to generalize to.' Meta-augmentation uses random, model-independent label transformations sampled a priori; the augmentation is not conditioned on the current model/meta-parameters and does not adversarially target the model's weak spots. Hence it is not model-adaptive.",
+    "Matching 'generated in response to the current meta-knowledge, timely targeting tasks that the model before augmentation struggles to generalize to.' MetaAug uses a fixed, randomly-sampled augmentation distribution (noise/permutation on labels) that is independent of the current model state; it performs no adversarial or hard-task-targeting adaptation, so it cannot be model-adaptive."
+   ],
+   "baseline_confidences": [
+    0.72,
+    0.8
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "ATU:4",
+   "paper": "ATU",
+   "citing_url": "https://arxiv.org/abs/2206.04335",
+   "table_id": "tab:related_work",
+   "index": 4,
+   "row_label": "MetaMix",
+   "cited_title": "Improving generalization in meta-learning via task augmentation",
+   "cited_meta": "Yao, Huaxiu, Huang, Long-Kai, Zhang, Linjun · 2021 · ICML",
+   "cite_key": "yao2021improving",
+   "dimension": "Task-aware",
+   "claimed": "yes",
+   "refari_verdict": "unverifiable",
+   "gloss": "A method earns a ✓ if its augmented tasks stay within the immediate vicinity of the sampled meta-training tasks, remaining faithful to the underlying task distribution (e.g. barely altering the support-to-query mapping) rather than producing erroneous tasks that violate it.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'augmented tasks stay within the immediate vicinity of the sampled meta-training tasks... faithful to the underlying task distribution.' This is a qualitative capability. MetaMix builds new query examples by convex (mixup/manifold-mixup) interpolation between support and query points of the SAME sampled task, with correspondingly interpolated soft labels. Convex combinations stay on/near the original data manifold and preserve a consistent support-to-query mapping, so the augmented task",
+    "Matching 'augmented tasks stay within the immediate vicinity ... remaining faithful to the underlying task distribution.' This is a qualitative definition. MetaMix (Yao, Huang, Zhang, ICML 2021) augments each sampled task by (manifold-)mixup interpolation between support and query examples of that same task, with coefficients drawn from a Beta distribution. Because it only linearly interpolates existing within-task samples/labels, the augmented tasks remain local perturbations near the original "
+   ],
+   "baseline_confidences": [
+    0.62,
+    0.62
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "ATU:5",
+   "paper": "ATU",
+   "citing_url": "https://arxiv.org/abs/2206.04335",
+   "table_id": "tab:related_work",
+   "index": 5,
+   "row_label": "MetaMix",
+   "cited_title": "Improving generalization in meta-learning via task augmentation",
+   "cited_meta": "Yao, Huaxiu, Huang, Long-Kai, Zhang, Linjun · 2021 · ICML",
+   "cite_key": "yao2021improving",
+   "dimension": "Task-imaginary",
+   "claimed": "no",
+   "refari_verdict": "unverifiable",
+   "gloss": "A method earns a ✓ if its augmented tasks embrace diversity by covering a substantial portion of the true task distribution, beyond the immediate neighbourhood that task-awareness alone would guarantee.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching 'cover a substantial portion of the true task distribution, beyond the immediate neighbourhood.' MetaMix only interpolates within a single sampled task (support-query mixup), so its augmented tasks lie in the convex hull/neighborhood of existing tasks and do not synthesize genuinely novel, distant tasks. It does not expand coverage across the broader task distribution (that is the role of later cross-task methods like MLTI), so it lacks task-imaginary diversity.",
+    "Matching 'cover a substantial portion of the true task distribution, beyond the immediate neighbourhood.' MetaMix only interpolates between existing support/query samples of already-sampled tasks (local mixup), so it does not synthesize genuinely novel/imaginary tasks spanning large regions of the task distribution; its coverage is confined to the neighborhood of sampled tasks, which is exactly what task-imaginary requires going beyond."
+   ],
+   "baseline_confidences": [
+    0.66,
+    0.6
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "ATU:6",
+   "paper": "ATU",
+   "citing_url": "https://arxiv.org/abs/2206.04335",
+   "table_id": "tab:related_work",
+   "index": 6,
+   "row_label": "MetaMix",
+   "cited_title": "Improving generalization in meta-learning via task augmentation",
+   "cited_meta": "Yao, Huaxiu, Huang, Long-Kai, Zhang, Linjun · 2021 · ICML",
+   "cite_key": "yao2021improving",
+   "dimension": "Model-adaptive",
+   "claimed": "no",
+   "refari_verdict": "unverifiable",
+   "gloss": "A method earns a ✓ if its augmented tasks are generated in response to the current meta-knowledge, timely targeting tasks that the model before augmentation struggles to generalize to.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching 'generated in response to the current meta-knowledge, timely targeting tasks that the model before augmentation struggles to generalize to.' MetaMix's mixing coefficients are sampled from a fixed Beta distribution independent of the model's current state; the augmentation is not conditioned on where the current model fails. It is a static, model-agnostic interpolation scheme, so it is not model-adaptive.",
+    "Matching 'generated in response to the current meta-knowledge, timely targeting tasks that the model ... struggles to generalize to.' MetaMix's augmentation uses random Beta-sampled mixing coefficients applied uniformly; although manifold mixup operates on the current network's hidden features, the augmentation is not steered by where the model currently fails and does not adaptively target hard tasks. Hence it is not model-adaptive in the sense defined."
+   ],
+   "baseline_confidences": [
+    0.74,
+    0.58
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "ATU:7",
+   "paper": "ATU",
+   "citing_url": "https://arxiv.org/abs/2206.04335",
+   "table_id": "tab:related_work",
+   "index": 7,
+   "row_label": "Meta-Maxup",
+   "cited_title": "Data augmentation for meta-learning",
+   "cited_meta": "Ni, Renkun, Goldblum, Micah, Sharaf, Amr · 2021 · ICML",
+   "cite_key": "ni2021data",
+   "dimension": "Task-aware",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "A method earns a ✓ if its augmented tasks stay within the immediate vicinity of the sampled meta-training tasks, remaining faithful to the underlying task distribution (e.g. barely altering the support-to-query mapping) rather than producing erroneous tasks that violate it.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'augmented tasks stay within the immediate vicinity of the sampled meta-training tasks, remaining faithful to the underlying task distribution.' This is a qualitative definition. Meta-Maxup (Ni et al., ICML 2021, 'Data Augmentation for Meta-Learning') builds augmented tasks by applying standard data augmentations (support/query/task/shot augmentation, MaxUp-style perturbations) to actually-sampled episodes. These are local perturbations of real tasks rather than fabricated tasks that vi",
+    "Matching 'augmented tasks stay within the immediate vicinity ... remaining faithful to the underlying task distribution.' This is a qualitative capability. Meta-MaxUp's core augmentations (support/query/shot augmentation, standard image transforms like crop/flip/color) are semantic-preserving perturbations of sampled episodes, keeping augmented tasks close to and faithful to the original task distribution. (One component, rotation-based task augmentation, creates artificial classes, but the meth"
+   ],
+   "baseline_confidences": [
+    0.55,
+    0.5
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "ATU:8",
+   "paper": "ATU",
+   "citing_url": "https://arxiv.org/abs/2206.04335",
+   "table_id": "tab:related_work",
+   "index": 8,
+   "row_label": "Meta-Maxup",
+   "cited_title": "Data augmentation for meta-learning",
+   "cited_meta": "Ni, Renkun, Goldblum, Micah, Sharaf, Amr · 2021 · ICML",
+   "cite_key": "ni2021data",
+   "dimension": "Task-imaginary",
+   "claimed": "no",
+   "refari_verdict": "unverifiable",
+   "gloss": "A method earns a ✓ if its augmented tasks embrace diversity by covering a substantial portion of the true task distribution, beyond the immediate neighbourhood that task-awareness alone would guarantee.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching 'embrace diversity by covering a substantial portion of the true task distribution, beyond the immediate neighbourhood.' Qualitative definition. Meta-Maxup relies on a fixed repertoire of augmentation transforms and worst-case (max-loss) selection over them; it perturbs existing tasks rather than imagining genuinely novel tasks that broadly cover the task distribution. The diversity it introduces is bounded by the chosen augmentations, so it does not go substantially beyond the neighbou",
+    "Matching 'embrace diversity by covering a substantial portion of the true task distribution, beyond the immediate neighbourhood.' Meta-MaxUp relies on local perturbation-style augmentations and worst-case selection over them; it does not synthesize genuinely novel, distribution-spanning tasks. Its diversity is bounded by local augmentation operators rather than covering a broad portion of the task distribution."
+   ],
+   "baseline_confidences": [
+    0.5,
+    0.5
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "ATU:9",
+   "paper": "ATU",
+   "citing_url": "https://arxiv.org/abs/2206.04335",
+   "table_id": "tab:related_work",
+   "index": 9,
+   "row_label": "Meta-Maxup",
+   "cited_title": "Data augmentation for meta-learning",
+   "cited_meta": "Ni, Renkun, Goldblum, Micah, Sharaf, Amr · 2021 · ICML",
+   "cite_key": "ni2021data",
+   "dimension": "Model-adaptive",
+   "claimed": "no",
+   "refari_verdict": "unverifiable",
+   "gloss": "A method earns a ✓ if its augmented tasks are generated in response to the current meta-knowledge, timely targeting tasks that the model before augmentation struggles to generalize to.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'augmented tasks are generated in response to the current meta-knowledge, timely targeting tasks that the model before augmentation struggles to generalize to.' Qualitative definition. The core MaxUp mechanism in Meta-Maxup generates multiple augmented copies and trains on the one with the maximum (worst-case) loss under the current model. That worst-case selection is exactly model-dependent targeting of the augmentation the current model handles worst, which substantively matches targe",
+    "Matching 'generated in response to the current meta-knowledge, timely targeting tasks that the model before augmentation struggles to generalize to.' Meta-MaxUp's defining mechanism is MaxUp: among multiple augmented candidates it selects/back-props the one with maximum loss — i.e., the augmentation the current model does worst on. This worst-case selection is adaptive to the current model state, targeting what it currently fails on."
+   ],
+   "baseline_confidences": [
+    0.6,
+    0.58
+   ],
+   "baseline_verdicts": [
+    "contradicted",
+    "contradicted"
+   ],
+   "baseline_verdict": "contradicted",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "ATU:10",
+   "paper": "ATU",
+   "citing_url": "https://arxiv.org/abs/2206.04335",
+   "table_id": "tab:related_work",
+   "index": 10,
+   "row_label": "MLTI",
+   "cited_title": "Meta-Learning with Fewer Tasks through Task Interpolation",
+   "cited_meta": "Yao, Huaxiu, Zhang, Linjun, Finn, Chelsea · 2022 · ICLR",
+   "cite_key": "yao2021meta",
+   "dimension": "Task-aware",
+   "claimed": "no",
+   "refari_verdict": "contradicted",
+   "gloss": "A method earns a ✓ if its augmented tasks stay within the immediate vicinity of the sampled meta-training tasks, remaining faithful to the underlying task distribution (e.g. barely altering the support-to-query mapping) rather than producing erroneous tasks that violate it.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "unclear",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching the phrase 'stay within the immediate vicinity of the sampled meta-training tasks... barely altering the support-to-query mapping... rather than producing erroneous tasks that violate it.' MLTI (Yao, Zhang, Finn, ICLR 2022) augments by Mixup-style interpolation between two sampled tasks (in feature/hidden and label space). One clause is arguable both ways: convex interpolation of real tasks stays within the data manifold (leaning faithful/not-erroneous → has), yet it blends two potentia",
+    "Matching 'augmented tasks stay within the immediate vicinity of the sampled meta-training tasks, remaining faithful to the underlying task distribution.' MLTI augments by Mixup-style linear interpolation between real sampled meta-training tasks (interpolating hidden features/support-query sets and labels with a Beta-sampled coefficient). Convex combinations of existing tasks stay within the manifold/convex hull of sampled tasks and preserve support-to-query structure, so the augmented tasks rema"
+   ],
+   "baseline_confidences": [
+    0.4,
+    0.6
+   ],
+   "baseline_verdicts": [
+    "unverifiable",
+    "contradicted"
+   ],
+   "baseline_verdict": "unverifiable",
+   "baseline_self_consistent": false
+  },
+  {
+   "cell_uid": "ATU:11",
+   "paper": "ATU",
+   "citing_url": "https://arxiv.org/abs/2206.04335",
+   "table_id": "tab:related_work",
+   "index": 11,
+   "row_label": "MLTI",
+   "cited_title": "Meta-Learning with Fewer Tasks through Task Interpolation",
+   "cited_meta": "Yao, Huaxiu, Zhang, Linjun, Finn, Chelsea · 2022 · ICLR",
+   "cite_key": "yao2021meta",
+   "dimension": "Task-imaginary",
+   "claimed": "yes",
+   "refari_verdict": "unverifiable",
+   "gloss": "A method earns a ✓ if its augmented tasks embrace diversity by covering a substantial portion of the true task distribution, beyond the immediate neighbourhood that task-awareness alone would guarantee.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching 'augmented tasks embrace diversity by covering a substantial portion of the true task distribution, beyond the immediate neighbourhood.' MLTI's stated purpose is to densify a sparse/limited task distribution by interpolating across many pairs of sampled tasks, generating new intermediate ('imagined') tasks that populate the space between real tasks rather than merely perturbing a single task locally. This constitutes diversity/coverage beyond an immediate neighborhood, so it substantive",
+    "Matching 'covering a substantial portion of the true task distribution, beyond the immediate neighbourhood that task-awareness alone would guarantee.' MLTI is purely interpolation-based: augmented tasks are convex combinations bounded by the convex hull of already-sampled tasks and cannot extrapolate to novel regions. This is precisely the limitation later works (e.g. adversarial task up-sampling) raise against MLTI — it densifies near existing tasks but does not 'imagine' diverse tasks covering"
+   ],
+   "baseline_confidences": [
+    0.6,
+    0.5
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "contradicted"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": false
+  },
+  {
+   "cell_uid": "ATU:12",
+   "paper": "ATU",
+   "citing_url": "https://arxiv.org/abs/2206.04335",
+   "table_id": "tab:related_work",
+   "index": 12,
+   "row_label": "MLTI",
+   "cited_title": "Meta-Learning with Fewer Tasks through Task Interpolation",
+   "cited_meta": "Yao, Huaxiu, Zhang, Linjun, Finn, Chelsea · 2022 · ICLR",
+   "cite_key": "yao2021meta",
+   "dimension": "Model-adaptive",
+   "claimed": "yes",
+   "refari_verdict": "contradicted",
+   "gloss": "A method earns a ✓ if its augmented tasks are generated in response to the current meta-knowledge, timely targeting tasks that the model before augmentation struggles to generalize to.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching 'generated in response to the current meta-knowledge, timely targeting tasks that the model before augmentation struggles to generalize to.' MLTI samples task pairs at random and draws interpolation coefficients from a fixed Beta distribution; task generation is independent of the model's current state or which tasks it fails on. There is no adversarial/hardness-driven or model-conditioned mechanism, so it does not target tasks the model struggles with.",
+    "Matching 'generated in response to the current meta-knowledge, timely targeting tasks that the model before augmentation struggles to generalize to.' MLTI selects task pairs randomly and draws interpolation coefficients from a fixed Beta distribution; it does not use the model's current state, difficulty, or gradients to adversarially target hard tasks. The augmentation is random/non-adaptive, so it does not qualify as model-adaptive."
+   ],
+   "baseline_confidences": [
+    0.85,
+    0.78
+   ],
+   "baseline_verdicts": [
+    "contradicted",
+    "contradicted"
+   ],
+   "baseline_verdict": "contradicted",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "ATU:13",
+   "paper": "ATU",
+   "citing_url": "https://arxiv.org/abs/2206.04335",
+   "table_id": "tab:related_work",
+   "index": 13,
+   "row_label": "ATU",
+   "cited_title": "ATU",
+   "cited_meta": "",
+   "cite_key": "（该行无引用）",
+   "dimension": "Task-aware",
+   "claimed": "yes",
+   "refari_verdict": "skipped",
+   "gloss": "A method earns a ✓ if its augmented tasks stay within the immediate vicinity of the sampled meta-training tasks, remaining faithful to the underlying task distribution (e.g. barely altering the support-to-query mapping) rather than producing erroneous tasks that violate it.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_verdict": "skipped",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "ATU:14",
+   "paper": "ATU",
+   "citing_url": "https://arxiv.org/abs/2206.04335",
+   "table_id": "tab:related_work",
+   "index": 14,
+   "row_label": "ATU",
+   "cited_title": "ATU",
+   "cited_meta": "",
+   "cite_key": "（该行无引用）",
+   "dimension": "Task-imaginary",
+   "claimed": "yes",
+   "refari_verdict": "skipped",
+   "gloss": "A method earns a ✓ if its augmented tasks embrace diversity by covering a substantial portion of the true task distribution, beyond the immediate neighbourhood that task-awareness alone would guarantee.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_verdict": "skipped",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "ATU:15",
+   "paper": "ATU",
+   "citing_url": "https://arxiv.org/abs/2206.04335",
+   "table_id": "tab:related_work",
+   "index": 15,
+   "row_label": "ATU",
+   "cited_title": "ATU",
+   "cited_meta": "",
+   "cite_key": "（该行无引用）",
+   "dimension": "Model-adaptive",
+   "claimed": "yes",
+   "refari_verdict": "skipped",
+   "gloss": "A method earns a ✓ if its augmented tasks are generated in response to the current meta-knowledge, timely targeting tasks that the model before augmentation struggles to generalize to.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_verdict": "skipped",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:1",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 1,
+   "row_label": "KeypointNet",
+   "cited_title": "Discovery of latent 3d keypoints via end-to-end geometric reasoning",
+   "cited_meta": "Suwajanakorn, Supasorn, Snavely, Noah, Tompson, Jonathan J · 2018 · Advances in neural information pro",
+   "cite_key": "suwajanakorn2018discovery",
+   "dimension": "(i) Anti-occlusion",
+   "claimed": "no",
+   "refari_verdict": "contradicted",
+   "gloss": "The detected keypoints remain repeatable and consistent even when part of the object is self-occluded.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'keypoints remain repeatable and consistent even when part of the object is self-occluded' (qualitative). KeypointNet predicts a fixed set of ordered latent 3D keypoints that need not lie on visible surface — they can be behind the object. The multi-view consistency objective forces the same keypoint index to a consistent 3D location across large viewpoint changes, and the demonstrations show keypoints placed consistently on occluded parts (e.g., far-side car wheels). So consistency is ",
+    "Matching the qualitative property 'keypoints remain repeatable and consistent even when part of the object is self-occluded.' KeypointNet's core training objective is a multi-view consistency loss: keypoints predicted from one rendered view must match those from another view related by a known rigid transform. Because it optimizes consistency across large viewpoint changes (which necessarily induce self-occlusion), and it predicts 3D keypoint locations (including behind/occluded surfaces) with p"
+   ],
+   "baseline_confidences": [
+    0.58,
+    0.5
+   ],
+   "baseline_verdicts": [
+    "contradicted",
+    "contradicted"
+   ],
+   "baseline_verdict": "contradicted",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:2",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 2,
+   "row_label": "KeypointNet",
+   "cited_title": "Discovery of latent 3d keypoints via end-to-end geometric reasoning",
+   "cited_meta": "Suwajanakorn, Supasorn, Snavely, Noah, Tompson, Jonathan J · 2018 · Advances in neural information pro",
+   "cite_key": "suwajanakorn2018discovery",
+   "dimension": "(ii) Unsupervised",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The keypoints are obtained without human annotations, i.e., through an unsupervised or self-supervised procedure.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'keypoints obtained without human annotations, unsupervised/self-supervised' (qualitative). This is the paper's central contribution: 'discovery of latent 3D keypoints' via an end-to-end geometric-reasoning objective (multi-view consistency + relative-pose estimation). No keypoint labels are used; the keypoints emerge from self-supervision. (It relies on known relative poses/rendered views, but no human keypoint annotations.)",
+    "Matching 'obtained without human annotations, i.e., through an unsupervised or self-supervised procedure.' KeypointNet discovers latent 3D keypoints with no ground-truth keypoint labels; supervision comes only from known relative camera poses between two rendered views (self-supervised multi-view/pose-consistency objective). The title itself is 'Discovery of latent 3D keypoints.' No human keypoint annotations are used."
+   ],
+   "baseline_confidences": [
+    0.95,
+    0.9
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:3",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 3,
+   "row_label": "KeypointNet",
+   "cited_title": "Discovery of latent 3d keypoints via end-to-end geometric reasoning",
+   "cited_meta": "Suwajanakorn, Supasorn, Snavely, Noah, Tompson, Jonathan J · 2018 · Advances in neural information pro",
+   "cite_key": "suwajanakorn2018discovery",
+   "dimension": "(iii) Aligned across instances",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The keypoints carry consistent semantic correspondence across different object instances within a category.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'consistent semantic correspondence across different object instances within a category' (qualitative). KeypointNet is trained per category (cars, chairs, planes on ShapeNet) and produces an ordered keypoint set where the same index lands on the same semantic part across different instances, as shown in the paper's cross-instance visualizations.",
+    "Matching 'consistent semantic correspondence across different object instances within a category.' KeypointNet is trained per object category and produces an ordered set of keypoints where each keypoint index corresponds to the same semantic location across different instances of the category (e.g., across different chairs/cars), which the paper demonstrates qualitatively."
+   ],
+   "baseline_confidences": [
+    0.82,
+    0.8
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:4",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 4,
+   "row_label": "KeypointNet",
+   "cited_title": "Discovery of latent 3d keypoints via end-to-end geometric reasoning",
+   "cited_meta": "Suwajanakorn, Supasorn, Snavely, Noah, Tompson, Jonathan J · 2018 · Advances in neural information pro",
+   "cite_key": "suwajanakorn2018discovery",
+   "dimension": "(iv) SE(3)-equivariant",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "The keypoint-detection function is SE(3)-equivariant, so that for any rigid transform the output coordinates satisfy f(RP+t)=Rf(P)+t.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "This is a FORMAL definition naming a specific mechanism: f(RP+t)=Rf(P)+t built-in SE(3)-equivariance. KeypointNet takes a single 2D image (not a point set P) and predicts 3D keypoints; its cross-view consistency is enforced by a soft training loss, not by architectural equivariance, and it provides no guarantee of exact SE(3)-equivariance. Analogous 'consistency' is not the named mechanism.",
+    "This is a FORMAL definition naming a specific mechanism: an SE(3)-equivariant detection function on point transforms satisfying f(RP+t)=Rf(P)+t. KeypointNet takes 2D rendered images as input (not point clouds) and achieves cross-view consistency through a learned multi-view consistency loss, not through an architecturally SE(3)-equivariant function. It is not equivariant by construction, so it does not satisfy that exact mechanism."
+   ],
+   "baseline_confidences": [
+    0.78,
+    0.72
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:5",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 5,
+   "row_label": "USIP",
+   "cited_title": "Usip: Unsupervised stable interest point detection from 3d point clouds",
+   "cited_meta": "Li, Jiaxin, Lee, Gim Hee · 2019 · Proceedings of the IEEE/CVF intern",
+   "cite_key": "li2019usip",
+   "dimension": "(i) Anti-occlusion",
+   "claimed": "yes",
+   "refari_verdict": "unverifiable",
+   "gloss": "The detected keypoints remain repeatable and consistent even when part of the object is self-occluded.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "unclear",
+    "unclear"
+   ],
+   "baseline_justifications": [
+    "Matching 'keypoints remain repeatable and consistent even when part of the object is self-occluded' (qualitative). USIP's stability objective is defined as repeatability under rigid SE(3) transformations, noise, and density variation of a given point cloud; I do not recall it explicitly claiming or evaluating robustness to self-occlusion/partial views. It does train on partial real LiDAR scans, so I cannot confidently say it lacks the capability either. Answering unclear per the confidence rule.",
+    "Matching the qualitative claim 'keypoints remain repeatable and consistent even when part of the object is self-occluded.' USIP's core demonstrated property is repeatability under arbitrary SE(3) transformations (probabilistic Chamfer loss), and it is evaluated on real partial LiDAR/RGB-D data (Oxford, KITTI, 3DMatch) which involve occlusion. However, I cannot confidently recall USIP explicitly claiming or demonstrating robustness to self-occlusion as a targeted property, so I cannot settle this"
+   ],
+   "baseline_confidences": [
+    0.5,
+    0.4
+   ],
+   "baseline_verdicts": [
+    "unverifiable",
+    "unverifiable"
+   ],
+   "baseline_verdict": "unverifiable",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:6",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 6,
+   "row_label": "USIP",
+   "cited_title": "Usip: Unsupervised stable interest point detection from 3d point clouds",
+   "cited_meta": "Li, Jiaxin, Lee, Gim Hee · 2019 · Proceedings of the IEEE/CVF intern",
+   "cite_key": "li2019usip",
+   "dimension": "(ii) Unsupervised",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The keypoints are obtained without human annotations, i.e., through an unsupervised or self-supervised procedure.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'obtained without human annotations, through an unsupervised or self-supervised procedure' (qualitative). USIP ('Unsupervised Stable Interest Point detection') trains with a probabilistic chamfer loss and point-to-point loss by enforcing consistency of detected keypoints under randomly applied rigid transformations, with no ground-truth keypoint labels. Unsupervised training is the paper's central contribution.",
+    "Matching 'obtained without human annotations, i.e., through an unsupervised or self-supervised procedure.' USIP (Unsupervised Stable Interest Point) is by construction unsupervised: the Feature Proposal Network is trained with a probabilistic Chamfer loss and random SE(3) transformations, with no keypoint labels. This is the paper's central named contribution."
+   ],
+   "baseline_confidences": [
+    0.97,
+    0.98
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:7",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 7,
+   "row_label": "USIP",
+   "cited_title": "Usip: Unsupervised stable interest point detection from 3d point clouds",
+   "cited_meta": "Li, Jiaxin, Lee, Gim Hee · 2019 · Proceedings of the IEEE/CVF intern",
+   "cite_key": "li2019usip",
+   "dimension": "(iii) Aligned across instances",
+   "claimed": "no",
+   "refari_verdict": "unverifiable",
+   "gloss": "The keypoints carry consistent semantic correspondence across different object instances within a category.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching 'consistent semantic correspondence across different object instances within a category' (qualitative). USIP detects geometrically stable, saliency-driven interest points for tasks like registration; its keypoints are determined by local geometry of each individual cloud and are not aligned to category-level semantic parts across different instances. It does not provide cross-instance semantic correspondence.",
+    "Matching 'keypoints carry consistent semantic correspondence across different object instances within a category.' USIP is a low-level geometric interest-point detector optimizing transformation repeatability on individual point clouds; it does not learn or claim semantic, category-level correspondence across different object instances."
+   ],
+   "baseline_confidences": [
+    0.8,
+    0.83
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:8",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 8,
+   "row_label": "USIP",
+   "cited_title": "Usip: Unsupervised stable interest point detection from 3d point clouds",
+   "cited_meta": "Li, Jiaxin, Lee, Gim Hee · 2019 · Proceedings of the IEEE/CVF intern",
+   "cite_key": "li2019usip",
+   "dimension": "(iv) SE(3)-equivariant",
+   "claimed": "no",
+   "refari_verdict": "unverifiable",
+   "gloss": "The keypoint-detection function is SE(3)-equivariant, so that for any rigid transform the output coordinates satisfy f(RP+t)=Rf(P)+t.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching the formal definition f(RP+t)=Rf(P)+t (names a specific mechanism: an SE(3)-equivariant detection function). USIP uses a standard PointNet-style architecture that is not equivariant by construction; it only encourages transformation-consistency approximately via a training loss that applies random rigid transforms. A consistency loss is an analogous-sounding mechanism, which does not satisfy the exact equivariance equation, so it does not qualify.",
+    "This is a FORMAL definition naming a specific mechanism: f(RP+t)=Rf(P)+t must hold for any rigid transform. USIP does not use an equivariant architecture; it achieves approximate pose-repeatability through random SE(3) data augmentation plus a probabilistic Chamfer loss (a learned, non-guaranteed approximation). An augmentation/loss-based analogue does not satisfy the required equivariance-by-construction, so it does not qualify."
+   ],
+   "baseline_confidences": [
+    0.72,
+    0.55
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:9",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 9,
+   "row_label": "UKPGAN",
+   "cited_title": "UKPGAN: A General Self-Supervised Keypoint Detector",
+   "cited_meta": "You, Yang, Liu, Wenhai, Ze, Yanjie · 2022 · Proceedings of the IEEE/CVF Confer",
+   "cite_key": "you2022ukpgan",
+   "dimension": "(i) Anti-occlusion",
+   "claimed": "yes",
+   "refari_verdict": "may_not_support",
+   "gloss": "The detected keypoints remain repeatable and consistent even when part of the object is self-occluded.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "unclear",
+    "unclear"
+   ],
+   "baseline_justifications": [
+    "Matching 'keypoints remain repeatable... even when part of the object is self-occluded' (qualitative). UKPGAN was applied to real partial scans (e.g., 3DMatch registration) where self-occlusion is present, suggesting some robustness, but I do not have confident recall that the paper explicitly demonstrates keypoint repeatability under self-occlusion as a property. Cannot commit either way.",
+    "Property (anti-occlusion) is qualitative: keypoints stay repeatable/consistent under self-occlusion. UKPGAN (You et al., CVPR 2022) is a GAN-reconstruction-based self-supervised detector demonstrated mainly on complete ShapeNet/KeypointNet objects, with robustness shown for downsampling, noise, and SO(3) rotation; it was also applied to 3DMatch registration involving partial fragments. But I do not recall an explicit claim or evaluation that keypoints remain repeatable specifically under self-oc"
+   ],
+   "baseline_confidences": [
+    0.5,
+    0.5
+   ],
+   "baseline_verdicts": [
+    "unverifiable",
+    "unverifiable"
+   ],
+   "baseline_verdict": "unverifiable",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:10",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 10,
+   "row_label": "UKPGAN",
+   "cited_title": "UKPGAN: A General Self-Supervised Keypoint Detector",
+   "cited_meta": "You, Yang, Liu, Wenhai, Ze, Yanjie · 2022 · Proceedings of the IEEE/CVF Confer",
+   "cite_key": "you2022ukpgan",
+   "dimension": "(ii) Unsupervised",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The keypoints are obtained without human annotations, i.e., through an unsupervised or self-supervised procedure.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'obtained without human annotations... unsupervised or self-supervised' (qualitative). The work's title and central contribution is a self-supervised 3D keypoint detector trained via GAN-based reconstruction with no keypoint labels.",
+    "Property (unsupervised) is qualitative: keypoints obtained without human annotations. UKPGAN is titled 'A General Self-Supervised Keypoint Detector' and is trained via GAN-based reconstruction/salient-information distillation with no keypoint labels — squarely self-supervised."
+   ],
+   "baseline_confidences": [
+    0.98,
+    0.98
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:11",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 11,
+   "row_label": "UKPGAN",
+   "cited_title": "UKPGAN: A General Self-Supervised Keypoint Detector",
+   "cited_meta": "You, Yang, Liu, Wenhai, Ze, Yanjie · 2022 · Proceedings of the IEEE/CVF Confer",
+   "cite_key": "you2022ukpgan",
+   "dimension": "(iii) Aligned across instances",
+   "claimed": "no",
+   "refari_verdict": "contradicted",
+   "gloss": "The keypoints carry consistent semantic correspondence across different object instances within a category.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'consistent semantic correspondence across different object instances within a category' (qualitative). UKPGAN explicitly demonstrates semantically consistent keypoints across different instances of a category (e.g., corresponding points across chairs), a headline qualitative result of the paper.",
+    "Property (aligned across instances) is qualitative: consistent semantic correspondence across instances in a category. UKPGAN explicitly demonstrates that its detected keypoints are semantically consistent across different object instances of the same category."
+   ],
+   "baseline_confidences": [
+    0.85,
+    0.85
+   ],
+   "baseline_verdicts": [
+    "contradicted",
+    "contradicted"
+   ],
+   "baseline_verdict": "contradicted",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:12",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 12,
+   "row_label": "UKPGAN",
+   "cited_title": "UKPGAN: A General Self-Supervised Keypoint Detector",
+   "cited_meta": "You, Yang, Liu, Wenhai, Ze, Yanjie · 2022 · Proceedings of the IEEE/CVF Confer",
+   "cite_key": "you2022ukpgan",
+   "dimension": "(iv) SE(3)-equivariant",
+   "claimed": "yes",
+   "refari_verdict": "unverifiable",
+   "gloss": "The keypoint-detection function is SE(3)-equivariant, so that for any rigid transform the output coordinates satisfy f(RP+t)=Rf(P)+t.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching the FORMAL definition naming the SE(3)-equivariance mechanism f(RP+t)=Rf(P)+t. UKPGAN achieves pose robustness via rotation-INVARIANT local descriptors (local reference frames / SHOT-like features), not via an SE(3)-equivariant network satisfying the equivariance equation. That is an analogous-but-different mechanism, so it does not qualify under the formal criterion.",
+    "Property (iv) is a FORMAL definition naming a specific mechanism: an SE(3)-equivariant detection function with f(RP+t)=Rf(P)+t. UKPGAN attains rotation robustness through rotation-INVARIANT local features (invariant saliency), not through an SE(3)-equivariant architecture proven to satisfy that equation; that is an analogous-but-distinct mechanism, so it does not qualify under the precise definition."
+   ],
+   "baseline_confidences": [
+    0.6,
+    0.58
+   ],
+   "baseline_verdicts": [
+    "contradicted",
+    "contradicted"
+   ],
+   "baseline_verdict": "contradicted",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:13",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 13,
+   "row_label": "Skeleton Merger",
+   "cited_title": "Skeleton merger: an unsupervised aligned keypoint detector",
+   "cited_meta": "Shi, Ruoxi, Xue, Zhengrong, You, Yang · 2021 · Proceedings of the IEEE/CVF Confer",
+   "cite_key": "shi2021skeleton",
+   "dimension": "(i) Anti-occlusion",
+   "claimed": "yes",
+   "refari_verdict": "may_not_support",
+   "gloss": "The detected keypoints remain repeatable and consistent even when part of the object is self-occluded.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "unclear"
+   ],
+   "baseline_justifications": [
+    "Property is the qualitative capability that keypoints stay repeatable under self-occlusion. Skeleton Merger is trained/evaluated on complete point clouds (ShapeNet/KeypointNet) via its autoencoder with Composite Chamfer Distance; it neither claims nor tests robustness to self-occlusion or partial input.",
+    "Property (i) Anti-occlusion is qualitative: keypoints stay repeatable/consistent under self-occlusion. Skeleton Merger (Shi et al., CVPR 2021) trains a skeleton-based autoencoder with a Composite Chamfer Distance on point clouds; its emphasized contributions are unsupervised detection and cross-instance alignment. I do not recall the paper specifically demonstrating or claiming robustness to self-occlusion, but I cannot confidently rule it out, so I cannot settle this."
+   ],
+   "baseline_confidences": [
+    0.55,
+    0.5
+   ],
+   "baseline_verdicts": [
+    "contradicted",
+    "unverifiable"
+   ],
+   "baseline_verdict": "contradicted",
+   "baseline_self_consistent": false
+  },
+  {
+   "cell_uid": "USEEK:14",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 14,
+   "row_label": "Skeleton Merger",
+   "cited_title": "Skeleton merger: an unsupervised aligned keypoint detector",
+   "cited_meta": "Shi, Ruoxi, Xue, Zhengrong, You, Yang · 2021 · Proceedings of the IEEE/CVF Confer",
+   "cite_key": "shi2021skeleton",
+   "dimension": "(ii) Unsupervised",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The keypoints are obtained without human annotations, i.e., through an unsupervised or self-supervised procedure.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matches 'obtained without human annotations, unsupervised/self-supervised.' The method learns keypoints via a self-supervised reconstruction (skeleton-merging autoencoder) with no keypoint labels — stated in the title and core method.",
+    "Property (ii) Unsupervised: keypoints obtained without human annotations. The work is titled 'an unsupervised aligned keypoint detector' and learns keypoints via a self-supervised reconstruction (skeleton merging + Composite Chamfer Distance) objective with no keypoint labels. Matches the qualitative definition."
+   ],
+   "baseline_confidences": [
+    0.97,
+    0.98
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:15",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 15,
+   "row_label": "Skeleton Merger",
+   "cited_title": "Skeleton merger: an unsupervised aligned keypoint detector",
+   "cited_meta": "Shi, Ruoxi, Xue, Zhengrong, You, Yang · 2021 · Proceedings of the IEEE/CVF Confer",
+   "cite_key": "shi2021skeleton",
+   "dimension": "(iii) Aligned across instances",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The keypoints carry consistent semantic correspondence across different object instances within a category.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matches 'consistent semantic correspondence across instances within a category.' The paper's central claim is producing aligned keypoints that correspond semantically across different shapes of the same category.",
+    "Property (iii) Aligned across instances: consistent semantic correspondence across instances of a category. The title explicitly claims 'aligned' keypoints, and the method is designed and evaluated (e.g., on KeypointNet) to produce keypoints that are semantically consistent across different shapes within a category."
+   ],
+   "baseline_confidences": [
+    0.95,
+    0.95
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:16",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 16,
+   "row_label": "Skeleton Merger",
+   "cited_title": "Skeleton merger: an unsupervised aligned keypoint detector",
+   "cited_meta": "Shi, Ruoxi, Xue, Zhengrong, You, Yang · 2021 · Proceedings of the IEEE/CVF Confer",
+   "cite_key": "shi2021skeleton",
+   "dimension": "(iv) SE(3)-equivariant",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "The keypoint-detection function is SE(3)-equivariant, so that for any rigid transform the output coordinates satisfy f(RP+t)=Rf(P)+t.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Formal definition requiring f(RP+t)=Rf(P)+t. Skeleton Merger uses a PointNet-style encoder that is not SE(3)-equivariant, and the paper makes no equivariance claim; it relies on data augmentation/training rather than an equivariant architecture.",
+    "Property (iv) is a FORMAL definition requiring the detector to satisfy f(RP+t)=Rf(P)+t. Skeleton Merger uses a PointNet++-style backbone that is not rotation/translation-equivariant, and the paper makes no equivariance claim; it is commonly cited as a non-equivariant baseline. It does not use an SE(3)-equivariant mechanism."
+   ],
+   "baseline_confidences": [
+    0.83,
+    0.85
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:17",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 17,
+   "row_label": "kPAM and its variants",
+   "cited_title": "kpam: Keypoint affordances for category-level robotic manipulation",
+   "cited_meta": "Manuelli, Lucas, Gao, Wei, Florence, Peter · 2019 · The International Symposium of Rob",
+   "cite_key": "manuelli2019kpam",
+   "dimension": "(i) Anti-occlusion",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The detected keypoints remain repeatable and consistent even when part of the object is self-occluded.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "unclear",
+    "unclear"
+   ],
+   "baseline_justifications": [
+    "Matching '(i) Anti-occlusion' — keypoints repeatable under self-occlusion. kPAM regresses 3D semantic keypoints from a single RGBD view via an integral keypoint network, which can in principle predict occluded semantic keypoints, but the paper does not evaluate or claim repeatability/consistency under self-occlusion. I cannot confidently settle this, so unclear.",
+    "Matching 'keypoints remain repeatable and consistent even when part of the object is self-occluded' (qualitative). kPAM uses an integral-style 3D keypoint detection network that regresses 3D coordinates from RGB-D, which can in principle localize keypoints on unseen/occluded parts, but I do not have confident knowledge that the paper demonstrates or claims repeatability under self-occlusion. Cannot settle."
+   ],
+   "baseline_confidences": [
+    0.5,
+    0.5
+   ],
+   "baseline_verdicts": [
+    "unverifiable",
+    "unverifiable"
+   ],
+   "baseline_verdict": "unverifiable",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:18",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 18,
+   "row_label": "kPAM and its variants",
+   "cited_title": "kpam: Keypoint affordances for category-level robotic manipulation",
+   "cited_meta": "Manuelli, Lucas, Gao, Wei, Florence, Peter · 2019 · The International Symposium of Rob",
+   "cite_key": "manuelli2019kpam",
+   "dimension": "(ii) Unsupervised",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "The keypoints are obtained without human annotations, i.e., through an unsupervised or self-supervised procedure.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching '(ii) Unsupervised' — keypoints obtained without human annotations. kPAM trains its keypoint detector on human-labeled semantic keypoint annotations (supervised learning), not an unsupervised/self-supervised procedure. It therefore lacks this property.",
+    "Matching 'obtained without human annotations, through an unsupervised or self-supervised procedure'. kPAM's semantic 3D keypoints are defined by humans per category and its keypoint-detection network is trained with human-annotated keypoint labels — a fully supervised procedure, not unsupervised/self-supervised."
+   ],
+   "baseline_confidences": [
+    0.85,
+    0.9
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:19",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 19,
+   "row_label": "kPAM and its variants",
+   "cited_title": "kpam: Keypoint affordances for category-level robotic manipulation",
+   "cited_meta": "Manuelli, Lucas, Gao, Wei, Florence, Peter · 2019 · The International Symposium of Rob",
+   "cite_key": "manuelli2019kpam",
+   "dimension": "(iii) Aligned across instances",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The keypoints carry consistent semantic correspondence across different object instances within a category.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching '(iii) Aligned across instances' — consistent semantic correspondence across category instances. This is the central premise of kPAM: category-level semantic 3D keypoints (e.g., mug handle/top) that carry the same semantic meaning across all instances of a category.",
+    "Matching 'consistent semantic correspondence across different object instances within a category'. This is the central premise of kPAM: category-level manipulation via semantic keypoints (e.g., mug bottom-center, shoe tip) that carry the same semantic meaning across all instances of a category."
+   ],
+   "baseline_confidences": [
+    0.9,
+    0.85
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:20",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 20,
+   "row_label": "kPAM and its variants",
+   "cited_title": "kpam: Keypoint affordances for category-level robotic manipulation",
+   "cited_meta": "Manuelli, Lucas, Gao, Wei, Florence, Peter · 2019 · The International Symposium of Rob",
+   "cite_key": "manuelli2019kpam",
+   "dimension": "(iv) SE(3)-equivariant",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "The keypoint-detection function is SE(3)-equivariant, so that for any rigid transform the output coordinates satisfy f(RP+t)=Rf(P)+t.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching '(iv) SE(3)-equivariant' — formal definition requiring f(RP+t)=Rf(P)+t. kPAM's keypoint detector is a learned CNN on RGBD images (integral regression), which is not designed to be SE(3)-equivariant and does not satisfy that identity.",
+    "Formal definition (equation f(RP+t)=Rf(P)+t requiring an SE(3)-equivariant detector). kPAM's keypoint detector is a standard learned CNN over RGB-D images with no equivariance construction; it does not satisfy this rigid-transform equivariance property."
+   ],
+   "baseline_confidences": [
+    0.78,
+    0.83
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:21",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 21,
+   "row_label": "Keypoints into the Future",
+   "cited_title": "Keypoints into the Future: Self-Supervised Correspondence in Model-Based Reinforcement Learning",
+   "cited_meta": "Manuelli, Lucas, Li, Yunzhu, Florence, Pete · 2021 · Conference on Robot Learning",
+   "cite_key": "manuelli2021keypoints",
+   "dimension": "(i) Anti-occlusion",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "The detected keypoints remain repeatable and consistent even when part of the object is self-occluded.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "unclear",
+    "unclear"
+   ],
+   "baseline_justifications": [
+    "Matching 'keypoints remain repeatable and consistent under self-occlusion.' The method extracts keypoints via self-supervised dense visual descriptors (building on Dense Object Nets), which match to reference descriptors and can offer some robustness to partial views, but I do not recall this paper making or evaluating a specific self-occlusion robustness claim. Cannot confidently commit.",
+    "Property (i) 'anti-occlusion' is a qualitative claim that detected keypoints stay repeatable under self-occlusion. The paper learns spatial keypoints via self-supervised correspondence for model-based RL, but I do not recall it explicitly demonstrating or claiming repeatability/consistency of keypoints under self-occlusion. I cannot confidently commit either way."
+   ],
+   "baseline_confidences": [
+    0.45,
+    0.55
+   ],
+   "baseline_verdicts": [
+    "unverifiable",
+    "unverifiable"
+   ],
+   "baseline_verdict": "unverifiable",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:22",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 22,
+   "row_label": "Keypoints into the Future",
+   "cited_title": "Keypoints into the Future: Self-Supervised Correspondence in Model-Based Reinforcement Learning",
+   "cited_meta": "Manuelli, Lucas, Li, Yunzhu, Florence, Pete · 2021 · Conference on Robot Learning",
+   "cite_key": "manuelli2021keypoints",
+   "dimension": "(ii) Unsupervised",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The keypoints are obtained without human annotations, i.e., through an unsupervised or self-supervised procedure.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'obtained without human annotations, through an unsupervised/self-supervised procedure.' The work's title and method are explicitly 'Self-Supervised Correspondence'; keypoints are derived from self-supervised dense correspondence descriptors learned without human keypoint labels.",
+    "Property (ii) 'unsupervised' asks whether keypoints are obtained without human annotations. This work's central contribution is exactly a self-supervised correspondence procedure that learns a keypoint detector without human keypoint labels (the title itself is 'Self-Supervised Correspondence in Model-Based Reinforcement Learning'), so it matches the substance of the definition."
+   ],
+   "baseline_confidences": [
+    0.9,
+    0.9
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:23",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 23,
+   "row_label": "Keypoints into the Future",
+   "cited_title": "Keypoints into the Future: Self-Supervised Correspondence in Model-Based Reinforcement Learning",
+   "cited_meta": "Manuelli, Lucas, Li, Yunzhu, Florence, Pete · 2021 · Conference on Robot Learning",
+   "cite_key": "manuelli2021keypoints",
+   "dimension": "(iii) Aligned across instances",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The keypoints carry consistent semantic correspondence across different object instances within a category.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "unclear",
+    "unclear"
+   ],
+   "baseline_justifications": [
+    "Matching 'consistent semantic correspondence across different object instances within a category.' The underlying dense-correspondence descriptors can support cross-instance semantic correspondence in principle (as in Dense Object Nets), but I am not confident this RL paper demonstrates category-level cross-instance keypoint alignment rather than cross-view/temporal consistency for the manipulated object. Cannot settle.",
+    "Property (iii) requires keypoints with consistent semantic correspondence across different object instances within a category. The paper emphasizes correspondence over time/configurations for manipulated objects to support dynamics prediction; I am not confident it demonstrates category-level cross-instance semantic alignment, so I cannot settle this."
+   ],
+   "baseline_confidences": [
+    0.5,
+    0.5
+   ],
+   "baseline_verdicts": [
+    "unverifiable",
+    "unverifiable"
+   ],
+   "baseline_verdict": "unverifiable",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:24",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 24,
+   "row_label": "Keypoints into the Future",
+   "cited_title": "Keypoints into the Future: Self-Supervised Correspondence in Model-Based Reinforcement Learning",
+   "cited_meta": "Manuelli, Lucas, Li, Yunzhu, Florence, Pete · 2021 · Conference on Robot Learning",
+   "cite_key": "manuelli2021keypoints",
+   "dimension": "(iv) SE(3)-equivariant",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "The keypoint-detection function is SE(3)-equivariant, so that for any rigid transform the output coordinates satisfy f(RP+t)=Rf(P)+t.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "This is a FORMAL definition naming a specific mechanism: f(RP+t)=Rf(P)+t architectural SE(3)-equivariance. The keypoint detector here is a standard image-based CNN descriptor network with no equivariant construction; the paper neither designs nor claims SE(3)-equivariance.",
+    "Property (iv) is a FORMAL definition naming a specific mechanism: SE(3)-equivariance satisfying f(RP+t)=Rf(P)+t. This work detects keypoints from RGB images (spatial-expectation style keypoints) and makes no claim of, nor architecture for, SE(3)-equivariance on 3D point inputs; it does not use that mechanism."
+   ],
+   "baseline_confidences": [
+    0.82,
+    0.85
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:25",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 25,
+   "row_label": "S3K",
+   "cited_title": "S3K: Self-Supervised Semantic Keypoints for Robotic Manipulation via Multi-View Consistency",
+   "cited_meta": "Vecerik, Mel, Regli, Jean-Baptiste, Sushkov, Oleg · 2021 · Conference on Robot Learning",
+   "cite_key": "vecerik2021s3k",
+   "dimension": "(i) Anti-occlusion",
+   "claimed": "yes",
+   "refari_verdict": "unverifiable",
+   "gloss": "The detected keypoints remain repeatable and consistent even when part of the object is self-occluded.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "unclear",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'keypoints remain repeatable/consistent under self-occlusion' (qualitative). S3K learns keypoints via multi-view geometric consistency, and using multiple views can in principle recover a point occluded in one view. However, I do not have reliable knowledge that the paper explicitly demonstrates or claims robustness to self-occlusion of the object; the emphasis is on multi-view/epipolar consistency rather than occlusion handling. Not confident enough to commit either way.",
+    "Matching '(i) Anti-occlusion — keypoints remain repeatable/consistent under self-occlusion' (qualitative). S3K's core is multi-view consistency: keypoints predicted in each camera view are constrained to triangulate to the same 3D point. This lets the network localize a keypoint even when it is occluded in a given view, because other views (and the 3D consistency constraint) still pin it down — an inherent robustness to partial/self-occlusion. Moderate confidence since occlusion is a consequence"
+   ],
+   "baseline_confidences": [
+    0.5,
+    0.55
+   ],
+   "baseline_verdicts": [
+    "unverifiable",
+    "supported"
+   ],
+   "baseline_verdict": "unverifiable",
+   "baseline_self_consistent": false
+  },
+  {
+   "cell_uid": "USEEK:26",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 26,
+   "row_label": "S3K",
+   "cited_title": "S3K: Self-Supervised Semantic Keypoints for Robotic Manipulation via Multi-View Consistency",
+   "cited_meta": "Vecerik, Mel, Regli, Jean-Baptiste, Sushkov, Oleg · 2021 · Conference on Robot Learning",
+   "cite_key": "vecerik2021s3k",
+   "dimension": "(ii) Unsupervised",
+   "claimed": "yes",
+   "refari_verdict": "unverifiable",
+   "gloss": "The keypoints are obtained without human annotations, i.e., through an unsupervised or self-supervised procedure.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'obtained through an unsupervised or self-supervised procedure' (qualitative). S3K's central contribution is self-supervised keypoint learning via multi-view consistency (triangulation/epipolar constraints), requiring no dense keypoint annotations; the method is titled and framed as self-supervised. (It optionally uses a tiny amount of labeling to anchor semantics, but the keypoint learning is fundamentally self-supervised.)",
+    "Matching '(ii) Unsupervised — keypoints obtained via an unsupervised or self-supervised procedure' (qualitative). The work is titled and framed as Self-Supervised Semantic Keypoints; the dominant learning signal is multi-view geometric consistency, which requires no human keypoint labels. (Caveat: a small number of labels/interaction is used to anchor semantic identity, which is why I hold moderate confidence, but the substance of the method is self-supervised.)"
+   ],
+   "baseline_confidences": [
+    0.75,
+    0.55
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:27",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 27,
+   "row_label": "S3K",
+   "cited_title": "S3K: Self-Supervised Semantic Keypoints for Robotic Manipulation via Multi-View Consistency",
+   "cited_meta": "Vecerik, Mel, Regli, Jean-Baptiste, Sushkov, Oleg · 2021 · Conference on Robot Learning",
+   "cite_key": "vecerik2021s3k",
+   "dimension": "(iii) Aligned across instances",
+   "claimed": "yes",
+   "refari_verdict": "unverifiable",
+   "gloss": "The keypoints carry consistent semantic correspondence across different object instances within a category.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "unclear"
+   ],
+   "baseline_justifications": [
+    "Matching 'consistent semantic correspondence across different object instances within a category.' S3K is set up for particular objects/scenes with multi-view consistency for manipulation; it targets view-consistent keypoints on the observed object, not category-level correspondence transferring across distinct object instances. I do not recall any cross-instance category generalization claim.",
+    "Matching '(iii) Aligned across instances — consistent semantic correspondence across different object instances within a category' (qualitative). S3K learns keypoints for specific objects/scenes via multi-view consistency and a few labels; the paper's focus is per-object manipulation, not category-level cross-instance correspondence. I do not have confident recall that S3K demonstrates or claims semantic alignment across different instances of a category, so per RULE 1 I answer unclear."
+   ],
+   "baseline_confidences": [
+    0.5,
+    0.5
+   ],
+   "baseline_verdicts": [
+    "contradicted",
+    "unverifiable"
+   ],
+   "baseline_verdict": "contradicted",
+   "baseline_self_consistent": false
+  },
+  {
+   "cell_uid": "USEEK:28",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 28,
+   "row_label": "S3K",
+   "cited_title": "S3K: Self-Supervised Semantic Keypoints for Robotic Manipulation via Multi-View Consistency",
+   "cited_meta": "Vecerik, Mel, Regli, Jean-Baptiste, Sushkov, Oleg · 2021 · Conference on Robot Learning",
+   "cite_key": "vecerik2021s3k",
+   "dimension": "(iv) SE(3)-equivariant",
+   "claimed": "no",
+   "refari_verdict": "unverifiable",
+   "gloss": "The keypoint-detection function is SE(3)-equivariant, so that for any rigid transform the output coordinates satisfy f(RP+t)=Rf(P)+t.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching the FORMAL definition f(RP+t)=Rf(P)+t (named mechanism: SE(3)-equivariant detection function). S3K is an image-based CNN heatmap detector with multi-view triangulation; it has no architectural SE(3)-equivariance guarantee on point coordinates. Multi-view consistency encourages geometric agreement but is not equivariance in the formal sense.",
+    "Matching '(iv) SE(3)-equivariant — f(RP+t)=Rf(P)+t' (formal; names a specific equivariance mechanism). S3K uses standard CNN heatmap predictors over image views with multi-view triangulation; it has no built-in SE(3)-equivariant architecture or guarantee. It does not use the named mechanism, so it lacks the property."
+   ],
+   "baseline_confidences": [
+    0.83,
+    0.83
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:29",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 29,
+   "row_label": "Keypoint3D",
+   "cited_title": "Unsupervised learning of visual 3d keypoints for control",
+   "cited_meta": "Chen, Boyuan, Abbeel, Pieter, Pathak, Deepak · 2021 · International Conference on Machin",
+   "cite_key": "chen2021unsupervised",
+   "dimension": "(i) Anti-occlusion",
+   "claimed": "yes",
+   "refari_verdict": "unverifiable",
+   "gloss": "The detected keypoints remain repeatable and consistent even when part of the object is self-occluded.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "unclear",
+    "unclear"
+   ],
+   "baseline_justifications": [
+    "Matching the qualitative property 'keypoints remain repeatable and consistent even when part of the object is self-occluded.' Keypoint3D detects per-view 2D heatmaps via spatial-softmax and fuses them into 3D keypoints across multiple cameras, which in principle can compensate for occlusion in one view. However, I do not have confident recollection that the paper explicitly demonstrates or claims repeatability/consistency under self-occlusion, so I cannot commit.",
+    "Matching 'keypoints remain repeatable/consistent even under self-occlusion' (qualitative). Keypoint3D fuses per-view 2D+depth predictions from multiple cameras into 3D keypoints, which in principle gives some robustness when a point is occluded in one view. However, I do not recall the paper explicitly demonstrating repeatability under self-occlusion, so I cannot commit."
+   ],
+   "baseline_confidences": [
+    0.5,
+    0.5
+   ],
+   "baseline_verdicts": [
+    "unverifiable",
+    "unverifiable"
+   ],
+   "baseline_verdict": "unverifiable",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:30",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 30,
+   "row_label": "Keypoint3D",
+   "cited_title": "Unsupervised learning of visual 3d keypoints for control",
+   "cited_meta": "Chen, Boyuan, Abbeel, Pieter, Pathak, Deepak · 2021 · International Conference on Machin",
+   "cite_key": "chen2021unsupervised",
+   "dimension": "(ii) Unsupervised",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The keypoints are obtained without human annotations, i.e., through an unsupervised or self-supervised procedure.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'obtained without human annotations, through an unsupervised or self-supervised procedure.' This is the central contribution of the work — its title is 'Unsupervised Learning of Visual 3D Keypoints for Control,' and keypoints are learned end-to-end from multi-view images with reconstruction/consistency and the RL objective, using no keypoint labels.",
+    "Matching 'obtained without human annotations, unsupervised/self-supervised'. This is the paper's core contribution and title ('Unsupervised Learning of Visual 3D Keypoints'): keypoints are learned jointly with the control policy via image reconstruction and RL, with no keypoint annotations."
+   ],
+   "baseline_confidences": [
+    0.97,
+    0.97
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:31",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 31,
+   "row_label": "Keypoint3D",
+   "cited_title": "Unsupervised learning of visual 3d keypoints for control",
+   "cited_meta": "Chen, Boyuan, Abbeel, Pieter, Pathak, Deepak · 2021 · International Conference on Machin",
+   "cite_key": "chen2021unsupervised",
+   "dimension": "(iii) Aligned across instances",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "The keypoints carry consistent semantic correspondence across different object instances within a category.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching 'consistent semantic correspondence across different object instances within a category.' Keypoint3D learns keypoints per environment/agent for RL control; it targets temporal/state consistency for a given scene, not category-level cross-instance semantic correspondence, which is not a design goal or demonstrated capability of the method.",
+    "Matching 'consistent semantic correspondence across different object instances within a category'. Keypoint3D learns keypoints for a specific scene/control task and enforces temporal/multi-view consistency, not category-level cross-instance correspondence; the method is neither designed for nor evaluated on aligning keypoints across different object instances."
+   ],
+   "baseline_confidences": [
+    0.55,
+    0.6
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "USEEK:32",
+   "paper": "USEEK",
+   "citing_url": "https://arxiv.org/abs/2209.13864",
+   "table_id": "tab:kp-compare",
+   "index": 32,
+   "row_label": "Keypoint3D",
+   "cited_title": "Unsupervised learning of visual 3d keypoints for control",
+   "cited_meta": "Chen, Boyuan, Abbeel, Pieter, Pathak, Deepak · 2021 · International Conference on Machin",
+   "cite_key": "chen2021unsupervised",
+   "dimension": "(iv) SE(3)-equivariant",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "The keypoint-detection function is SE(3)-equivariant, so that for any rigid transform the output coordinates satisfy f(RP+t)=Rf(P)+t.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "This is a FORMAL definition naming a specific mechanism: f(RP+t)=Rf(P)+t (SE(3)-equivariance on point coordinates). Keypoint3D uses standard CNN heatmap detectors on RGB images plus multi-view triangulation; it is not built as an SE(3)-equivariant network and does not satisfy that identity.",
+    "Matching the FORMAL definition f(RP+t)=Rf(P)+t (named SE(3)-equivariance mechanism). Keypoint3D detects keypoints from images via CNN heatmaps lifted to 3D using known camera extrinsics; it contains no SE(3)-equivariant operator and makes no equivariance claim."
+   ],
+   "baseline_confidences": [
+    0.88,
+    0.85
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "REMARK-LLM:1",
+   "paper": "REMARK-LLM",
+   "citing_url": "https://arxiv.org/abs/2310.12362",
+   "table_id": "tab:compare_scheme",
+   "index": 1,
+   "row_label": "Rule-based",
+   "cited_title": "Cater: Intellectual property protection on text generation apis via conditional watermarks",
+   "cited_meta": "He, Xuanli, Xu, Qiongkai, Zeng, Yi · 2022 · Advances in Neural Information Pro",
+   "cite_key": "he2022cater",
+   "dimension": "Effectiveness",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The embedded watermark signatures can be reliably and correctly extracted from the watermarked text under normal (non-adversarial) conditions.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'watermark signatures can be reliably and correctly extracted under normal conditions.' CATER (He, Xu, Zeng, NeurIPS 2022) embeds a conditional lexical watermark and detects it via a statistical hypothesis test; the paper demonstrates the watermark is reliably identified in the (imitation) model's output, so effectiveness/detectability under normal conditions is a core demonstrated claim.",
+    "Matching 'watermark signatures can be reliably and correctly extracted under normal conditions.' CATER's central claim is that its conditional watermark can be verified in text-generation-API outputs (and the imitation models distilled from them) via statistical hypothesis testing on conditional word frequencies. The paper demonstrates successful watermark identification, so it has effectiveness."
+   ],
+   "baseline_confidences": [
+    0.83,
+    0.8
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "REMARK-LLM:2",
+   "paper": "REMARK-LLM",
+   "citing_url": "https://arxiv.org/abs/2310.12362",
+   "table_id": "tab:compare_scheme",
+   "index": 2,
+   "row_label": "Rule-based",
+   "cited_title": "Cater: Intellectual property protection on text generation apis via conditional watermarks",
+   "cited_meta": "He, Xuanli, Xu, Qiongkai, Zeng, Yi · 2022 · Advances in Neural Information Pro",
+   "cite_key": "he2022cater",
+   "dimension": "Fidelity",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The quality and semantic content of the text is not degraded by the watermark, i.e. the watermarked text stays faithful to the original unwatermarked text.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'text quality/semantic content not degraded.' CATER uses conditional synonym/word substitutions chosen to preserve meaning, and the paper reports negligible impact on generation/translation quality, so fidelity is claimed and evaluated.",
+    "Matching 'text stays faithful to the original.' CATER embeds the watermark through semantics-preserving lexical/synonym substitutions conditioned on linguistic features, and the paper reports that downstream task quality (e.g., translation/generation) is largely maintained. Qualitatively it aims to keep the watermarked text faithful."
+   ],
+   "baseline_confidences": [
+    0.68,
+    0.68
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "REMARK-LLM:3",
+   "paper": "REMARK-LLM",
+   "citing_url": "https://arxiv.org/abs/2310.12362",
+   "table_id": "tab:compare_scheme",
+   "index": 3,
+   "row_label": "Rule-based",
+   "cited_title": "Cater: Intellectual property protection on text generation apis via conditional watermarks",
+   "cited_meta": "He, Xuanli, Xu, Qiongkai, Zeng, Yi · 2022 · Advances in Neural Information Pro",
+   "cite_key": "he2022cater",
+   "dimension": "Efficiency",
+   "claimed": "yes",
+   "refari_verdict": "may_not_support",
+   "gloss": "Watermark insertion and extraction are cheap in time overhead and computational resources (e.g. GPU memory).",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching the qualitative 'insertion and extraction are cheap in time/compute.' CATER is a rule-based lexical substitution watermark with detection via a statistical test — no model training for embedding and lightweight extraction — so it is computationally inexpensive by construction.",
+    "Matching 'insertion and extraction cheap in time/compute.' CATER is a rule-based conditional (lexical-substitution) watermark; insertion is a cheap post-generation substitution and detection is statistical hypothesis testing over collected outputs, neither requiring extra model training or heavy GPU cost. The rule-based nature makes it efficient, though the paper does not emphasize this metric."
+   ],
+   "baseline_confidences": [
+    0.58,
+    0.55
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "REMARK-LLM:4",
+   "paper": "REMARK-LLM",
+   "citing_url": "https://arxiv.org/abs/2310.12362",
+   "table_id": "tab:compare_scheme",
+   "index": 4,
+   "row_label": "Rule-based",
+   "cited_title": "Cater: Intellectual property protection on text generation apis via conditional watermarks",
+   "cited_meta": "He, Xuanli, Xu, Qiongkai, Zeng, Yi · 2022 · Advances in Neural Information Pro",
+   "cite_key": "he2022cater",
+   "dimension": "Robustness",
+   "claimed": "no",
+   "refari_verdict": "contradicted",
+   "gloss": "The watermark remains extractable after malicious transformations or watermark-removal attacks on the text.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'remains extractable after watermark-removal attacks.' CATER's central design goal is resistance to reverse-engineering/removal: by conditioning substitutions on linguistic features it aims to keep the watermark from being identified and stripped, and it provides analysis of robustness against such removal attempts.",
+    "Matching 'remains extractable after malicious transformations/removal attacks.' CATER's threat model is IP theft via imitation/distillation: the watermark survives an attacker training a model on the API outputs, and the paper argues its undetectability prevents an adversary from locating and removing watermarked tokens. It therefore claims robustness against removal, though strong paraphrase-style attacks are less directly evaluated."
+   ],
+   "baseline_confidences": [
+    0.68,
+    0.55
+   ],
+   "baseline_verdicts": [
+    "contradicted",
+    "contradicted"
+   ],
+   "baseline_verdict": "contradicted",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "REMARK-LLM:5",
+   "paper": "REMARK-LLM",
+   "citing_url": "https://arxiv.org/abs/2310.12362",
+   "table_id": "tab:compare_scheme",
+   "index": 5,
+   "row_label": "Rule-based",
+   "cited_title": "Cater: Intellectual property protection on text generation apis via conditional watermarks",
+   "cited_meta": "He, Xuanli, Xu, Qiongkai, Zeng, Yi · 2022 · Advances in Neural Information Pro",
+   "cite_key": "he2022cater",
+   "dimension": "Undetectability",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The presence of the watermark cannot be detected upon inspection, i.e. it resists detection attacks such as ML-based classification distinguishing watermarked from unwatermarked text.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'presence of watermark cannot be detected, resists detection attacks.' This is CATER's flagship contribution — conditional watermarks preserve marginal word-distribution statistics so that statistical/analysis-based detection of the watermark is difficult, i.e. undetectability against distribution/inspection-based detectors.",
+    "Matching 'presence cannot be detected, resists ML/statistical classification.' Undetectability is CATER's primary contribution: conditional watermarking is explicitly designed to minimally perturb the overall word distribution so that statistical/frequency-based detection (which broke prior watermarks like Venugopal et al.) fails to distinguish watermarked from unwatermarked text."
+   ],
+   "baseline_confidences": [
+    0.8,
+    0.88
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "REMARK-LLM:6",
+   "paper": "REMARK-LLM",
+   "citing_url": "https://arxiv.org/abs/2310.12362",
+   "table_id": "tab:compare_scheme",
+   "index": 6,
+   "row_label": "Inference-time",
+   "cited_title": "A watermark for large language models",
+   "cited_meta": "Kirchenbauer, John, Geiping, Jonas, Wen, Yuxin · 2023 · arXiv preprint arXiv:2301.10226",
+   "cite_key": "kirchenbauer2023watermark",
+   "dimension": "Effectiveness",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The embedded watermark signatures can be reliably and correctly extracted from the watermarked text under normal (non-adversarial) conditions.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matches 'watermark signatures can be reliably and correctly extracted under normal conditions.' The KGW green-list/red-list scheme uses a statistical z-test that detects the watermark in generated text with very low false-positive rates and very high true-positive rates on ordinary generations — effectiveness is the paper's central demonstrated result.",
+    "Matching 'signatures can be reliably and correctly extracted under normal conditions.' The Kirchenbauer green-list/red-list watermark is detected via a statistical z-test counting green tokens; the paper demonstrates high detection rates with strong statistical significance on watermarked text. This is the paper's central demonstrated result."
+   ],
+   "baseline_confidences": [
+    0.9,
+    0.9
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "REMARK-LLM:7",
+   "paper": "REMARK-LLM",
+   "citing_url": "https://arxiv.org/abs/2310.12362",
+   "table_id": "tab:compare_scheme",
+   "index": 7,
+   "row_label": "Inference-time",
+   "cited_title": "A watermark for large language models",
+   "cited_meta": "Kirchenbauer, John, Geiping, Jonas, Wen, Yuxin · 2023 · arXiv preprint arXiv:2301.10226",
+   "cite_key": "kirchenbauer2023watermark",
+   "dimension": "Fidelity",
+   "claimed": "no",
+   "refari_verdict": "contradicted",
+   "gloss": "The quality and semantic content of the text is not degraded by the watermark, i.e. the watermarked text stays faithful to the original unwatermarked text.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matches 'quality/semantic content not degraded.' The soft watermark only mildly biases logits and the paper explicitly measures perplexity impact, showing minimal quality degradation (especially on higher-entropy text). This is a qualitative fidelity claim the paper supports empirically.",
+    "Matching 'quality/semantic content not degraded.' Qualitative property. The paper studies the soft watermark's impact on perplexity and argues quality is largely preserved (biasing logits toward a green list has minimal effect, especially on high-entropy text). Fidelity/quality preservation is explicitly analyzed and claimed as a design goal."
+   ],
+   "baseline_confidences": [
+    0.72,
+    0.75
+   ],
+   "baseline_verdicts": [
+    "contradicted",
+    "contradicted"
+   ],
+   "baseline_verdict": "contradicted",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "REMARK-LLM:8",
+   "paper": "REMARK-LLM",
+   "citing_url": "https://arxiv.org/abs/2310.12362",
+   "table_id": "tab:compare_scheme",
+   "index": 8,
+   "row_label": "Inference-time",
+   "cited_title": "A watermark for large language models",
+   "cited_meta": "Kirchenbauer, John, Geiping, Jonas, Wen, Yuxin · 2023 · arXiv preprint arXiv:2301.10226",
+   "cite_key": "kirchenbauer2023watermark",
+   "dimension": "Efficiency",
+   "claimed": "no",
+   "refari_verdict": "unverifiable",
+   "gloss": "Watermark insertion and extraction are cheap in time overhead and computational resources (e.g. GPU memory).",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matches 'insertion and extraction cheap in time/compute.' Watermarking only reshapes the next-token logits at generation (no retraining), and detection needs only the tokenizer and hash function — not the model or its API — making both operations computationally cheap. The paper stresses this low overhead.",
+    "Matching 'insertion and extraction are cheap in time/compute.' The paper emphasizes that detection requires neither the language model nor API access—only the hash function and tokenizer to recompute green lists—making detection extremely cheap; insertion is a lightweight logit modification. Low overhead is a stated advantage."
+   ],
+   "baseline_confidences": [
+    0.85,
+    0.85
+   ],
+   "baseline_verdicts": [
+    "contradicted",
+    "contradicted"
+   ],
+   "baseline_verdict": "contradicted",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "REMARK-LLM:9",
+   "paper": "REMARK-LLM",
+   "citing_url": "https://arxiv.org/abs/2310.12362",
+   "table_id": "tab:compare_scheme",
+   "index": 9,
+   "row_label": "Inference-time",
+   "cited_title": "A watermark for large language models",
+   "cited_meta": "Kirchenbauer, John, Geiping, Jonas, Wen, Yuxin · 2023 · arXiv preprint arXiv:2301.10226",
+   "cite_key": "kirchenbauer2023watermark",
+   "dimension": "Robustness",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The watermark remains extractable after malicious transformations or watermark-removal attacks on the text.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matches 'remains extractable after malicious transformations/removal attacks.' The paper includes an attack/robustness analysis (e.g., token substitution, span/paraphrase-style edits) and argues the z-test aggregated over many tokens survives modification of a fraction of tokens. It qualitatively demonstrates some robustness, though strong paraphrasing is a known weakness.",
+    "Matching 'remains extractable after malicious transformations / removal attacks.' Qualitative property. The paper includes an attack analysis (token insertion/deletion/substitution, paraphrasing) and uses the context-window/z-test to argue the watermark tolerates a moderate fraction of edits, though robustness to strong paraphrasing is limited. It demonstrates the property to a substantive degree."
+   ],
+   "baseline_confidences": [
+    0.58,
+    0.55
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "REMARK-LLM:10",
+   "paper": "REMARK-LLM",
+   "citing_url": "https://arxiv.org/abs/2310.12362",
+   "table_id": "tab:compare_scheme",
+   "index": 10,
+   "row_label": "Inference-time",
+   "cited_title": "A watermark for large language models",
+   "cited_meta": "Kirchenbauer, John, Geiping, Jonas, Wen, Yuxin · 2023 · arXiv preprint arXiv:2301.10226",
+   "cite_key": "kirchenbauer2023watermark",
+   "dimension": "Undetectability",
+   "claimed": "yes",
+   "refari_verdict": "may_not_support",
+   "gloss": "The presence of the watermark cannot be detected upon inspection, i.e. it resists detection attacks such as ML-based classification distinguishing watermarked from unwatermarked text.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "The definition (qualitative, but referencing resistance to ML-based classification distinguishing watermarked text) is not a property this work has. The KGW watermark deliberately shifts the token distribution toward the green list, so the presence of a watermark is statistically detectable to anyone who knows the scheme; the paper does not claim cryptographic undetectability (unlike Christ et al.).",
+    "Matching 'presence of the watermark cannot be detected upon inspection / resists ML classification.' This is a distortionary statistical watermark that shifts token distribution toward green tokens, making it statistically detectable in principle; the paper does not claim or provide cryptographic undetectability/stealthiness (a property targeted by later 'undetectable watermark' works, not this one)."
+   ],
+   "baseline_confidences": [
+    0.68,
+    0.72
+   ],
+   "baseline_verdicts": [
+    "contradicted",
+    "contradicted"
+   ],
+   "baseline_verdict": "contradicted",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "REMARK-LLM:11",
+   "paper": "REMARK-LLM",
+   "citing_url": "https://arxiv.org/abs/2310.12362",
+   "table_id": "tab:compare_scheme",
+   "index": 11,
+   "row_label": "Neural-based",
+   "cited_title": "Adversarial Watermarking Transformer: Towards Tracing Text Provenance with Data Hiding",
+   "cited_meta": "Sahar Abdelnabi, Mario Fritz · 2021 · 42nd IEEE Symposium on Security an",
+   "cite_key": "abdelnabi21oakland",
+   "dimension": "Effectiveness",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The embedded watermark signatures can be reliably and correctly extracted from the watermarked text under normal (non-adversarial) conditions.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'watermark signatures can be reliably and correctly extracted under normal conditions.' AWT (Abdelnabi & Fritz, IEEE S&P 2021) trains an encoder-decoder transformer where the decoder recovers the hidden binary message; the paper reports high bit/message decoding accuracy under non-adversarial conditions, which is their core 'effectiveness' evaluation.",
+    "Matches 'watermark signatures can be reliably and correctly extracted under normal conditions' (qualitative). AWT hides a binary message via a transformer encoder-decoder; the paper reports high message/bit decoding accuracy in the non-adversarial setting, which is exactly their 'effectiveness' evaluation."
+   ],
+   "baseline_confidences": [
+    0.9,
+    0.9
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "REMARK-LLM:12",
+   "paper": "REMARK-LLM",
+   "citing_url": "https://arxiv.org/abs/2310.12362",
+   "table_id": "tab:compare_scheme",
+   "index": 12,
+   "row_label": "Neural-based",
+   "cited_title": "Adversarial Watermarking Transformer: Towards Tracing Text Provenance with Data Hiding",
+   "cited_meta": "Sahar Abdelnabi, Mario Fritz · 2021 · 42nd IEEE Symposium on Security an",
+   "cite_key": "abdelnabi21oakland",
+   "dimension": "Fidelity",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The quality and semantic content of the text is not degraded by the watermark, i.e. the watermarked text stays faithful to the original unwatermarked text.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'quality and semantic content of the text is not degraded.' AWT explicitly evaluates text quality/fidelity via meaning preservation (semantic similarity, e.g. SBERT), language-model perplexity, and human evaluation, and is designed to keep watermarked text close to the original.",
+    "Matches 'text quality and semantic content not degraded' (qualitative). AWT explicitly evaluates and optimizes for text fidelity/meaning preservation (semantic similarity, naturalness via adversarial training) so the watermarked text stays close to the original."
+   ],
+   "baseline_confidences": [
+    0.85,
+    0.85
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "REMARK-LLM:13",
+   "paper": "REMARK-LLM",
+   "citing_url": "https://arxiv.org/abs/2310.12362",
+   "table_id": "tab:compare_scheme",
+   "index": 13,
+   "row_label": "Neural-based",
+   "cited_title": "Adversarial Watermarking Transformer: Towards Tracing Text Provenance with Data Hiding",
+   "cited_meta": "Sahar Abdelnabi, Mario Fritz · 2021 · 42nd IEEE Symposium on Security an",
+   "cite_key": "abdelnabi21oakland",
+   "dimension": "Efficiency",
+   "claimed": "yes",
+   "refari_verdict": "may_not_support",
+   "gloss": "Watermark insertion and extraction are cheap in time overhead and computational resources (e.g. GPU memory).",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "unclear",
+    "unclear"
+   ],
+   "baseline_justifications": [
+    "Matching 'insertion and extraction are cheap in time overhead and computational resources.' This is a qualitative capability. AWT is a neural transformer approach requiring GPU inference, but the paper does not report time/memory overhead, and I cannot confidently settle whether it counts as 'cheap' either way.",
+    "Property is qualitative 'insertion/extraction cheap in time and compute.' AWT is a neural transformer approach; the paper's headline axes are effectiveness, robustness, and secrecy, and I do not recall it making efficiency/computational-overhead a demonstrated claim, so I cannot confidently commit."
+   ],
+   "baseline_confidences": [
+    0.5,
+    0.6
+   ],
+   "baseline_verdicts": [
+    "unverifiable",
+    "unverifiable"
+   ],
+   "baseline_verdict": "unverifiable",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "REMARK-LLM:14",
+   "paper": "REMARK-LLM",
+   "citing_url": "https://arxiv.org/abs/2310.12362",
+   "table_id": "tab:compare_scheme",
+   "index": 14,
+   "row_label": "Neural-based",
+   "cited_title": "Adversarial Watermarking Transformer: Towards Tracing Text Provenance with Data Hiding",
+   "cited_meta": "Sahar Abdelnabi, Mario Fritz · 2021 · 42nd IEEE Symposium on Security an",
+   "cite_key": "abdelnabi21oakland",
+   "dimension": "Robustness",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The watermark remains extractable after malicious transformations or watermark-removal attacks on the text.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'watermark remains extractable after malicious transformations or removal attacks.' AWT devotes a section to robustness, testing random word removal/replacement and an adaptive de-watermarking (denoising) adversary, demonstrating the watermark's resistance to such attacks.",
+    "Matches 'watermark remains extractable after removal attacks' (qualitative). The paper explicitly evaluates robustness against de-watermarking/removal attacks (e.g., random word replacement, denoising-autoencoder attacks) and reports retained decoding accuracy."
+   ],
+   "baseline_confidences": [
+    0.88,
+    0.85
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "REMARK-LLM:15",
+   "paper": "REMARK-LLM",
+   "citing_url": "https://arxiv.org/abs/2310.12362",
+   "table_id": "tab:compare_scheme",
+   "index": 15,
+   "row_label": "Neural-based",
+   "cited_title": "Adversarial Watermarking Transformer: Towards Tracing Text Provenance with Data Hiding",
+   "cited_meta": "Sahar Abdelnabi, Mario Fritz · 2021 · 42nd IEEE Symposium on Security an",
+   "cite_key": "abdelnabi21oakland",
+   "dimension": "Undetectability",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The presence of the watermark cannot be detected upon inspection, i.e. it resists detection attacks such as ML-based classification distinguishing watermarked from unwatermarked text.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'presence of the watermark cannot be detected... resists ML-based classification distinguishing watermarked from unwatermarked text.' AWT uses adversarial training with a discriminator for secrecy and explicitly evaluates undetectability by training classifiers to distinguish watermarked from original text, reporting near-chance detection.",
+    "Matches 'presence resists ML-based classification distinguishing watermarked from unwatermarked text' (qualitative). AWT includes a 'secrecy' evaluation training an adversarial classifier to detect watermarked text and shows it is hard to distinguish."
+   ],
+   "baseline_confidences": [
+    0.88,
+    0.85
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "MARRS:1",
+   "paper": "MARRS",
+   "citing_url": "https://arxiv.org/abs/2311.01650",
+   "table_id": "table:1",
+   "index": 1,
+   "row_label": "bohnet2023coreference",
+   "cited_title": "Coreference Resolution through a seq2seq Transition-Based System",
+   "cited_meta": "Bohnet, Bernd, Alberti, Chris, Collins, Michael · 2023 · Transactions of the Association fo",
+   "cite_key": "bohnet2023coreference",
+   "dimension": "Anaphora",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The method resolves a follow-up utterance that points back, via an explicit referring expression, to an entity introduced in a prior conversational turn, recovering that entity from dialogue context.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching the qualitative capability 'resolves ... an explicit referring expression ... to an entity introduced in a prior' context. Bohnet et al. 2023 is a coreference resolution system (seq2seq transition-based, T5-style), and coreference resolution's core function is anaphora resolution — linking explicit referring expressions (pronouns, definite descriptions) to antecedent entities, including in conversational genres of OntoNotes/CoNLL-2012 (telephone/broadcast conversation). Substantively it",
+    "Matching 'resolves ... an explicit referring expression [pointing] back to an entity introduced in a prior ... turn, recovering that entity from ... context.' This is a qualitative capability definition = anaphora resolution, which is the core function of Bohnet et al.'s seq2seq transition-based coreference system. It links anaphoric mentions (pronouns/definite descriptions) to previously introduced entities, and the OntoNotes/CoNLL-2012 data it uses includes conversational genres. Judged on sub"
+   ],
+   "baseline_confidences": [
+    0.62,
+    0.58
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "MARRS:2",
+   "paper": "MARRS",
+   "citing_url": "https://arxiv.org/abs/2311.01650",
+   "table_id": "table:1",
+   "index": 2,
+   "row_label": "bohnet2023coreference",
+   "cited_title": "Coreference Resolution through a seq2seq Transition-Based System",
+   "cited_meta": "Bohnet, Bernd, Alberti, Chris, Collins, Michael · 2023 · Transactions of the Association fo",
+   "cite_key": "bohnet2023coreference",
+   "dimension": "Ellipses",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "The method resolves a follow-up utterance from which words have been omitted (elided), reconstructing the missing content from the previous turn to recover the user's full intent.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching 'words have been omitted (elided), reconstructing the missing content.' This is a general document/text coreference resolution model over explicit mention spans; it does not reconstruct elided/omitted content into a full query. Ellipsis resolution is a distinct phenomenon the system does not perform.",
+    "Matching 'reconstructing the missing content from the previous turn to recover the user's full intent.' This is ellipsis reconstruction / query completion, a dialogue-understanding capability that fills in omitted words. Bohnet 2023 is a coreference resolution model: it links existing mentions to entity clusters; it does not generate/reconstruct elided content or rewrite an utterance to recover full intent."
+   ],
+   "baseline_confidences": [
+    0.6,
+    0.62
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "MARRS:3",
+   "paper": "MARRS",
+   "citing_url": "https://arxiv.org/abs/2311.01650",
+   "table_id": "table:1",
+   "index": 3,
+   "row_label": "bohnet2023coreference",
+   "cited_title": "Coreference Resolution through a seq2seq Transition-Based System",
+   "cited_meta": "Bohnet, Bernd, Alberti, Chris, Collins, Michael · 2023 · Transactions of the Association fo",
+   "cite_key": "bohnet2023coreference",
+   "dimension": "Correction by Repetition",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "Correction by Repetition: User: What is the population of Australia Agent: The population of Australia is",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching the dialogue-specific 'Correction by Repetition' scenario. This is a coreference resolution model on written/transcribed documents, not a conversational query-understanding/correction system; it does not handle user corrections.",
+    "Matching 'Correction by Repetition' (a conversational correction/repair phenomenon over dialogue turns). Bohnet 2023 performs document-level coreference resolution and has no mechanism for handling user corrections or conversational repair."
+   ],
+   "baseline_confidences": [
+    0.75,
+    0.85
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "MARRS:4",
+   "paper": "MARRS",
+   "citing_url": "https://arxiv.org/abs/2311.01650",
+   "table_id": "table:1",
+   "index": 4,
+   "row_label": "bohnet2023coreference",
+   "cited_title": "Coreference Resolution through a seq2seq Transition-Based System",
+   "cited_meta": "Bohnet, Bernd, Alberti, Chris, Collins, Michael · 2023 · Transactions of the Association fo",
+   "cite_key": "bohnet2023coreference",
+   "dimension": "Screen Entity Resolution",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "The method resolves a referring expression in the utterance to a specific entity currently shown on the device's screen (visual/UI context).",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching 'entity currently shown on the device's screen (visual/UI context).' Bohnet et al. 2023 is a text-only coreference model with no screen/visual/UI grounding, so it cannot resolve on-screen entities.",
+    "Matching 'resolves a referring expression ... to a specific entity currently shown on the device's screen (visual/UI context).' The Bohnet et al. system is a text-only coreference model with no visual/UI/screen context input, so it cannot resolve on-screen entities."
+   ],
+   "baseline_confidences": [
+    0.85,
+    0.9
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "MARRS:5",
+   "paper": "MARRS",
+   "citing_url": "https://arxiv.org/abs/2311.01650",
+   "table_id": "table:1",
+   "index": 5,
+   "row_label": "bohnet2023coreference",
+   "cited_title": "Coreference Resolution through a seq2seq Transition-Based System",
+   "cited_meta": "Bohnet, Bernd, Alberti, Chris, Collins, Michael · 2023 · Transactions of the Association fo",
+   "cite_key": "bohnet2023coreference",
+   "dimension": "Conversational Entity Resolution",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "The method resolves references to an entity that is part of the conversational interaction even though it was never explicitly mentioned in the dialogue.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching 'an entity ... never explicitly mentioned in the dialogue.' Coreference resolution links explicit textual mentions to one another; it requires mentions in the text and does not resolve references to entities that were never explicitly mentioned.",
+    "Matching 'resolves references to an entity ... even though it was never explicitly mentioned in the dialogue.' Coreference resolution operates over mentions present in the text and links them to antecedents that appear in the input; it cannot resolve references to entities never explicitly mentioned. This conversational-entity-resolution capability is outside what Bohnet 2023 does."
+   ],
+   "baseline_confidences": [
+    0.6,
+    0.68
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "MARRS:6",
+   "paper": "MARRS",
+   "citing_url": "https://arxiv.org/abs/2311.01650",
+   "table_id": "table:1",
+   "index": 6,
+   "row_label": "bhargava-etal-2023-referring",
+   "cited_title": "Referring to Screen Texts with Voice Assistants",
+   "cited_meta": "Bhargava, Shruti, Dhoot, Anand, Jonsson, Ing-marie · 2023 · Proceedings of the 61st Annual Mee",
+   "cite_key": "bhargava-etal-2023-referring",
+   "dimension": "Anaphora",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "The method resolves a follow-up utterance that points back, via an explicit referring expression, to an entity introduced in a prior conversational turn, recovering that entity from dialogue context.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Definition (qualitative) requires resolving a follow-up utterance that points back to an entity from a PRIOR CONVERSATIONAL TURN, recovered from dialogue context. Bhargava et al. 2023 focuses on resolving referring expressions to on-screen text (visual/UI context) in a single turn, not anaphora over dialogue history. The paper does not target prior-turn conversational anaphora.",
+    "Matching the 'anaphora … points back to an entity introduced in a prior conversational turn, recovering that entity from dialogue context' clause. This paper (Bhargava et al., ACL 2023) is scoped to resolving references to text shown on the device screen (e.g., 'call this number', 'the second one'), a largely single-turn, visually-grounded task. It does not target recovering entities from prior dialogue turns via anaphora."
+   ],
+   "baseline_confidences": [
+    0.6,
+    0.6
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "MARRS:7",
+   "paper": "MARRS",
+   "citing_url": "https://arxiv.org/abs/2311.01650",
+   "table_id": "table:1",
+   "index": 7,
+   "row_label": "bhargava-etal-2023-referring",
+   "cited_title": "Referring to Screen Texts with Voice Assistants",
+   "cited_meta": "Bhargava, Shruti, Dhoot, Anand, Jonsson, Ing-marie · 2023 · Proceedings of the 61st Annual Mee",
+   "cite_key": "bhargava-etal-2023-referring",
+   "dimension": "Ellipses",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "The method resolves a follow-up utterance from which words have been omitted (elided), reconstructing the missing content from the previous turn to recover the user's full intent.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Definition (qualitative) requires reconstructing omitted/elided words from the previous turn. This paper addresses screen-text reference resolution, not ellipsis reconstruction from prior dialogue turns.",
+    "Matching 'resolves a follow-up utterance from which words have been omitted … reconstructing missing content from the previous turn'. The work resolves referring expressions to on-screen text, not elided/omitted content recovered from a prior conversational turn."
+   ],
+   "baseline_confidences": [
+    0.65,
+    0.6
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "MARRS:8",
+   "paper": "MARRS",
+   "citing_url": "https://arxiv.org/abs/2311.01650",
+   "table_id": "table:1",
+   "index": 8,
+   "row_label": "bhargava-etal-2023-referring",
+   "cited_title": "Referring to Screen Texts with Voice Assistants",
+   "cited_meta": "Bhargava, Shruti, Dhoot, Anand, Jonsson, Ing-marie · 2023 · Proceedings of the 61st Annual Mee",
+   "cite_key": "bhargava-etal-2023-referring",
+   "dimension": "Correction by Repetition",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "Correction by Repetition: User: What is the population of Australia Agent: The population of Australia is",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "The 'Correction by Repetition' definition describes a user re-stating/correcting a prior query. This paper is about referring to screen texts, not query correction; no such mechanism is part of the work.",
+    "Matching the 'correction by repetition' phenomenon (user repeats/corrects a prior turn). This is a conversational dialogue-repair behavior unrelated to the paper's screen-text reference resolution focus; I have no knowledge of the paper handling it."
+   ],
+   "baseline_confidences": [
+    0.75,
+    0.68
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "MARRS:9",
+   "paper": "MARRS",
+   "citing_url": "https://arxiv.org/abs/2311.01650",
+   "table_id": "table:1",
+   "index": 9,
+   "row_label": "bhargava-etal-2023-referring",
+   "cited_title": "Referring to Screen Texts with Voice Assistants",
+   "cited_meta": "Bhargava, Shruti, Dhoot, Anand, Jonsson, Ing-marie · 2023 · Proceedings of the 61st Annual Mee",
+   "cite_key": "bhargava-etal-2023-referring",
+   "dimension": "Screen Entity Resolution",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The method resolves a referring expression in the utterance to a specific entity currently shown on the device's screen (visual/UI context).",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Definition (qualitative): resolves a referring expression in the utterance to a specific entity currently shown on the device's screen (visual/UI context). This is precisely the paper's central task — 'Referring to Screen Texts with Voice Assistants' resolves user references (e.g., ordinal/positional/content-based) to specific texts/entities displayed on screen.",
+    "Matching 'resolves a referring expression in the utterance to a specific entity currently shown on the device's screen (visual/UI context)'. This is precisely the paper's central contribution: resolving voice-assistant references (e.g., a phone number, address, item) to text currently displayed on the screen."
+   ],
+   "baseline_confidences": [
+    0.88,
+    0.85
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "MARRS:10",
+   "paper": "MARRS",
+   "citing_url": "https://arxiv.org/abs/2311.01650",
+   "table_id": "table:1",
+   "index": 10,
+   "row_label": "bhargava-etal-2023-referring",
+   "cited_title": "Referring to Screen Texts with Voice Assistants",
+   "cited_meta": "Bhargava, Shruti, Dhoot, Anand, Jonsson, Ing-marie · 2023 · Proceedings of the 61st Annual Mee",
+   "cite_key": "bhargava-etal-2023-referring",
+   "dimension": "Conversational Entity Resolution",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "The method resolves references to an entity that is part of the conversational interaction even though it was never explicitly mentioned in the dialogue.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Definition (qualitative) is for entities that are part of the conversational interaction but never explicitly mentioned in dialogue — a category distinct from screen entities. The paper is scoped to on-screen text entities (screen entity resolution), not conversationally-present-but-unmentioned entities.",
+    "Matching 'resolves references to an entity that is part of the conversational interaction even though it was never explicitly mentioned in the dialogue'. The paper resolves screen (visual-context) entities, not conversational entities arising from the dialogue interaction; that conversational-entity category is a separate line of work."
+   ],
+   "baseline_confidences": [
+    0.55,
+    0.55
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "MARRS:11",
+   "paper": "MARRS",
+   "citing_url": "https://arxiv.org/abs/2311.01650",
+   "table_id": "table:1",
+   "index": 11,
+   "row_label": "nguyen2021user",
+   "cited_title": "User-Initiated Repetition-Based Recovery in Multi-Utterance Dialogue Systems",
+   "cited_meta": "Nguyen, Hoang Long, Renkens, Vincent, Pelemans, Joris · 2021 · arXiv preprint arXiv:2108.01208",
+   "cite_key": "nguyen2021user",
+   "dimension": "Anaphora",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "The method resolves a follow-up utterance that points back, via an explicit referring expression, to an entity introduced in a prior conversational turn, recovering that entity from dialogue context.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching 'resolves a follow-up utterance that points back, via an explicit referring expression, to an entity introduced in a prior turn.' This paper is about user-initiated repetition-based recovery from ASR/understanding errors in multi-turn dialogue — detecting that a user is repeating a prior request and merging the utterances to recover intent. It does not perform anaphora/coreference resolution of referring expressions to prior entities.",
+    "Definition is qualitative: resolving a follow-up that points back via an explicit referring expression (anaphora) to a prior entity. This paper's mechanism is user-initiated repetition-based recovery — detecting when a user repeats/rephrases an utterance to correct a system error — not resolving anaphoric referring expressions to prior-turn entities. That capability is not part of the work."
+   ],
+   "baseline_confidences": [
+    0.75,
+    0.7
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "MARRS:12",
+   "paper": "MARRS",
+   "citing_url": "https://arxiv.org/abs/2311.01650",
+   "table_id": "table:1",
+   "index": 12,
+   "row_label": "nguyen2021user",
+   "cited_title": "User-Initiated Repetition-Based Recovery in Multi-Utterance Dialogue Systems",
+   "cited_meta": "Nguyen, Hoang Long, Renkens, Vincent, Pelemans, Joris · 2021 · arXiv preprint arXiv:2108.01208",
+   "cite_key": "nguyen2021user",
+   "dimension": "Ellipses",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "The method resolves a follow-up utterance from which words have been omitted (elided), reconstructing the missing content from the previous turn to recover the user's full intent.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching 'resolves a follow-up utterance from which words have been omitted (elided), reconstructing the missing content.' The work targets repetition detection and recovery, not ellipsis resolution / reconstructing elided content from a prior turn.",
+    "Definition is qualitative: reconstructing elided/omitted content from the previous turn (ellipsis resolution). The paper addresses repetition-based correction, not filling in words omitted from an underspecified follow-up. Ellipsis resolution is not a stated capability."
+   ],
+   "baseline_confidences": [
+    0.75,
+    0.7
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "MARRS:13",
+   "paper": "MARRS",
+   "citing_url": "https://arxiv.org/abs/2311.01650",
+   "table_id": "table:1",
+   "index": 13,
+   "row_label": "nguyen2021user",
+   "cited_title": "User-Initiated Repetition-Based Recovery in Multi-Utterance Dialogue Systems",
+   "cited_meta": "Nguyen, Hoang Long, Renkens, Vincent, Pelemans, Joris · 2021 · arXiv preprint arXiv:2108.01208",
+   "cite_key": "nguyen2021user",
+   "dimension": "Correction by Repetition",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "Correction by Repetition: User: What is the population of Australia Agent: The population of Australia is",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'Correction by Repetition.' The paper's central contribution is user-initiated repetition-based recovery: when the system mis-handles an utterance, the user repeats their request and the system detects this repetition to recover the correct intent. This is precisely correction-by-repetition.",
+    "Definition (qualitative) is correction by repetition — a user repeating an utterance to correct/recover from a system error. This is precisely the paper's topic: 'User-Initiated Repetition-Based Recovery in Multi-Utterance Dialogue Systems,' which detects and exploits user repetition to recover from prior misunderstanding."
+   ],
+   "baseline_confidences": [
+    0.88,
+    0.85
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "MARRS:14",
+   "paper": "MARRS",
+   "citing_url": "https://arxiv.org/abs/2311.01650",
+   "table_id": "table:1",
+   "index": 14,
+   "row_label": "nguyen2021user",
+   "cited_title": "User-Initiated Repetition-Based Recovery in Multi-Utterance Dialogue Systems",
+   "cited_meta": "Nguyen, Hoang Long, Renkens, Vincent, Pelemans, Joris · 2021 · arXiv preprint arXiv:2108.01208",
+   "cite_key": "nguyen2021user",
+   "dimension": "Screen Entity Resolution",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "The method resolves a referring expression in the utterance to a specific entity currently shown on the device's screen (visual/UI context).",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching 'resolves a referring expression to a specific entity currently shown on the device's screen (visual/UI context).' This work concerns spoken repetition recovery in dialogue and does not involve on-screen/visual entity resolution.",
+    "Definition (qualitative) requires resolving a reference to an entity shown on the device's screen (visual/UI context). This paper concerns spoken repetition-based recovery in dialogue and involves no screen/visual entity resolution."
+   ],
+   "baseline_confidences": [
+    0.8,
+    0.85
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "MARRS:15",
+   "paper": "MARRS",
+   "citing_url": "https://arxiv.org/abs/2311.01650",
+   "table_id": "table:1",
+   "index": 15,
+   "row_label": "nguyen2021user",
+   "cited_title": "User-Initiated Repetition-Based Recovery in Multi-Utterance Dialogue Systems",
+   "cited_meta": "Nguyen, Hoang Long, Renkens, Vincent, Pelemans, Joris · 2021 · arXiv preprint arXiv:2108.01208",
+   "cite_key": "nguyen2021user",
+   "dimension": "Conversational Entity Resolution",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "The method resolves references to an entity that is part of the conversational interaction even though it was never explicitly mentioned in the dialogue.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "Matching 'resolves references to an entity that is part of the conversational interaction even though it was never explicitly mentioned.' The paper addresses repetition-based error recovery, not conversational/implicit entity reference resolution.",
+    "Definition (qualitative) is resolving references to an entity part of the interaction but never explicitly mentioned (conversational entity resolution). The paper's contribution is repetition-based error recovery, not resolving implicit conversational entities; this capability is not part of the work."
+   ],
+   "baseline_confidences": [
+    0.72,
+    0.68
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "MARRS:16",
+   "paper": "MARRS",
+   "citing_url": "https://arxiv.org/abs/2311.01650",
+   "table_id": "table:1",
+   "index": 16,
+   "row_label": "Tseng2021CREADCR",
+   "cited_title": "CREAD: Combined Resolution of Ellipses and Anaphora in Dialogues",
+   "cited_meta": "Tseng, Bo-Hsiang, Bhargava, Shruti, Lu, Jiarui · 2021 · Proceedings of the 2021 Conference",
+   "cite_key": "Tseng2021CREADCR",
+   "dimension": "Anaphora",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The method resolves a follow-up utterance that points back, via an explicit referring expression, to an entity introduced in a prior conversational turn, recovering that entity from dialogue context.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'resolves a follow-up utterance that points back, via an explicit referring expression, to an entity introduced in a prior conversational turn.' CREAD ('Combined Resolution of Ellipses and Anaphora in Dialogues', Tseng et al. 2021) explicitly targets anaphora resolution in dialogue, rewriting utterances to recover pronominal/referring-expression referents from prior turns. Anaphora is named in the title and is a core task of the model.",
+    "Matching 'resolves a follow-up utterance that points back, via an explicit referring expression, to an entity introduced in a prior conversational turn.' CREAD (Combined Resolution of Ellipses and Anaphora in Dialogues) explicitly performs anaphora resolution via query rewriting, recovering antecedents from prior dialogue turns. Anaphora is named in the title and is a core task of the paper."
+   ],
+   "baseline_confidences": [
+    0.95,
+    0.95
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "MARRS:17",
+   "paper": "MARRS",
+   "citing_url": "https://arxiv.org/abs/2311.01650",
+   "table_id": "table:1",
+   "index": 17,
+   "row_label": "Tseng2021CREADCR",
+   "cited_title": "CREAD: Combined Resolution of Ellipses and Anaphora in Dialogues",
+   "cited_meta": "Tseng, Bo-Hsiang, Bhargava, Shruti, Lu, Jiarui · 2021 · Proceedings of the 2021 Conference",
+   "cite_key": "Tseng2021CREADCR",
+   "dimension": "Ellipses",
+   "claimed": "yes",
+   "refari_verdict": "supported",
+   "gloss": "The method resolves a follow-up utterance from which words have been omitted (elided), reconstructing the missing content from the previous turn to recover the user's full intent.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "has",
+    "has"
+   ],
+   "baseline_justifications": [
+    "Matching 'resolves a follow-up utterance from which words have been omitted (elided), reconstructing the missing content from the previous turn.' Ellipsis resolution is the other explicitly named task of CREAD; it jointly rewrites incomplete/elided user utterances into complete, context-independent queries using the previous turns.",
+    "Matching 'resolves a follow-up utterance from which words have been omitted (elided), reconstructing the missing content from the previous turn.' Ellipsis resolution is the other half of CREAD's combined task; the model rewrites elided follow-up queries into complete standalone queries using dialogue context."
+   ],
+   "baseline_confidences": [
+    0.95,
+    0.95
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "MARRS:18",
+   "paper": "MARRS",
+   "citing_url": "https://arxiv.org/abs/2311.01650",
+   "table_id": "table:1",
+   "index": 18,
+   "row_label": "Tseng2021CREADCR",
+   "cited_title": "CREAD: Combined Resolution of Ellipses and Anaphora in Dialogues",
+   "cited_meta": "Tseng, Bo-Hsiang, Bhargava, Shruti, Lu, Jiarui · 2021 · Proceedings of the 2021 Conference",
+   "cite_key": "Tseng2021CREADCR",
+   "dimension": "Correction by Repetition",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "Correction by Repetition: User: What is the population of Australia Agent: The population of Australia is",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "The property describes 'Correction by Repetition' (a user restating/correcting a prior request). CREAD is scoped to ellipsis and anaphora resolution in dialogue and does not address correction/repetition phenomena.",
+    "The property is a distinct phenomenon (correction-by-repetition, where a user re-states/corrects prior content). CREAD's scope is limited to ellipsis and anaphora resolution via query rewriting; it does not address correction by repetition."
+   ],
+   "baseline_confidences": [
+    0.8,
+    0.82
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "MARRS:19",
+   "paper": "MARRS",
+   "citing_url": "https://arxiv.org/abs/2311.01650",
+   "table_id": "table:1",
+   "index": 19,
+   "row_label": "Tseng2021CREADCR",
+   "cited_title": "CREAD: Combined Resolution of Ellipses and Anaphora in Dialogues",
+   "cited_meta": "Tseng, Bo-Hsiang, Bhargava, Shruti, Lu, Jiarui · 2021 · Proceedings of the 2021 Conference",
+   "cite_key": "Tseng2021CREADCR",
+   "dimension": "Screen Entity Resolution",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "The method resolves a referring expression in the utterance to a specific entity currently shown on the device's screen (visual/UI context).",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "The property requires resolving a reference to an entity shown on the device's screen (visual/UI context). CREAD operates purely over textual dialogue context and has no screen/visual/multimodal grounding component.",
+    "Property requires resolving a reference to an entity shown on the device's screen (visual/UI context). CREAD operates purely on textual dialogue history with no screen/visual/UI grounding, so it cannot resolve screen entities."
+   ],
+   "baseline_confidences": [
+    0.9,
+    0.9
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  },
+  {
+   "cell_uid": "MARRS:20",
+   "paper": "MARRS",
+   "citing_url": "https://arxiv.org/abs/2311.01650",
+   "table_id": "table:1",
+   "index": 20,
+   "row_label": "Tseng2021CREADCR",
+   "cited_title": "CREAD: Combined Resolution of Ellipses and Anaphora in Dialogues",
+   "cited_meta": "Tseng, Bo-Hsiang, Bhargava, Shruti, Lu, Jiarui · 2021 · Proceedings of the 2021 Conference",
+   "cite_key": "Tseng2021CREADCR",
+   "dimension": "Conversational Entity Resolution",
+   "claimed": "no",
+   "refari_verdict": "supported",
+   "gloss": "The method resolves references to an entity that is part of the conversational interaction even though it was never explicitly mentioned in the dialogue.",
+   "gloss_source": "body",
+   "gloss_source_raw": "正文定义",
+   "baseline_answers": [
+    "lacks",
+    "lacks"
+   ],
+   "baseline_justifications": [
+    "The property specifies resolving an entity that is part of the interaction 'even though it was never explicitly mentioned in the dialogue.' CREAD resolves anaphora/ellipsis by recovering entities that WERE introduced in prior turns; it does not target entities absent from the explicit dialogue text, so it does not match this specific definition.",
+    "Property requires resolving an entity that is part of the interaction yet 'never explicitly mentioned in the dialogue.' CREAD resolves anaphora/ellipsis whose antecedents ARE present in prior turns of the dialogue; it does not target entities that were never explicitly mentioned."
+   ],
+   "baseline_confidences": [
+    0.6,
+    0.68
+   ],
+   "baseline_verdicts": [
+    "supported",
+    "supported"
+   ],
+   "baseline_verdict": "supported",
+   "baseline_self_consistent": true
+  }
+ ]
+}
