@@ -26,11 +26,9 @@ Usage::
 from __future__ import annotations
 
 import argparse
-import asyncio
 import json
 import threading
 import time
-from collections import defaultdict
 from pathlib import Path
 
 from citation_verifier.backends.relevance_judge import build_relevance_judge
