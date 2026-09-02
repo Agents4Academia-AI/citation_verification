@@ -14,16 +14,20 @@ Three things this script is deliberately careful about, because each one would s
 inflate a headline number:
 
 1. **Unlabelled rows are excluded.** A row whose ``checker`` is blank carries the sheet's
-   default ``Supported``, which is not a human judgement. As of the 2026-09-01 pull that
-   is all 20 MARRS cells — the fifth paper is still being annotated.
+   default ``Supported``, which is not a human judgement, so counting it would hand every
+   system a free correct answer. The guard did fire on a false positive once: the 20 MARRS
+   rows were annotated but left unsigned in the sheet. That is fixed in the snapshot, not
+   here — those rows now carry ``checker: mingye`` plus a ``checker_source`` field saying
+   the attribution came from the project owner rather than from the sheet. Fix attribution
+   in the data; never loosen this check.
 2. **``skipped`` cells are excluded**, matching the 99-cell denominator the report uses.
 3. **Hybrid labels stay hybrid.** Five cells carry two verdicts. They are kept out of the
    strict number and scored generously (correct if the prediction matches either branch)
    elsewhere, rather than collapsed to whichever branch flatters a system.
 
 The headline is NOT accuracy. On this label distribution a constant "Supported"
-classifier outscores every system, so that constant is printed as its own row and the
-script leads with the error budget instead.
+classifier outscores every system (87.2% over the 94 single-valued labels), so that
+constant is printed as its own row and the script leads with the error budget instead.
 """
 
 from __future__ import annotations

@@ -50,6 +50,10 @@ re-running extraction, precisely so the denominator cannot drift.
 definitions and evidence, so the system we propose has a figure beside the baselines.
 Per judged cell: SCitance $0.083, closed-book $0.042, Refari ≥$0.038.
 
+Full-set scores (99 labelled cells, 94 with a single-valued label): exact match
+Refari 74.5%, closed-book 75.5%, SCitance 46.8% (51.1% with the definition supplied).
+MARRS is what separates them — SCitance scores 5/20 there, the others 20/20.
+
 The Refari number is a **lower bound twice over** — it omits retrieval and column
 grounding, and it feeds only the evidence *sentence* the report quotes rather than the
 passage the live run held. That second restriction costs a lot: the same judge under it
@@ -71,13 +75,13 @@ which would otherwise inflate a headline number:
 
 | Guard | Why |
 |---|---|
-| Rows with a blank `checker` are dropped | They carry the sheet's default `Supported`, not a human judgement. As of the 2026-09-01 pull that is all 20 MARRS cells — the fifth table is still being annotated. Counting them would hand both systems 20 free correct answers. |
+| Rows with a blank `checker` are dropped | They carry the sheet's default `Supported`, not a human judgement, so counting them hands every system free correct answers. This fired on a false positive once — the 20 MARRS rows *were* annotated (by mingye) but left unsigned. Fixed in the snapshot, which now records `checker` plus a `checker_source` noting the attribution came from the project owner and not the sheet. Fix attribution in the data; do not loosen the check. |
 | `skipped` cells are dropped | Matches the 99-cell denominator the report uses. |
 | Hybrid labels stay hybrid | Five cells carry two verdicts ("Contradicted/May Not", "Supported / May Not Support"). Held out of the exact-match number, scored generously elsewhere — never collapsed to whichever branch flatters a system. |
 
-**Do not lead with accuracy.** 62 of the 74 unambiguously labelled cells are correct
-table claims, so a constant `Supported` classifier scores 62/74 (83.8%) and beats both
-systems. The script prints that constant next to the real rows for exactly this reason.
+**Do not lead with accuracy.** 82 of the 94 unambiguously labelled cells are correct
+table claims, so a constant `Supported` classifier scores 82/94 (87.2%) and beats all
+three systems. The script prints that constant next to the real rows for exactly this reason.
 The informative comparison is the error budget: green-light precision, false
 accusations, and abstention cost.
 
