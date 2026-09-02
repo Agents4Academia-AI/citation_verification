@@ -187,6 +187,43 @@ def _chunks(body: str, max_chars: int) -> list[str]:
     return out
 
 
+def _is_heading_like(chunk: str) -> bool:
+    """True when a chunk names a topic rather than saying anything about it.
+
+    Scoring is overlap-with-the-CLAIM, normalised by the claim's length, so a chunk is
+    never penalised for being short — and a heading is the densest possible match, being
+    nothing but signal words. "E.2 High-order Features" was returned as evidence for
+    whether a method composes higher-order features; the judge could only reply that it
+    had been shown a section heading. The section's actual paragraphs are what carry the
+    answer, and they are separate chunks that rank behind it.
+
+    A passage states something and therefore ends a sentence somewhere; a heading does
+    not.
+    """
+    text = (chunk or "").strip()
+    if not text:
+        return True
+    if len(text.split()) > 12 or re.search(r"[.!?][\"'\u201d\u2019)\]]*(?:\s|$)", text):
+        return False
+    # Short and unpunctuated is not enough — a table row or a clipped sentence is short too
+    # and does assert something. A heading also LOOKS like one: a section number, a
+    # trailing colon, or title case.
+    return bool(
+        re.match(r"^\(?(?:[A-Z]|\d+)(?:\.\d+)*\)?[.\s]", text)      # "E.2 …", "4.1 …", "3 …"
+        or text.endswith(":")
+        or _is_title_case(text)
+    )
+
+
+def _is_title_case(text: str) -> bool:
+    """True when most content words are capitalised, as in a heading."""
+    words = [w for w in re.findall(r"[A-Za-z][\w'-]*", text) if len(w) > 3]
+    if len(words) < 2:
+        return False
+    caps = sum(1 for w in words if w[0].isupper())
+    return caps / len(words) >= 0.6
+
+
 def select_evidence_chunks(
     claim: str,
     sections: list[tuple[str, str]],
@@ -210,6 +247,8 @@ def select_evidence_chunks(
         if not _section_in_scope(heading, want_exp):
             continue
         for chunk in _chunks(body, max_chars):
+            if _is_heading_like(chunk):
+                continue
             ct = _tokens(chunk)
             overlap = len(claim_toks & ct) / len(claim_toks) if claim_toks and ct else 0.0
             scored.append((overlap, order, heading, chunk))
