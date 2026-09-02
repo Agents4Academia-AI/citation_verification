@@ -35,7 +35,11 @@ from typing import Any
 
 __all__ = ["build_evidence_provider", "compose_evidence"]
 
-_MAX_EVIDENCE_CHARS = 9000
+# Enough for every column of a wide table to carry several excerpts. The judge reads this
+# once per row, and a formal column ("the function is SE(3)-equivariant if …") can only be
+# decided from the one or two sentences that state the mechanism — starving it is how a
+# cell becomes unverifiable for want of a paragraph the paper does contain.
+_MAX_EVIDENCE_CHARS = 24000
 
 
 def _dimension_queries(dimensions: list[Any]) -> list[str]:
@@ -81,9 +85,28 @@ def compose_evidence(
         seen.add(key)
         body.append(f"[{heading or 'body'}] {text}")
     if body:
-        parts.append("FULL TEXT EXCERPTS:\n" + "\n".join(body))
+        head = "\n\n".join(p for p in parts if p.strip())
+        budget = max(0, max_chars - len(head) - len("\n\nFULL TEXT EXCERPTS:\n"))
+        parts.append("FULL TEXT EXCERPTS:\n" + "\n".join(_fit(body, budget)))
     out = "\n\n".join(p for p in parts if p.strip())
     return out[:max_chars]
+
+
+def _fit(excerpts: list[str], budget: int) -> list[str]:
+    """As many excerpts as fit in ``budget``, in the order given.
+
+    Fairness lives in that order: :func:`_full_text_chunks` interleaves the columns, so
+    truncating the tail drops everyone's Nth-best excerpt rather than the last columns'
+    only one.
+    """
+    kept: list[str] = []
+    used = 0
+    for x in excerpts:
+        if used + len(x) + 1 > budget:
+            break
+        kept.append(x)
+        used += len(x) + 1
+    return kept or excerpts[:1]
 
 
 def build_evidence_provider(
@@ -92,7 +115,7 @@ def build_evidence_provider(
     resolver: Any,
     dimensions: list[Any],
     use_full_text: bool = True,
-    chunks_per_query: int = 2,
+    chunks_per_query: int = 5,
     chunk_chars: int = 700,
     retries: int = 3,
     pace_seconds: float = 1.0,
@@ -106,7 +129,10 @@ def build_evidence_provider(
             (``title`` / ``abstract`` / ``arxiv_id`` / ``url``), or ``None``.
         dimensions: the table's columns — their glosses become the retrieval queries.
         use_full_text: fetch the cited paper's body. Off makes every cell abstract-only.
-        chunks_per_query: excerpts to keep per column.
+        chunks_per_query: excerpts to keep per column. Two was too few for a column whose
+            criterion is an equation: whether the cell could be decided at all came down to
+            whether chunk scoring happened to surface the sentence carrying it, and the
+            same paper judged three different ways across three runs.
         chunk_chars: max characters per excerpt.
         retries: attempts before giving up on a reference. The metadata APIs rate-limit
             a burst of lookups and simply return nothing, which is indistinguishable
@@ -207,7 +233,18 @@ def _full_text_chunks(
         split_sections,
     )
     sections = split_sections(text)
+    # Interleaved by rank, not grouped by column: every column's best excerpt comes before
+    # any column's second-best. The evidence block has a character cap, and a run of one
+    # column's excerpts at the front would push the last columns out of it entirely —
+    # those cells would then read as unverifiable for a reason having nothing to do with
+    # the cited paper.
+    per_column = [
+        select_evidence_chunks(q, sections, k=per_query, max_chars=chunk_chars)
+        for q in queries
+    ]
     out: list[tuple[str, str]] = []
-    for q in queries:
-        out += select_evidence_chunks(q, sections, k=per_query, max_chars=chunk_chars)
+    for rank in range(per_query):
+        for picked in per_column:
+            if rank < len(picked):
+                out.append(picked[rank])
     return out

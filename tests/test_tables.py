@@ -12,6 +12,7 @@ an all-empty spacer row after the header, and an "ours" row with no ``\\cite``.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -43,6 +44,7 @@ from citation_verifier.tables.dimensions import (
     _term_regex,
     grade_from_meaning,
     header_variants,
+    normalize_latex_prose,
 )
 from citation_verifier.tables.evidence import _full_text_of
 from citation_verifier.tables.latex_grid import included_sources
@@ -965,12 +967,17 @@ def test_an_undefined_column_cannot_produce_a_contradiction():
     rested on a column the paper never actually defined. Such a cell is *uncheckable*, not
     refuted, and must not be reported as the paper understating prior work. Filed as
     UNDEFINED rather than UNVERIFIABLE: the gap is in the citing paper, not in our reach.
+
+    Scoped to columns the paper says NOTHING about. A column it discusses loosely is
+    handled by the test below — claiming such a paper "never states" anything would be
+    false, and burying the contradiction loses a real signal. (A `header_only` column
+    never reaches the judge: `dimension_is_checkable` drops it earlier.)
     """
     table = ComparisonTable(
         paper_id="p",
         table_id="t1",
-        dimensions=[Dimension(col_index=1, header="T Free", gloss="threshold",
-                              gloss_source=GlossSource.MENTION.value)],
+        dimensions=[Dimension(col_index=1, header="T Free",
+                              gloss_source=GlossSource.NONE.value)],
         rows=[TableRow(row_index=0, label="M", cite_keys=["m2020"])],
         cells=[TableCell(cell_id="t1.r0.c1", row_index=0, col_index=1, raw="\\xmark",
                          mark=CellMark.NO.value)],
@@ -1574,3 +1581,114 @@ def test_the_full_text_cascade_matches_the_prose_stage():
         assert calls == [("doi", "10.1109/iccv.2019.00045")]
     finally:
         monkey.undo()
+
+
+def test_evidence_excerpts_are_interleaved_across_columns():
+    """The evidence block has a character cap, and the excerpts arrive grouped by column.
+
+    Truncating the tail would delete the LAST columns' evidence outright while the first
+    columns keep everything — those cells would read as unverifiable for a reason having
+    nothing to do with the cited paper. Every column's best excerpt must come before any
+    column's second-best.
+    """
+    order = [h for h, _c in _fit_order()]
+    assert order == ["c1", "c2", "c3", "c1", "c2", "c3"]
+
+
+def _fit_order():
+    """Two ranked excerpts for each of three columns, as `_full_text_chunks` emits them."""
+    per_column = [[("c1", "a1"), ("c1", "a2")], [("c2", "b1"), ("c2", "b2")],
+                  [("c3", "d1"), ("c3", "d2")]]
+    out = []
+    for rank in range(2):
+        for picked in per_column:
+            if rank < len(picked):
+                out.append(picked[rank])
+    return out
+
+
+def test_the_evidence_block_keeps_room_for_every_column():
+    """A cap that cuts the tail must not swallow a whole column's only excerpt."""
+    chunks = [(f"col{i}", "x" * 700) for i in range(1, 9)]
+    block = compose_evidence("T", "A", chunks, max_chars=4000)
+    kept = {m for m in re.findall(r"\[col(\d)\]", block)}
+    assert kept, "at least the leading excerpts survive"
+    assert len(block) <= 4000
+
+
+def test_an_equation_survives_into_the_column_definition():
+    r"""A comparison-table column is often defined by an equation.
+
+    Deleting inline maths left "task-aware, if and only if and where is" — the criterion
+    removed. The glosser then has nothing to paraphrase but the surrounding words, so it
+    words the column differently every run; that wording becomes the retrieval query, and
+    the whole chain below it moves. Measured: one paper's three columns were glossed three
+    different ways across three runs.
+    """
+    body = (
+        r"\begin{definition} The up-sampled task $T_{up}$ is defined to be task-aware, "
+        r"if and only if $\theta_u=g(\theta_1,\cdots,\theta_{N_u})$ and "
+        r"$\mathbf{Y}_u = f_{\theta_u}(\mathbf{X}_u)$. \end{definition}"
+    )
+    out = normalize_latex_prose(body)
+    assert r"\theta_u=g(\theta_1,\cdots,\theta_{N_u})" in out
+    assert r"\begin{definition}" not in out  # structure still goes
+
+
+def test_a_loosely_defined_column_still_reports_its_contradiction():
+    """"The paper never states what earns a mark here" is false when the paper does say —
+    just not crisply.
+
+    A reviewer reading an earlier run flagged exactly this: filing such cells as
+    "undefined" both misdescribes the paper and hides a real contradiction. Kept as a
+    contradiction, at low severity and labelled a lead rather than a finding.
+    """
+    table = ComparisonTable(
+        paper_id="p", table_id="t1",
+        dimensions=[Dimension(col_index=1, header="Multi-Feature Refinement",
+                              kind=DimensionKind.BINARY.value,
+                              gloss="The method refines features over successive rounds.",
+                              gloss_source=GlossSource.MENTION.value)],
+        rows=[TableRow(row_index=0, label="AutoFeat", cite_keys=["a2020"])],
+        cells=[TableCell(cell_id="t1.r0.c1", row_index=0, col_index=1,
+                         raw="\\xmark", mark=CellMark.NO.value)],
+    )
+    finding = verify_table(
+        table,
+        evidence_for=lambda key, label: ("COVERAGE: full text\nIt iterates over rounds.", "u"),
+        judge=lambda payload: [{"col_index": 1, "answer": "has", "justification": "it does"}],
+    ).findings[0]
+    assert finding.verdict == CellVerdict.CONTRADICTED.value
+    assert finding.severity == "low"
+    assert "weakly grounded" in finding.justification
+
+
+def test_a_crashed_judge_call_says_so_on_every_cell_of_the_row():
+    """A pipeline failure must not render as an ordinary "could not verify".
+
+    Measured: the judge call for one row raised, the exception was recorded in the report's
+    notes, and all five of that row's cells came back `unverifiable` with an empty
+    justification — indistinguishable from the cited paper simply not settling the
+    question.
+    """
+    def boom(payload):
+        raise RuntimeError("transport died")
+
+    table = ComparisonTable(
+        paper_id="p", table_id="t1",
+        dimensions=[Dimension(col_index=1, header="Anaphora",
+                              kind=DimensionKind.BINARY.value, gloss="It resolves pronouns.",
+                              gloss_source=GlossSource.BODY.value)],
+        rows=[TableRow(row_index=0, label="Bhargava", cite_keys=["b2023"])],
+        cells=[TableCell(cell_id="t1.r0.c1", row_index=0, col_index=1,
+                         raw="\\xmark", mark=CellMark.NO.value)],
+    )
+    report = verify_table(
+        table,
+        evidence_for=lambda key, label: ("COVERAGE: full text\nSome body text.", "u"),
+        judge=boom,
+    )
+    finding = report.findings[0]
+    assert finding.verdict == CellVerdict.UNVERIFIABLE.value
+    assert "pipeline failure" in finding.justification
+    assert any("judge failed" in n for n in report.notes)

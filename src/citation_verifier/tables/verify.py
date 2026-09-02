@@ -167,14 +167,17 @@ def _skip(table: ComparisonTable, row, dim: Dimension, cell, reason: str, verdic
 # Gloss grades too weak to license a CONTRADICTED verdict. A contradiction says "the
 # paper's ✓/✗ is wrong", which presupposes knowing what the column asserts; these two
 # grades mean precisely that the paper never said.
-_WEAK_GLOSS = frozenset(
-    {
-        GlossSource.MENTION.value,
-        GlossSource.RECOVERED.value,
-        GlossSource.HEADER_ONLY.value,
-        GlossSource.NONE.value,
-    }
-)
+# The paper says nothing at all about this column outside the table. A contradiction here
+# would be an accusation over a criterion that does not exist. (A HEADER_ONLY column never
+# reaches the judge at all — `dimension_is_checkable` drops it — so only NONE arrives here,
+# from a table built without the gloss stage.)
+_NO_GLOSS = frozenset({GlossSource.HEADER_ONLY.value, GlossSource.NONE.value})
+# The paper does say what the column means, but loosely — a passing mention, or a meaning
+# a model recovered from the caption. Weak grounds for an accusation, but reporting that
+# the paper "never states" anything would be false, and hiding the contradiction under
+# "undefined" loses a real signal.
+_LOOSE_GLOSS = frozenset({GlossSource.MENTION.value, GlossSource.RECOVERED.value})
+_WEAK_GLOSS = _NO_GLOSS | _LOOSE_GLOSS
 
 
 def verify_table(
@@ -276,6 +279,7 @@ def verify_table(
                 notes.append(f"{row.label}: evidence retrieval failed: {exc!r}")
 
         answers: dict[int, dict] = {}
+        row_failure = ""
         if evidence.strip() and judge is not None:
             try:
                 got = judge(build_row_payload(table, row.row_index, row_dims, evidence))
@@ -284,6 +288,7 @@ def verify_table(
                         answers[int(item["col_index"])] = item
             except Exception as exc:  # noqa: BLE001 — degrade-not-crash
                 notes.append(f"{row.label}: judge failed: {exc!r}")
+                row_failure = f"the judge call for this row failed ({type(exc).__name__})"
 
         for dim in row_dims:
             cell = table.cell(row.row_index, dim.col_index)
@@ -299,6 +304,13 @@ def verify_table(
                 got = {"justification": "no evidence could be retrieved for the cited work"}
 
             note = str(got.get("justification", "") or "")[:500]
+            severity_floor = ""
+            if row_failure and not note:
+                # A crashed judge call is a pipeline failure, and every cell in the row
+                # inherits it. Left blank it renders as an ordinary "could not verify" with
+                # no reason given, indistinguishable from the cited paper simply not
+                # settling the question — measured: five cells of one table read that way.
+                note = f"[pipeline failure: {row_failure}, so this cell was never judged]"
             if answer == _WRONG_PAPER:
                 note = (
                     "[retrieval failure: the retrieved text is about a different work, so "
@@ -329,7 +341,7 @@ def verify_table(
                     "[in this column a ✗ means the citing paper reports no technique for "
                     "that phase, not that the cited work cannot do it] "
                 ) + note
-            if verdict == CellVerdict.CONTRADICTED.value and dim.gloss_source in _WEAK_GLOSS:
+            if verdict == CellVerdict.CONTRADICTED.value and dim.gloss_source in _NO_GLOSS:
                 # UNDEFINED, not UNVERIFIABLE: this is a finding about the CITING paper —
                 # it drew a column and never said what earns a mark in it — not a report
                 # that we failed to check something. Filed under "we could not verify" it
@@ -339,7 +351,20 @@ def verify_table(
                     "[the citing paper never states what earns a mark in this column, so "
                     "the cell asserts nothing checkable] "
                 ) + note
+            elif verdict == CellVerdict.CONTRADICTED.value and dim.gloss_source in _LOOSE_GLOSS:
+                # The paper DOES say what this column means, just not crisply. Reporting
+                # that it "never states" anything would be false, and burying the
+                # contradiction under "undefined" hides a real signal — a reviewer reading
+                # an earlier run flagged exactly that. Kept as a contradiction, but low
+                # severity and labelled: a lead to check, not a finding to headline.
+                severity_floor = "low"
+                note = (
+                    "[weakly grounded: the paper discusses this column but never defines "
+                    "it crisply, so treat this as a lead rather than a finding] "
+                ) + note
             severity = derive_cell_severity(cell.mark, verdict, is_self=row.is_self)
+            if severity_floor:
+                severity = severity_floor
 
             findings.append(
                 CellFinding(

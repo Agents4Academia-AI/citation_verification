@@ -18,12 +18,11 @@ cache degrades to no cache, never to an error.
 
 from __future__ import annotations
 
-import hashlib
-import json
-import os
-import re
 from pathlib import Path
 from typing import Any
+
+from ..diskcache import clear as _clear
+from ..diskcache import key_for, namespace_dir, read_json, write_json
 
 __all__ = ["cache_dir", "clear", "read", "write"]
 
@@ -31,43 +30,19 @@ _VERSION = "v1"  # bump when the parsing that produces a Resolved changes materi
 
 
 def cache_dir() -> Path | None:
-    """Where resolutions are stored, or ``None`` when no cache is usable."""
-    raw = os.environ.get("CITATION_VERIFIER_CACHE")
-    if raw == "":  # explicitly disabled
-        return None
-    base = (
-        Path(raw)
-        if raw
-        else Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
-        / "citation-verifier"
-    )
-    try:
-        path = base / "resolve" / _VERSION
-        path.mkdir(parents=True, exist_ok=True)
-        return path
-    except OSError:
-        return None
+    """Where entries are stored, or ``None`` when caching is off."""
+    return namespace_dir("resolve", _VERSION)
 
 
-def _key(reference: str) -> str:
-    """A stable key for a reference string.
-
-    Whitespace and case are normalised so the same reference reached through the LaTeX
-    ``.bbl`` and through a PDF's reference list hits one entry.
-    """
-    norm = re.sub(r"\s+", " ", (reference or "")).strip().lower()
-    return hashlib.sha256(norm.encode("utf-8")).hexdigest()[:32]
+def _key(ident: str) -> str:
+    """A stable key for this identifier."""
+    return key_for(ident)
 
 
 def read(reference: str, model: Any) -> Any | None:
     """A previously cached ``Resolved`` for this reference, or ``None``."""
-    root = cache_dir()
-    if root is None or not (reference or "").strip():
-        return None
-    path = root / f"{_key(reference)}.json"
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    data = read_json(cache_dir(), _key(reference)) if (reference or "").strip() else None
+    if not isinstance(data, dict):
         return None
     try:
         return model(**data)
@@ -75,36 +50,19 @@ def read(reference: str, model: Any) -> Any | None:
         return None
 
 
+
 def write(reference: str, resolved: Any) -> None:
     """Store a successful resolution. Never raises."""
-    root = cache_dir()
-    if root is None or resolved is None or not (reference or "").strip():
+    if resolved is None or not (reference or "").strip():
         return
     try:
         payload = resolved.model_dump(mode="json")
     except AttributeError:
         return
-    path = root / f"{_key(reference)}.json"
-    try:
-        # Write-then-rename so a crashed run cannot leave a half-written entry that later
-        # reads as a corrupt cache.
-        tmp = path.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
-        tmp.replace(path)
-    except OSError:
-        return
+    write_json(cache_dir(), _key(reference), payload)
+
 
 
 def clear() -> int:
-    """Delete every cached resolution; returns how many were removed."""
-    root = cache_dir()
-    if root is None:
-        return 0
-    n = 0
-    for p in root.glob("*.json"):
-        try:
-            p.unlink()
-            n += 1
-        except OSError:
-            continue
-    return n
+    """Delete every entry; returns how many were removed."""
+    return _clear(cache_dir())

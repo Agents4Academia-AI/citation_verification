@@ -33,6 +33,7 @@ from collections.abc import Callable
 from functools import lru_cache
 from typing import Any
 
+from . import gloss_cache
 from .model import Dimension, GlossSource
 
 __all__ = [
@@ -554,8 +555,15 @@ _TEX_NOISE_RE = re.compile(
     r"item(?:sep)?|linewidth|textwidth|columnwidth|input|include(?:graphics)?|"
     r"resizebox|caption\*?|footnote(?:size)?|url)\b\s*(?:\{[^{}]*\})?\*?"
     r"|\\(?:begin|end)\s*\{[^{}]*\}"
-    r"|\$[^$]{0,120}\$"
 )
+# Inline maths is KEPT, as the TeX that wrote it. A comparison-table column is often
+# defined by an equation — "task-aware if and only if $\\theta_u=g(\\theta_1,\\cdots)$ and
+# $\\mathbf{Y}_u=f_{\\theta_u}(\\mathbf{X}_u)$" — and deleting it leaves "if and only if
+# and where is", a sentence with its criterion removed. The glosser then has nothing to
+# paraphrase but the surrounding words, so it words the column differently every run; that
+# wording becomes the retrieval query, and the whole chain below it moves. Measured: one
+# paper's three columns were glossed three different ways across three runs.
+_INLINE_MATH_KEPT = True
 # A worked example is a definition by demonstration; keep it as one unit so the sentence
 # splitter cannot cut it after the first line.
 # Citation and cross-reference commands: noise for our purposes, and universal, so they
@@ -816,6 +824,8 @@ def resolve_dimensions(
     legend: list[str] | None = None,
     glosser: Callable[[list[dict]], list[dict]] | None = None,
     own_names: set[str] | list[str] | None = None,
+    paper_id: str = "",
+    table_id: str = "",
 ) -> list[Dimension]:
     """Fill ``gloss`` / ``gloss_source`` / ``gloss_quote`` / ``test_question`` in place.
 
@@ -836,6 +846,9 @@ def resolve_dimensions(
             returning ``[{gloss, test_question}, …]`` aligned by index.
         own_names: the citing paper's own method name(s), so a sentence describing that
             method is not adopted as the column's definition.
+        paper_id, table_id: identify the table for the gloss cache. Without them the
+            glosser is called afresh every run, and because its wording becomes the
+            retrieval query, the whole chain below it moves with it.
 
     Returns:
         The same list, with the gloss fields populated.
@@ -917,10 +930,21 @@ def resolve_dimensions(
     if glosser is None or not payload:
         return dimensions
 
-    try:
-        refined = glosser(payload)
-    except Exception:  # noqa: BLE001 — degrade to the deterministic gloss
-        return dimensions
+    # Served from disk where we have glossed this column before. The gloss is the one
+    # non-deterministic step upstream of everything else — it becomes the retrieval query,
+    # and chunk scoring is pure lexical overlap, so re-wording it re-selects the evidence
+    # and can re-decide the cell. Caching it makes the rest of the chain reproducible.
+    cached = [gloss_cache.read(paper_id, table_id, col) for col in payload]
+    todo = [i for i, hit in enumerate(cached) if hit is None]
+    refined: list[Any] = list(cached)
+    if todo:
+        try:
+            fresh = glosser([payload[i] for i in todo])
+        except Exception:  # noqa: BLE001 — degrade to the deterministic gloss
+            return dimensions
+        for i, got in zip(todo, fresh or [], strict=False):
+            refined[i] = got
+            gloss_cache.write(paper_id, table_id, payload[i], got)
     for dim, col, got in zip(dimensions, payload, refined or [], strict=False):
         if not isinstance(got, dict):
             continue

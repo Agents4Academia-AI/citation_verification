@@ -388,6 +388,8 @@ def verify_tables(
             legend=table.legend,
             glosser=glosser,
             own_names=own,
+            paper_id=table.paper_id,
+            table_id=table.table_id,
         )
         reports.append(
             verify_table(
