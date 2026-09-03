@@ -26,13 +26,20 @@ python scripts/baselines/refari_judge_cost.py # price Refari's judging stage
 python scripts/baselines/score_human.py       # every system vs. the human labels
 ```
 
-Build the manifest from **`table_audit_percell_0829.md`**, not the older
-`table_audit_percell.md`: the newer run rewrote 96 of 106 column definitions, so a
-baseline judged against the old ones is no longer matched to Refari.
+Build the manifest from **`table_audit_percell_0903.md`** (the 2026-09-03 run), not
+`table_audit_percell_0829.md` or the older `table_audit_percell.md`. Every rerun so far
+has rewritten the column definitions (0829 changed 96 of 106; 0903 changed 100 of 106,
+plus the evidence sentence on 72 cells), so a baseline judged against an earlier set is
+no longer matched to Refari. **Re-run every baseline after switching audits.** The 0829
+outputs are kept as `out/*_v1_0829.json`; the 0828 ones as `out/*_v0_0828.json`.
 
-`build_manifest.py` parses the archived per-cell audit
-(`/scratch/datasets/citation_verification_outputs/table_audit_percell.md`) rather than
-re-running extraction, precisely so the denominator cannot drift.
+The 0903 run's own header records two things worth knowing: its judge prompt was
+scrubbed of every worked example drawn from these five papers, and MARRS's verdict
+column comes from a separate rerun because the judge call crashed on that paper in the
+main batch (its mark-flip column is from the main batch).
+
+`build_manifest.py` parses the archived per-cell audit rather than re-running
+extraction, precisely so the denominator cannot drift.
 
 ## Baselines
 
@@ -48,16 +55,21 @@ re-running extraction, precisely so the denominator cannot drift.
 
 `refari_judge_cost.py` replays Refari's own `build_cell_judge` over the frozen
 definitions and evidence, so the system we propose has a figure beside the baselines.
-Per judged cell: SCitance $0.083, closed-book $0.042, Refari ≥$0.038.
+Per judged cell (0903 run): SCitance $0.100, closed-book $0.044, Refari ≥$0.038.
 
-Full-set scores (99 labelled cells, 94 with a single-valued label): exact match
-Refari 74.5%, closed-book 75.5%, SCitance 46.8% (51.1% with the definition supplied).
-MARRS is what separates them — SCitance scores 5/20 there, the others 20/20.
+Full-set scores on the 0903 run (99 labelled cells, 94 with a single-valued label):
+exact match Refari 79.8%, closed-book 75.5%, SCitance 54.3% (64.9% with the
+definition supplied). Contradictions issued / overturned by annotators: Refari 10 / 5,
+closed-book 19 / 10, SCitance 15 / 9. MARRS still separates SCitance from the rest —
+8/20 there against 20/20 for the others. The order on exact match is **not** stable
+across runs: on the 0829 definitions closed-book (75.5%) edged Refari (74.5%), and the
+95% intervals overlap almost entirely; the error profile (fewest accusations, fewest
+overturned) is the finding, not the exact-match ranking.
 
 The Refari number is a **lower bound twice over** — it omits retrieval and column
 grounding, and it feeds only the evidence *sentence* the report quotes rather than the
 passage the live run held. That second restriction costs a lot: the same judge under it
-reproduces only 54/91 (59.3%) of the archived verdicts. Since `scitance.py` is given
+reproduces only 52/94 (55.3%) of the archived verdicts. Since `scitance.py` is given
 that same sentence, **the literature baseline is evidence-starved relative to Refari**,
 and its scores are a lower bound on the method. The full retrieved passages are not in
 the archive, so closing this needs a fresh Refari run.

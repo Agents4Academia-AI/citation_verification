@@ -2,7 +2,7 @@
 build_manifest.py — recover the exact cell set the Refari run reported.
 
 The Refari table run is archived as a rendered per-cell audit
-(``table_audit_percell.md`` in the shared outputs dir). This script parses it back
+(``table_audit_percell_0903.md`` in the shared outputs dir). This script parses it back
 into a machine-readable manifest so a BASELINE can be run on *identical* cells:
 same tables, same rows, same column glosses, same ✓/✗ marks.
 
@@ -23,7 +23,7 @@ import sys
 from pathlib import Path
 
 SRC = Path(
-    "/scratch/datasets/citation_verification_outputs/table_audit_percell.md"
+    "/scratch/datasets/citation_verification_outputs/table_audit_percell_0903.md"
 )
 OUT = Path(__file__).resolve().parent / "out" / "cells.json"
 
