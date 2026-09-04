@@ -153,6 +153,7 @@ def render_table_report(report: TableReport) -> str:
 def _order_verdict(token: str) -> int:
     order = [
         CellVerdict.CONTRADICTED.value,
+        CellVerdict.MAY_NOT_SUPPORT.value,
         CellVerdict.UNDEFINED.value,
         CellVerdict.UNVERIFIABLE.value,
         CellVerdict.SUPPORTED.value,

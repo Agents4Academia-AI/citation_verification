@@ -31,10 +31,12 @@ Pure stdlib and offline: this module only parses text.
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 from .model import CellMark, ComparisonTable, Dimension, DimensionKind, TableCell, TableRow
 
 __all__ = [
+    "included_sources",
     "tables_from_latex",
     "parse_tabular",
     "normalize_mark",
@@ -83,7 +85,8 @@ _NO_PAT = re.compile(
     re.IGNORECASE,
 )
 _PARTIAL_PAT = re.compile(
-    r"\\(?:halfcirc|LEFTcircle|RIGHTcircle|halfstar|Circle)\b|[▲◐◑⯨◒◓]",
+    r"\\(?:halfcirc|LEFTcircle|RIGHTcircle|halfstar|Circle|tmark|mmark|pmark|midmark"
+    r"|hmark|partialmark|yellowcheck)\b|[▲◐◑⯨◒◓]",
     re.IGNORECASE,
 )
 
@@ -146,7 +149,11 @@ def strip_tex(s: str) -> str:
     """Reduce a TeX fragment to readable plain text (for headers, labels, captions)."""
     s = _strip_comments(s)
     s = _CITE_RE.sub(" ", s)
-    s = re.sub(r"\\(?:label|ref|cref|vspace|hspace|resizebox|footnote)\s*\{[^}]*\}", " ", s)
+    s = re.sub(
+        r"\\(?:label|ref|cref|vspace|hspace|resizebox|footnote"
+        r"|rowcolor|cellcolor|columncolor|colorbox|textcolor|color)\s*(?:\[[^\]]*\])?\s*\{[^}]*\}",
+        " ", s,
+    )
     # Unwrap common one-argument formatting macros, innermost first.
     for _ in range(6):
         new = re.sub(
@@ -159,21 +166,47 @@ def strip_tex(s: str) -> str:
             break
         s = new
     s = re.sub(r"\\(?:small|footnotesize|scriptsize|tiny|large|Large|normalsize|centering|bf|it)\b", " ", s)
+    # Unescape LaTeX-escaped punctuation BEFORE dropping macros: "84.21\\%" must read as
+    # the number 84.21%, or a results column looks categorical and the table is audited
+    # as a capability matrix.
+    s = re.sub(r"\\([%&_#\$])", r"\1", s)
     s = re.sub(r"\\[a-zA-Z@]+\s*(?:\[[^\]]*\])?", " ", s)  # any remaining macro
-    s = s.replace("~", " ").replace("\\&", "&")
+    s = s.replace("~", " ")
     s = re.sub(r"[{}$]", "", s)
     return re.sub(r"\s+", " ", s).strip(" .,;:")
 
 
-def normalize_mark(raw: str) -> str:
+def normalize_mark(raw: str, legend: dict[str, str] | None = None) -> str:
     """Classify a raw cell into a :class:`CellMark` value.
 
     Macros win over words: ``\\ding{55}`` is ✗ even though the stripped text is empty.
     A cell that carries real content (``"gradient-based"``, ``"3.2M"``) is ``value``.
+
+    Args:
+        raw: the cell as written.
+        legend: the paper's own symbol legend (see
+            :func:`citation_verifier.tables.dimensions.parse_symbol_legend`). Consulted
+            FIRST, because a symbol means what this paper says it means — a table drawn
+            with ``\\tmark`` or ``▲`` is unreadable against any fixed glyph table, and the
+            caption usually spells out "▲: medium".
     """
     cell = _strip_comments(raw or "").strip()
     if not cell:
         return CellMark.EMPTY.value
+    if legend:
+        from .dimensions import grade_from_meaning  # noqa: PLC0415 — avoids an import cycle
+
+        for sym, meaning in legend.items():
+            token = sym.strip()
+            hit = (
+                re.search(rf"{re.escape(token)}(?![A-Za-z])", cell)
+                if token.startswith("\\")
+                else (token and token in cell)
+            )
+            if hit:
+                grade = grade_from_meaning(meaning)
+                if grade:
+                    return grade
     # Symbol/macro evidence, before text stripping loses it.
     if _PARTIAL_PAT.search(cell):
         return CellMark.PARTIAL.value
@@ -187,9 +220,17 @@ def normalize_mark(raw: str) -> str:
     if not text:
         return CellMark.EMPTY.value
     low = text.lower()
-    # "N/A" is an abstention ("not applicable / not reported"), NOT the paper asserting
-    # the method lacks the property — treating it as ✗ manufactures a false accusation.
-    if low in {"-", "–", "—", "n/a", "na", "n.a.", "--", "?"}:
+    # A dash is the paper saying NO. It is the ordinary typographic alternative to ✗ in a
+    # capability matrix, and papers say so when they bother to: "'-' indicates the method
+    # does not use the listed resource or lacks that capability". Read as an abstention it
+    # silently excluded whole tables from checking. The paper's own legend still wins —
+    # that lookup ran above this line.
+    if low in {"-", "–", "—", "--", "---"}:
+        return CellMark.NO.value
+    # "N/A" and "?" really are abstentions ("not applicable / not reported"), NOT the
+    # paper asserting the method lacks the property — reading them as ✗ manufactures a
+    # false accusation.
+    if low in {"n/a", "na", "n.a.", "n.a", "?", "unknown", "unk", "tbd"}:
         return CellMark.EMPTY.value
     # Whole-cell word forms only — never a substring of longer content.
     if re.fullmatch(r"(partial(ly)?|limited|partly|some|medium|mid)", low):
@@ -267,7 +308,17 @@ def _unwrap_cell(cell: str) -> tuple[str, int]:
     """
     span = 1
     text = cell.strip()
-    for _ in range(6):
+    for _ in range(8):
+        # Peel a leading formatting wrapper first: papers write
+        # `\textbf{\multirow{1}{*}{Domain}}`, and matching only on a leading \multirow
+        # leaves the macro un-unwrapped, so the header degrades to "1*Domain".
+        m = re.match(r"^\s*\\(?:textbf|textit|texttt|textsc|emph|bf|it|small|footnotesize)"
+                     r"\s*\{", text)
+        if m:
+            inner, _end = _balanced(text, m.end() - 1)
+            if inner.strip():
+                text = inner.strip()
+                continue
         m = re.match(r"^\s*\\multicolumn\s*\{\s*(\d+)\s*\}", text)
         if m:
             span = max(span, int(m.group(1)))
@@ -293,12 +344,24 @@ def _unwrap_cell(cell: str) -> tuple[str, int]:
 
 def _parse_row_cells(row_src: str) -> list[str]:
     """Cells of one row, with ``\\multicolumn`` spans expanded so indices stay aligned."""
+    return [content for content, _span in _parse_row_cells_spanned(row_src)]
+
+
+def _parse_row_cells_spanned(row_src: str) -> list[tuple[str, int]]:
+    """``_parse_row_cells`` plus each cell's column span, ``0`` marking a continuation.
+
+    ``\\multicolumn{2}{c}{Retargetability}`` expands to ``[("Retargetability", 2), ("", 0)]``.
+    Keeping the ``0`` is what lets :func:`_merge_header_rows` tell "this column sits under
+    a group header" apart from "this column has no group header" — the two are the same
+    empty string once spans are discarded, and conflating them silently drops the parent
+    from every column of a span but the first.
+    """
     raw_cells = _split_top_level(_RULE_RE.sub(" ", row_src), "&")
-    out: list[str] = []
+    out: list[tuple[str, int]] = []
     for c in raw_cells:
         content, span = _unwrap_cell(c)
-        out.append(content)
-        out.extend([""] * (span - 1))
+        out.append((content, span))
+        out.extend([("", 0)] * (span - 1))
     return out
 
 
@@ -341,12 +404,19 @@ def parse_tabular(body: str) -> list[list[str]]:
     Returns rows of raw (unwrapped, still TeX) cell strings. The leading column spec,
     rule-only rows and all-empty spacer rows are dropped — none carry assertions.
     """
-    grid: list[list[str]] = []
+    return [[content for content, _span in row] for row in _parse_tabular_spanned(body)]
+
+
+def _parse_tabular_spanned(body: str) -> list[list[tuple[str, int]]]:
+    """:func:`parse_tabular` with each cell's column span kept (see ``_parse_row_cells_spanned``)."""
+    grid: list[list[tuple[str, int]]] = []
     for row_src in _split_rows(_strip_comments(_strip_colspec(body))):
         if not row_src.strip() or not _RULE_RE.sub("", row_src).strip():
             continue
-        cells = _parse_row_cells(row_src)
-        if not any(strip_tex(c) or _YES_PAT.search(c) or _NO_PAT.search(c) for c in cells):
+        cells = _parse_row_cells_spanned(row_src)
+        if not any(
+            strip_tex(c) or _YES_PAT.search(c) or _NO_PAT.search(c) for c, _span in cells
+        ):
             continue  # spacer row: every cell empty
         grid.append(cells)
     return grid
@@ -385,7 +455,42 @@ def _cite_keys(cell: str) -> list[str]:
     return keys
 
 
-def looks_like_comparison_table(grid: list[list[str]], *, min_rows: int = 2, min_cols: int = 2) -> bool:
+def _column_class(grid: list[list[str]], col: int, *, body_from: int = 1,
+                  normalizer=None) -> str:
+    """Classify one column as ``mark`` | ``categorical`` | ``numeric`` | ``text`` | ``empty``.
+
+    ``categorical`` is the signature of a capability matrix that uses words instead of
+    ✓/✗ — a SMALL closed vocabulary repeated down the column ("Human"/"LLM"/"-",
+    "Input"/"Output"). A results table fails it because its cells are numbers, and a
+    free-text column fails it because its values are long and all distinct.
+    """
+    norm = normalizer or normalize_mark
+    vals = [(r[col] if col < len(r) else "") for r in grid[body_from:]]
+    marks = [norm(v) for v in vals]
+    nonempty = [m for m in marks if m != CellMark.EMPTY.value]
+    if len(nonempty) < 2:
+        return "empty"
+    marky = [m for m in nonempty if m in (CellMark.YES.value, CellMark.NO.value, CellMark.PARTIAL.value)]
+    if len(marky) / len(nonempty) >= 0.6:
+        return "mark"
+    texts = [strip_tex(v) for v in vals if strip_tex(v)]
+    numeric = sum(1 for s in texts if re.fullmatch(r"[~$\\simO()\d.,\s]*[\d][\d.,KMBG%~\s]*", s or "x"))
+    if texts and numeric / len(texts) >= 0.6:
+        return "numeric"
+    # Property columns are routinely MIXED — "\\xmark | \\xmark | SMT | Resource rules" is
+    # one column saying "does this project allocate resources, and how". Demanding a
+    # column be *entirely* marks or *entirely* a closed vocabulary dropped such tables
+    # outright, so score marks and short repeated values TOGETHER.
+    short = [s for s in texts if len(s) <= 25]
+    distinct = len({s.lower() for s in short})
+    vocab_like = short and distinct <= max(2, int(len(nonempty) * 0.6))
+    if vocab_like and (len(marky) + len(short)) / len(nonempty) >= 0.6:
+        return "categorical"
+    return "text"
+
+
+def looks_like_comparison_table(grid: list[list[str]], *, min_rows: int = 2, min_cols: int = 2,
+                                normalizer=None) -> bool:
     """Heuristic: is this a capability matrix rather than a results table?
 
     Counts columns that are *predominantly* ✓/✗/▲ rather than the share of marks over the
@@ -398,19 +503,31 @@ def looks_like_comparison_table(grid: list[list[str]], *, min_rows: int = 2, min
     if len(grid) < min_rows + 1:
         return False
     ncols = max((len(r) for r in grid), default=0)
-    marky_cols = 0
-    for c in range(1, ncols):
-        vals = [normalize_mark(r[c]) for r in grid[1:] if c < len(r)]
-        vals = [v for v in vals if v != CellMark.EMPTY.value]
-        if len(vals) < 2:
-            continue
-        marks = [
-            v for v in vals
-            if v in (CellMark.YES.value, CellMark.NO.value, CellMark.PARTIAL.value)
-        ]
-        if len(marks) / len(vals) >= 0.6:
-            marky_cols += 1
-    return marky_cols >= min_cols
+    norm = normalizer or normalize_mark
+    kinds = [_column_class(grid, c, normalizer=norm) for c in range(1, ncols)]
+    marky = kinds.count("mark")
+    categorical = kinds.count("categorical")
+
+    # A sparse grid of stray marks is not a capability matrix — DocsRay's results table
+    # has two "mark" columns holding three ✗ among 24 cells. Require the marks to cover a
+    # real share of the body before accepting on marks alone.
+    body_cells = max(1, (len(grid) - 1) * max(1, ncols - 1))
+    filled = sum(
+        1
+        for r in grid[1:]
+        for c in range(1, ncols)
+        if c < len(r)
+        and norm(r[c]) in (CellMark.YES.value, CellMark.NO.value, CellMark.PARTIAL.value)
+    )
+    if marky >= min_cols and filled / body_cells >= 0.35:
+        return True
+    # Word-valued capability matrices ("Extra Assist: Human/LLM/-", "I/O-Based:
+    # Input/Output") carry the same assertions without a single ✓. Accept them only when
+    # SEVERAL columns are a small closed vocabulary and at most one column is numeric:
+    # a results table always carries a row of per-benchmark numbers, and one lone
+    # repeated-value column ("Sparsity: 50%") is not enough to make it a capability table.
+    numeric = kinds.count("numeric")
+    return categorical >= 2 and numeric <= 1 and (marky + categorical) >= min_cols
 
 
 def _dimension_kind(grid: list[list[str]], col: int, *, body_from: int = 1) -> str:
@@ -439,6 +556,90 @@ def _dimension_kind(grid: list[list[str]], col: int, *, body_from: int = 1) -> s
     return DimensionKind.CATEGORICAL.value
 
 
+_NEWCOMMAND_RE = re.compile(
+    r"\\(?:newcommand|renewcommand|def|providecommand)\*?\s*\{?\\([A-Za-z@]+)\}?\s*(?:\[\d+\])?\s*\{"
+)
+
+
+_INPUT_RE = re.compile(r"\\(?:input|include|subfile)\s*\{\s*([^{}]+?)\s*\}")
+_DOCUMENTCLASS_RE = re.compile(r"\\documentclass\b")
+
+
+def included_sources(paths: list[Path]) -> list[Path]:
+    r"""The subset of a paper's ``.tex`` files the document actually pulls in.
+
+    An arXiv source tree routinely ships drafts, a previous submission's version and
+    author backups alongside the live files. Parsing all of them means parsing tables the
+    paper does not contain: one tree held a five-column draft of a table under the same
+    ``\label`` as the published six-column one, and the draft is what got verified.
+
+    Walks ``\input`` / ``\include`` / ``\subfile`` from the file carrying
+    ``\documentclass``. Returns every path unchanged when there is no single root or the
+    closure would drop files that are plainly in use — following the graph must never
+    lose a table, only stale duplicates.
+    """
+    texts: dict[Path, str] = {}
+    for p in paths:
+        try:
+            texts[p] = p.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+    roots = [p for p, t in texts.items() if _DOCUMENTCLASS_RE.search(t)]
+    if not roots:
+        return paths
+    by_stem: dict[str, list[Path]] = {}
+    for p in texts:
+        by_stem.setdefault(p.stem, []).append(p)
+
+    def closure(root: Path) -> set[Path]:
+        seen: set[Path] = set()
+        queue = [root]
+        while queue:
+            cur = queue.pop()
+            if cur in seen:
+                continue
+            seen.add(cur)
+            for raw in _INPUT_RE.findall(texts.get(cur, "")):
+                for cand in by_stem.get(Path(raw).stem, []):
+                    if cand not in seen:
+                        queue.append(cand)
+        return seen
+
+    # A tree can hold several files with `\documentclass` — a standalone snippet compiled
+    # on its own is one, and so is a leftover from a previous submission. The real document
+    # is the one that pulls in the most, so take the largest closure rather than giving up.
+    best = max((closure(r) for r in roots), key=len)
+    return [p for p in paths if p in best] or paths
+
+
+def collect_macro_names(text: str) -> dict[str, str]:
+    """``\\newcommand`` aliases that expand to plain text.
+
+    Papers alias their own method (``\\newcommand{\\AlgName}{LLM-FE}``) and write the macro
+    in the table, so without expansion the "ours" row is labelled ``AlgName`` — or dropped
+    entirely once colour macros are stripped and nothing readable is left.
+    """
+    out: dict[str, str] = {}
+    for m in _NEWCOMMAND_RE.finditer(text or ""):
+        value = strip_tex(_balanced(text, m.end() - 1)[0])
+        if value and len(value) <= 40 and "\\" not in value:
+            out.setdefault(m.group(1), value)
+    return out
+
+
+def _expand_macros(text: str, macros: dict[str, str]) -> str:
+    """Replace ``\\name`` with the plain text the paper defined it as.
+
+    Word-boundary anchored so ``\\sys`` does not eat ``\\sysname``, and applied
+    longest-name-first for the same reason.
+    """
+    if not text or not macros:
+        return text
+    for name in sorted(macros, key=len, reverse=True):
+        text = re.sub(rf"\\{re.escape(name)}(?![A-Za-z])", macros[name], text)
+    return text
+
+
 def _first_mark_col(grid: list[list[str]]) -> int:
     """Index of the first column that holds ✓/✗ marks (everything left of it labels rows).
 
@@ -447,11 +648,12 @@ def _first_mark_col(grid: list[list[str]]) -> int:
     label then drops every continuation row (their column 0 is empty).
     """
     ncols = max((len(r) for r in grid), default=0)
-    body = grid[1:]
     for c in range(ncols):
-        vals = [normalize_mark(r[c]) for r in body if c < len(r)]
-        marky = [v for v in vals if v in (CellMark.YES.value, CellMark.NO.value, CellMark.PARTIAL.value)]
-        if vals and len(marky) >= max(1, len([v for v in vals if v != CellMark.EMPTY.value]) * 0.6):
+        # A PROPERTY column, not merely a pure-symbol one. Property columns are often
+        # mixed ("\\xmark | \\xmark | SMT | Resource rules"), and stopping only at a pure
+        # mark column swallowed every mixed column into the row label — measured on the
+        # HLS paper: 6 columns became 3, and two real properties vanished silently.
+        if _column_class(grid, c) in ("mark", "categorical"):
             return max(1, c)
     return 1
 
@@ -467,7 +669,9 @@ def _row_label(cells: list[str], label_cols: int) -> tuple[str, list[str]]:
     for cell in span:
         keys = _cite_keys(cell)
         if keys:
-            return strip_tex(cell) or _macro_label(cell), keys
+            # `\citet{bohnet2023coreference}` alone leaves no visible text; fall back to
+            # the key so the row is identifiable instead of blank (or named "citet").
+            return strip_tex(cell) or _macro_label(cell) or keys[0], keys
     for cell in span:
         if strip_tex(cell) or _macro_label(cell):
             return strip_tex(cell) or _macro_label(cell), []
@@ -481,21 +685,40 @@ def _macro_label(cell: str) -> str:
     ``\\method`` in the table; stripping TeX leaves nothing and the row would be dropped —
     losing precisely the "ours" row the asymmetry check needs.
     """
-    m = re.search(r"\\([A-Za-z@]{3,})\b", cell or "")
-    if not m:
-        return ""
-    name = m.group(1)
-    if name in {"textbf", "textit", "emph", "texttt", "multirow", "multicolumn", "gr", "wc"}:
-        return ""
-    return name
+    for m in re.finditer(r"\\([A-Za-z@]{3,})\b", cell or ""):
+        name = m.group(1)
+        if name not in _NON_LABEL_MACROS:
+            return name
+    return ""
 
 
-def _merge_header_rows(grid: list[list[str]], label_cols: int) -> tuple[list[str], int]:
+_NON_LABEL_MACROS = {
+        "textbf", "textit", "emph", "texttt", "textsc", "multirow", "multicolumn",
+        "rowcolor", "cellcolor", "columncolor", "textcolor", "color",
+        "cite", "citep", "citet", "citealp", "citealt", "citeauthor", "citeyear",
+    "parencite", "autocite", "textcite", "footcite", "shortcite",
+    "begin", "end", "bfseries", "itshape", "centering", "hspace", "vspace",
+}
+
+
+def _merge_header_rows(
+    grid: list[list[str]], label_cols: int, spans: list[int] | None = None
+) -> tuple[list[str], int]:
     """Combine stacked header rows into one, returning ``(header, rows_consumed)``.
 
     Two-level headers (``\\multicolumn{2}{c}{Efficiency}`` over ``Fast & Cheap``) put the
     real column names on the SECOND row; taking only the first loses them and leaves
     blank headers that later read as "the paper never defined this column".
+
+    Args:
+        grid: the expanded cell grid.
+        label_cols: how many leading columns hold row labels.
+        spans: the first row's column spans from :func:`_parse_row_cells_spanned`. A group
+            header covers EVERY column of its span, so without this the second and later
+            columns under ``\\multicolumn{2}{c}{Retargetability}`` lose the parent and are
+            left to stand alone — and a bare "Resource Constraints" then matches a
+            background sentence about resource constraints in general instead of the
+            retargeting question the column actually asks.
     """
     if len(grid) < 3:
         return grid[0], 1
@@ -508,7 +731,11 @@ def _merge_header_rows(grid: list[list[str]], label_cols: int) -> tuple[list[str
     spans_columns = any(not strip_tex(c) for c in first[label_cols:]) and any(
         strip_tex(c) for c in first[label_cols:]
     )
-    if not spans_columns:
+    # …or the second row continues the header without spanning: its LABEL cell is empty
+    # while it names columns ("Method | Domain | Feedback" over "| Knowledge | Driven").
+    # An empty label is what separates it from a real uncited data row, whose label is set.
+    continues_header = not any(strip_tex(c) for c in second[:max(1, label_cols)])
+    if not (spans_columns or continues_header):
         return first, 1
     # The second row is still header material only if it names columns and asserts nothing.
     body_marks = [
@@ -521,9 +748,16 @@ def _merge_header_rows(grid: list[list[str]], label_cols: int) -> tuple[list[str
         return first, 1
     ncols = max(len(first), len(second))
     merged = []
+    carried = ""  # the group header of the span the current column falls inside
     for i in range(ncols):
         top = strip_tex(first[i]) if i < len(first) else ""
         sub = strip_tex(second[i]) if i < len(second) else ""
+        if spans is not None:
+            span = spans[i] if i < len(spans) else 1
+            if span == 0:
+                top = carried  # continuation cell: still under the same group header
+            else:
+                carried = top if span > 1 else ""
         merged.append(f"{top} — {sub}" if top and sub else (sub or top))
     return merged, 2
 
@@ -573,6 +807,7 @@ def tables_from_latex(
     section: str | None = None,
     method_names: set[str] | None = None,
     require_comparison: bool = True,
+    macros: dict[str, str] | None = None,
 ) -> list[ComparisonTable]:
     """Extract comparison tables from one LaTeX source string.
 
@@ -584,6 +819,8 @@ def tables_from_latex(
             "ours" row when it is not labelled ``(ours)``.
         require_comparison: when True (default) keep only capability matrices —
             results/number tables are dropped.
+        macros: ``\\newcommand`` aliases from the paper (see :func:`collect_macro_names`),
+            used to expand a row named only by the paper's own macro.
 
     Returns:
         The tables found, in document order. Never raises on malformed TeX: a table
@@ -617,7 +854,8 @@ def tables_from_latex(
         # The innermost/first grid holds the data.
         body = grids[0][2]
         try:
-            grid = parse_tabular(body)
+            spanned = _parse_tabular_spanned(body)
+            grid = [[content for content, _span in row] for row in spanned]
         except Exception:  # noqa: BLE001 — malformed TeX: skip this table, keep going
             continue
         if len(grid) < 2:
@@ -625,12 +863,36 @@ def tables_from_latex(
         if require_comparison and not looks_like_comparison_table(grid):
             continue
 
-        caption = strip_tex(_macro_arg(region, "caption")) if has_caption else ""
+        raw_caption = _macro_arg(region, "caption") if has_caption else ""
+        # Expand the paper's own aliases FIRST. `\newcommand{\sysname}{CaT}` used in a
+        # caption is otherwise dropped as an unknown macro, which deletes the sentence's
+        # subject: "CaT unifies prior work on program rewriting, code generation, …"
+        # becomes "unifies prior work on …", and a caption that boasts about the citing
+        # paper is then indistinguishable from one that defines a column.
+        if macros:
+            raw_caption = _expand_macros(raw_caption, macros)
+        caption = strip_tex(raw_caption)
+        # The paper's own key for its symbols, read BEFORE TeX stripping so `\cmark` and
+        # `$\circ$` survive: "(\cmark: strong, \tmark: medium, \xmark: weak)".
+        from .dimensions import parse_symbol_legend  # noqa: PLC0415 — avoids an import cycle
+
+        legend = parse_symbol_legend(raw_caption)
         label = (_macro_arg(region, "label").strip() or None) if has_caption else None
         table_id = label or f"{paper_id or 'paper'}-table-{idx + 1}"
 
         label_cols = _first_mark_col(grid)
-        header, consumed = _merge_header_rows(grid, label_cols)
+        # The citations mark where the labels really end. A grouping column pushes the
+        # method names right ("Categories | Jailbreaks~\\cite{..} | Extra Assist | …"), and
+        # taking column 0 alone loses every key — the whole table becomes unverifiable.
+        cite_col = -1
+        for c in range(min(label_cols + 2, max((len(r) for r in grid), default=0))):
+            if sum(1 for r in grid[1:] if c < len(r) and _cite_keys(r[c])) >= 2:
+                cite_col = c
+        if cite_col >= 0:
+            label_cols = max(label_cols, cite_col + 1)
+        header, consumed = _merge_header_rows(
+            grid, label_cols, spans=[span for _content, span in spanned[0]]
+        )
         body_rows = grid[consumed:]
         ncols = max(len(r) for r in grid)
         dims: list[Dimension] = []
@@ -651,7 +913,20 @@ def tables_from_latex(
         # Valid only when essentially every OTHER row cites: with a mixed table (say 2 of
         # 6 rows carrying keys) the four unparsed rows are competitors we failed to bind,
         # not four "ours" rows.
+        # Expand aliases in the LABEL cells before reading them: `\sysname (this work)`
+        # must become "CaT (this work)", not "(this work)" — `strip_tex` drops the unknown
+        # macro, and with it the paper's own method name, which is what marks the "ours"
+        # row and what later rejects self-describing sentences as column definitions.
+        # Label cells only: expanding the mark cells would destroy the macro names that
+        # `normalize_mark` matches against the paper's own symbol legend.
+        if macros:
+            body_rows = [
+                [_expand_macros(c, macros) if i < label_cols else c for i, c in enumerate(row)]
+                for row in body_rows
+            ]
         parsed = [_row_label(row, label_cols) for row in body_rows]
+        if macros:
+            parsed = [(macros.get(lbl, lbl), keys) for lbl, keys in parsed]
         cites_somewhere = sum(1 for _lbl, keys in parsed if keys)
         strict_self = cites_somewhere < max(1, len(parsed) - 1)
 
@@ -678,7 +953,7 @@ def tables_from_latex(
                         row_index=r,
                         col_index=c,
                         raw=strip_tex(raw) or raw.strip(),
-                        mark=normalize_mark(raw),
+                        mark=normalize_mark(raw, legend),
                     )
                 )
         if not rows:
@@ -689,6 +964,7 @@ def tables_from_latex(
                 paper_id=paper_id,
                 caption=caption,
                 label=label,
+                symbol_legend=legend,
                 source="latex",
                 section=section,
                 dimensions=dims,

@@ -38,6 +38,7 @@ from __future__ import annotations
 import hashlib
 import re
 import tarfile
+import unicodedata
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -154,11 +155,19 @@ def parse_bib(bib_path: str | Path) -> dict[str, CitedAs]:
 
 
 def _render_bib_raw(entry: dict[str, str]) -> str:
-    """Build a compact human-readable reference string from a bib entry."""
-    authors = ", ".join(_split_authors(entry.get("author"))) or "?"
-    title = re.sub(r"[{}]", "", entry.get("title", "")).strip() or "?"
+    """Build a compact human-readable reference string from a bib entry.
+
+    Accent commands are decoded first: a surviving ``Roth\\"orl`` splits the reference at
+    the backslash, and every field extracted downstream shifts — one nine-author entry had
+    "orl, Thomas, Hadsell, Raia, …" taken as its title, so the paper never resolved even
+    though it was sitting in the arXiv results.
+    """
+    authors = ", ".join(_split_authors(decode_tex_accents(entry.get("author") or ""))) or "?"
+    title = re.sub(r"[{}]", "", decode_tex_accents(entry.get("title", ""))).strip() or "?"
     year = entry.get("year", "")
-    venue = re.sub(r"[{}]", "", entry.get("journal") or entry.get("booktitle") or "").strip()
+    venue = re.sub(
+        r"[{}]", "", decode_tex_accents(entry.get("journal") or entry.get("booktitle") or "")
+    ).strip()
     bits = [authors, f'"{title}"']
     if venue:
         bits.append(venue)
@@ -189,6 +198,46 @@ _SECTION_CMD_RE = re.compile(
 )
 
 
+# LaTeX accent commands -> the Unicode combining mark they apply. Composed with the base
+# letter and normalised, so `Roth\"orl` reads as "Rothörl" rather than surviving as
+# `Roth\"orl`. Left undecoded, the backslash splits the reference mid-name and everything
+# downstream shifts: the title extractor took "orl, Thomas, Hadsell, Raia, …" as the
+# title, and the paper — which was sitting in the arXiv results — never resolved.
+# European names in bibliographies make this routine, not exotic.
+_ACCENT_MARKS = {
+    "'": "\u0301", "`": "\u0300", "^": "\u0302", '"': "\u0308", "~": "\u0303",
+    "=": "\u0304", ".": "\u0307", "u": "\u0306", "v": "\u030C", "H": "\u030B",
+    "r": "\u030A", "c": "\u0327", "k": "\u0328", "d": "\u0323", "b": "\u0331",
+}
+# Letters that are their own command rather than a base plus a mark.
+_TEX_LETTERS = {
+    "o": "ø", "O": "Ø", "l": "ł", "L": "Ł", "ss": "ß", "aa": "å", "AA": "Å",
+    "ae": "æ", "AE": "Æ", "oe": "œ", "OE": "Œ", "i": "i", "j": "j",
+}
+_ACCENT_RE = re.compile(
+    r"\\([\"'`^~=.]|(?:u|v|H|r|c|k|d|b)(?=[{\s]))\s*(?:\{\s*([A-Za-z])\s*\}|([A-Za-z]))"
+)
+_TEX_LETTER_RE = re.compile(r"\\(ss|aa|AA|ae|AE|oe|OE|[oOlLij])(?![A-Za-z])\s*\{?\}?")
+
+
+def decode_tex_accents(text: str) -> str:
+    r"""Turn LaTeX accent commands into the characters they denote.
+
+    ``\"o`` and ``\"{o}`` both become ``ö``; ``\ss`` becomes ``ß``. Any base letter works
+    because the accent is applied as a combining mark and then normalised, so no table of
+    letter-accent pairs is needed.
+    """
+    if not text or "\\" not in text:
+        return text
+
+    def _mark(m: re.Match[str]) -> str:
+        base = m.group(2) or m.group(3) or ""
+        return unicodedata.normalize("NFC", base + _ACCENT_MARKS.get(m.group(1), ""))
+
+    text = _ACCENT_RE.sub(_mark, text)
+    return _TEX_LETTER_RE.sub(lambda m: _TEX_LETTERS.get(m.group(1), m.group(1)), text)
+
+
 def _strip_tex(text: str) -> str:
     """Crudely de-TeX a reference body / claim sentence into readable prose.
 
@@ -196,6 +245,9 @@ def _strip_tex(text: str) -> str:
     text-formatting commands keeping their content, then removes any remaining
     bare commands and brace/format noise.
     """
+    # Before any command-dropping: an accent is a command whose argument is part of a
+    # word, and removing it silently corrupts the name it belongs to.
+    text = decode_tex_accents(text)
     text = _CITE_CMD_RE.sub(" ", text)
     text = _SECTION_CMD_RE.sub(" ", text)
     text = re.sub(r"\\newblock", " ", text)

@@ -77,6 +77,17 @@ def _http_get_json(url: str, timeout: int = _TIMEOUT) -> dict:
         return {}
 
 
+# LaTeXML emits `<math alttext="y^{\\prime}=g(\\epsilon,y)" …>`; the attribute is the
+# original TeX, which reads perfectly well as evidence.
+_MATH_ALTTEXT_RE = re.compile(
+    r"""(?isx)
+    <math\b [^>]*? \balttext=      # the attribute, in either quoting style
+    (?: "(?P<dq>[^"]*)" | '(?P<sq>[^']*)' )
+    [^>]* > .*? </math\s*>
+    """
+)
+
+
 def _html_to_text(html: str) -> str:
     """Strip scripts/markup → plain text, **keeping heading/paragraph boundaries**.
 
@@ -85,6 +96,16 @@ def _html_to_text(html: str) -> str:
     (heading provenance + experimental-section gating) from the HTML rendering —
     a flat space-collapsed string would degrade to one unsectioned block.
     """
+    # Recover the maths before dropping the element. arXiv's HTML is LaTeXML output, which
+    # carries the original expression in `alttext`; deleting the whole <math> node takes it
+    # with it and leaves a mutilated sentence — "Here, , where is a permutation sampled
+    # uniformly from all permutations ." A paper that defines its terms in equations then
+    # reads as though it defines nothing, and a column whose criterion IS an equation
+    # cannot be checked against it at all. Measured: eight of one table's twelve cells
+    # came back unverifiable on a paper whose full text we had.
+    html = _MATH_ALTTEXT_RE.sub(
+        lambda m: " " + _html.unescape(m.group("dq") or m.group("sq") or "") + " ", html
+    )
     html = re.sub(r"(?is)<(script|style|math|svg|noscript).*?</\1>", " ", html)
     # Headings → their own line (so _PLAIN_HEADING_RE picks them up); block-level
     # elements → a blank line (so _chunks sees paragraph boundaries).
