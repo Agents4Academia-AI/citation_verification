@@ -20,11 +20,14 @@ import io
 import re
 import tarfile
 from dataclasses import dataclass
+from typing import Any
 
 from . import fulltext_cache
 
 __all__ = [
     "FullTextResult",
+    "full_text_of",
+    "introduction_of",
     "split_sections",
     "select_evidence_chunks",
     "fetch_full_text",
@@ -345,6 +348,81 @@ def _fetch_arxiv_full_text(stem: str, *, timeout: int, max_chars: int) -> FullTe
     if pdf_text:
         return FullTextResult(pdf_text[:max_chars], "arxiv_pdf", f"https://arxiv.org/pdf/{stem}")
     return FullTextResult(tex[:max_chars], "arxiv_eprint", _ARXIV_EPRINT_URL.format(stem=stem)) if tex else FullTextResult("")
+
+
+def full_text_of(resolved: Any) -> str:
+    """The cited paper's body, through every channel the project has.
+
+    arXiv first (HTML, LaTeX e-print, PDF), then the resolved URL, then the DOI's
+    open-access copy (Unpaywall / OpenAlex / publisher meta tags), then a title search
+    (only when ``ENABLE_WEB_SEARCH`` is on). Stopping after the first two silently
+    reduces a whole class of papers to their abstract: an IEEE or Springer reference
+    resolves to a ``doi.org`` landing page, not a PDF, while an open-access copy exists.
+    Every channel is cached on disk and fails soft; ``""`` when none answers.
+    """
+    from .oa_fulltext import fulltext_by_doi_with_source  # noqa: PLC0415 — sibling, lazy
+
+    arxiv_id = getattr(resolved, "arxiv_id", None)
+    if arxiv_id:
+        text = getattr(fetch_full_text_with_source(arxiv_id), "text", "") or ""
+        if text:
+            return text
+    url = (getattr(resolved, "url", "") or "").strip()
+    if url:
+        got = fetch_full_text_from_url(url)
+        text = got if isinstance(got, str) else (getattr(got, "text", "") or "")
+        if text:
+            return text
+    doi = (getattr(resolved, "doi", "") or "").strip()
+    if doi:
+        text = getattr(fulltext_by_doi_with_source(doi), "text", "") or ""
+        if text:
+            return text
+    title = (getattr(resolved, "title", "") or "").strip()
+    if title:
+        got = fetch_full_text_via_search_with_source(title, year=getattr(resolved, "year", None))
+        return getattr(got, "text", "") or ""
+    return ""
+
+
+def introduction_of(text: str, max_chars: int = 2500) -> str:
+    """The Introduction of a paper's full text, capped; ``""`` when it has none.
+
+    Read from the section structure, not by searching for the word: a table of contents
+    ("1 Introduction 1.1 Conformal inference 2 Methods …") at the top of an HTML
+    rendering made "the text after 'Introduction' up to the next numbered heading" a
+    single line of the contents — 23 characters where the section has thousands.
+    """
+    def capped(body: str) -> str:
+        body = re.sub(r"\s+", " ", body).strip()
+        return body[:max_chars] + ("…" if len(body) > max_chars else "")
+
+    for heading, body in split_sections(text or ""):
+        if "introduction" in _heading_key(heading) and _is_prose(body):
+            return capped(body)
+    # The section split can miss it — a rendering's contents list names "1 Introduction"
+    # first and the split keeps that one; a journal prints "1 | INTRODUCTION". Every
+    # heading line that says Introduction is tried, and the first followed by prose wins.
+    for m in _INTRO_HEADING_RE.finditer(text or ""):
+        rest = text[m.end() : m.end() + max_chars * 3]
+        stop = _NEXT_HEADING_RE.search(rest, 1)
+        body = rest[: stop.start()] if stop else rest
+        if _is_prose(body):
+            return capped(body)
+    return ""
+
+
+_INTRO_HEADING_RE = re.compile(
+    r"(?im)^[ \t]*(?:(?:\d+|[IVX]+)[ \t]*[.|:]?[ \t]*)?introduction[ \t]*$"
+)
+_NEXT_HEADING_RE = re.compile(r"(?m)^[ \t]*(?:\d+|[IVX]+)[ \t]*[.|]?[ \t]+[A-Z][^\n]{0,80}$")
+
+
+def _is_prose(body: str) -> bool:
+    """Running text, not a contents list: most of it sits in long lines."""
+    lines = [ln.strip() for ln in (body or "").splitlines() if ln.strip()]
+    total = sum(len(ln) for ln in lines)
+    return total > 400 and sum(len(ln) for ln in lines if len(ln) > 60) >= 0.5 * total
 
 
 def fetch_full_text(arxiv_id: str | None, *, timeout: int = 30, max_chars: int = 200_000) -> str:

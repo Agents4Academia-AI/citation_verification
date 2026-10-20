@@ -23,17 +23,34 @@ Import-safe with no network and no heavy deps at import (``bibtexparser`` /
 from __future__ import annotations
 
 from ..interfaces import Extractor, PaperSource
-from ..schema import CitationRecord
-from .latex import LatexExtractor, make_claim_id
-from .pdf import PdfExtractor
+from ..schema import CitationRecord, CitedAs
+from .latex import LatexExtractor, ensure_eprint, make_claim_id
+from .latex import load_references as _load_latex_references
+from .pdf import PdfExtractor, load_pdf_references
 
 __all__ = [
     "get_extractor",
     "extract",
+    "load_references",
     "LatexExtractor",
     "PdfExtractor",
     "make_claim_id",
 ]
+
+
+def load_references(source: PaperSource) -> dict[str, CitedAs]:
+    """The paper's bibliography as ``{cite_key: CitedAs}``, by the same route as its stubs.
+
+    LaTeX keys (``\\cite`` keys) when the source is available, else ``ref-<n>`` keys from
+    the PDF's reference list. For callers that need the references without the claim
+    sites — table verification binds a table ROW to its reference, not a sentence.
+    """
+    if source.tex_available:
+        ensure_eprint(source)
+        refs = _load_latex_references(source)
+        if refs:
+            return refs
+    return load_pdf_references(source.pdf_path) if source.pdf_path else {}
 
 
 def get_extractor(source: PaperSource) -> Extractor:

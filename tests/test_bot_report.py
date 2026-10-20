@@ -150,6 +150,21 @@ def test_backend_degrade_renders_outage_not_phantom_unverified(error):
     assert _field(embed, "Flagged citations") is None  # the lone stub is never flagged
 
 
+def test_a_run_whose_model_was_unreachable_is_never_announced_as_clean():
+    """An expired login leaves every pair "inconclusive" — no fabrication, no high
+    severity, nothing unsupported — which is exactly the shape of a clean paper."""
+    from citation_verifier.errors import unavailable_message
+
+    recs = [_rec(k, supports=SupportsClaim.INCONCLUSIVE) for k in "abc"]
+    err = unavailable_message("401 OAuth access token has expired", "relevance was NOT judged for 3 pair(s)")
+    for is_test in (True, False):
+        embed, files = build_response(_result(recs, errors=[err]), _PID, "agentic", is_test=is_test)
+        assert embed.color.value == _RED
+        assert "Relevance was NOT judged" in embed.description
+        assert "✅" not in embed.description
+        assert "Incomplete report" in _attached_text(files)
+
+
 def test_empty_extraction_is_inbox_not_outage_and_still_banners():
     embed, _ = build_response(_result([]), _PID, "agentic")  # n==0, no errors
     lines = embed.description.split("\n")

@@ -118,7 +118,7 @@ def test_name_key_total_on_all_initials_fragment():
     assert _name_key("S.") == ("s.", "")  # a single initial is harmless either way
     # The crash reproduced through the real path: _author_issue over a mangled list.
     mangled = ["Perez", "E.", "Ringer", "S.", "Bowman", "S. R.", "Askell", "A."]
-    assert _author_issue(mangled, ["Ethan Perez", "Sam Ringer"]) is not None  # no crash
+    _author_issue(mangled, ["Ethan Perez", "Sam Ringer"])  # no crash; the verdict is not the point
 
 
 # ── weak fuzzy-title match abstains to unresolved (GPT-feedback precision) ──

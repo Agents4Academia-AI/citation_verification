@@ -26,7 +26,7 @@ from ..diskcache import key_for, namespace_dir, read_json, write_json
 
 __all__ = ["cache_dir", "clear", "read", "write"]
 
-_VERSION = "v1"  # bump when the parsing that produces a Resolved changes materially
+_VERSION = "v5"  # bump when the parsing — or the choice among records — that produces a Resolved changes
 
 
 def cache_dir() -> Path | None:

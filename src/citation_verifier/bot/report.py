@@ -188,6 +188,11 @@ def build_response(
     records = list(result.records)
     n = len(records)
     outage = _is_outage(records, result.errors)
+    # The model was never reached (an expired login): existence/metadata are real, but no
+    # pair was judged — and a run with nothing judged must not be announced as clean.
+    from ..errors import model_unavailable_errors
+
+    model_down = bool(model_unavailable_errors(result.errors))
     M = _denominator(result.errors)
 
     fab = [r for r in records if _ev(r.exists) == Exists.NO.value]
@@ -208,6 +213,13 @@ def build_response(
             "have no reference list, or extraction found none."
         )
         severity_color = _AMBER
+    elif model_down:
+        verdict = (
+            "⚠️ Relevance was NOT judged — the model could not be reached (the "
+            "deployment's login has probably expired). Existence and metadata were "
+            "checked; whether each citation supports its claim was not."
+        )
+        severity_color = _RED
     elif fab or high:
         severity_color = _RED
         if fab:
@@ -240,7 +252,7 @@ def build_response(
 
     # Green is reserved for a clean WHOLE paper: a test run is always amber
     # (so it can never be mistaken for a full verdict), an outage is always red.
-    color = _RED if outage else (_AMBER if is_test else severity_color)
+    color = _RED if (outage or model_down) else (_AMBER if is_test else severity_color)
 
     # ── description: 🧪 banner ALWAYS leads a test run; verdict on its own line ──
     if is_test:

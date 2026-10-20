@@ -32,6 +32,7 @@ import re
 from collections.abc import Callable
 from typing import Any
 
+from ..errors import ModelUnavailable
 from .dimensions import DEFAULT_TEST_QUESTION, dimension_is_checkable
 from .model import (
     CellFinding,
@@ -45,7 +46,10 @@ from .model import (
     derive_cell_severity,
 )
 
-__all__ = ["verify_table", "asymmetry_summary", "build_row_payload"]
+__all__ = [
+    "verify_table", "asymmetry_summary", "build_row_payload", "redact_methods",
+    "combine_segment_answers",
+]
 
 # Cross-references survive into a gloss quoted from the source ("(task F in
 # Figure~\ref{fig:intro}c)") and tell the judge nothing about the property, while eating
@@ -99,8 +103,11 @@ _DECISION: dict[tuple[str, str], str] = {
     (CellMark.YES.value, _UNCLEAR): CellVerdict.UNVERIFIABLE.value,
     (CellMark.NO.value, _HAS): CellVerdict.CONTRADICTED.value,   # understates prior work
     (CellMark.NO.value, _LACKS): CellVerdict.SUPPORTED.value,
-    # A ✗ the cited paper never contradicts: silence and the mark agree.
-    (CellMark.NO.value, _ABSENT): CellVerdict.SUPPORTED.value,
+    # A ✗ the cited paper never contradicts. Silence is CONSISTENT with the mark, but it
+    # does not establish it: "no evidence the method has X" is not "evidence it lacks X".
+    # This was SUPPORTED for one run — and confirmed a ✗ against a paper whose excerpts
+    # happened not to include its four mentions of exactly that capability.
+    (CellMark.NO.value, _ABSENT): CellVerdict.UNVERIFIABLE.value,
     (CellMark.NO.value, _UNCLEAR): CellVerdict.UNVERIFIABLE.value,
     (CellMark.PARTIAL.value, _HAS): CellVerdict.SUPPORTED.value,
     (CellMark.PARTIAL.value, _LACKS): CellVerdict.CONTRADICTED.value,
@@ -111,32 +118,134 @@ _DECISION: dict[tuple[str, str], str] = {
 _VERIFIABLE_MARKS = (CellMark.YES.value, CellMark.NO.value, CellMark.PARTIAL.value)
 
 
+def combine_segment_answers(items: list[dict]) -> dict:
+    """One answer from the same question asked of each part of a split paper.
+
+    A part is not the paper, so what each part licenses is limited:
+
+    * a part that SHOWS the property, or shows the work cannot have it, has found
+      something — one such finding decides the paper, wherever it sits;
+    * ``absent`` from a part means only "not in this part", so the paper counts as never
+      claiming the property when EVERY part says so;
+    * anything else leaves the question open.
+
+    When one part shows the property and another shows its absence, the parts disagree
+    about the same paper and this is not for the code to settle: the answer is
+    ``unclear``, carrying both parts' reasons, and the cell is reported as unverified
+    rather than as a finding built on half a paper.
+    """
+    seen = [i for i in items if isinstance(i, dict)]
+    if not seen:
+        return {}
+    answers = [str(i.get("answer", "")).strip().lower() for i in seen]
+    if all(a == _WRONG_PAPER for a in answers):
+        return seen[0]
+    live = [(a, i) for a, i in zip(answers, seen, strict=True) if a != _WRONG_PAPER]
+    has = [i for a, i in live if a == _HAS]
+    lacks = [i for a, i in live if a == _LACKS]
+    if has and lacks:
+        return {
+            "answer": _UNCLEAR,
+            "quote": has[0].get("quote") or lacks[0].get("quote") or "",
+            "justification": (
+                "the parts of this paper point different ways — "
+                f"one part: {str(has[0].get('justification', ''))[:220]} | "
+                f"another part: {str(lacks[0].get('justification', ''))[:220]}"
+            ),
+        }
+    if has:
+        return has[0]
+    if lacks:
+        return lacks[0]
+    if live and all(a == _ABSENT for a, _i in live):
+        return dict(live[0][1], answer=_ABSENT)
+    return next((i for a, i in live if a == _UNCLEAR), live[0][1] if live else seen[0])
+
+
 def build_row_payload(
     table: ComparisonTable, row_index: int, dims: list[Dimension], evidence: str
 ) -> dict:
-    """The judge request for one row: the cited work, its evidence, and the properties.
+    """The judge request for one cited work: the work, its evidence, and the properties.
 
     The claimed marks are deliberately **omitted** — the judge reports what the evidence
     shows about each property and this module compares that to the table afterwards, so
     the model cannot simply agree with the table.
+
+    ``dims`` is normally a SINGLE property (:func:`verify_table` asks one question per
+    cell). The names of the table's other columns ride along in ``other_properties``: a
+    comparison table's columns are deliberately near-neighbours, and a judge shown one of
+    them alone will otherwise answer from evidence that belongs to the column next door.
     """
-    row = table.rows[row_index]
+    # By row_index, not by position: a caller holding a subset of the rows (re-running the
+    # ones a failed run lost) still addresses them correctly, and a grid whose spacer rows
+    # were dropped does not silently shift every payload onto the wrong cited paper.
+    row = next((r for r in table.rows if r.row_index == row_index), None)
+    if row is None:
+        raise IndexError(f"no row with row_index {row_index} in {table.table_id}")
+    names = [r.label for r in table.rows]
+    asked = {d.col_index for d in dims}
     return {
         "row_label": row.label,
         "cite_key": row.cite_keys[0] if row.cite_keys else None,
         "evidence": evidence,
         "properties": [
-            _property_entry(d) for d in dims
+            _property_entry(d, method_names=names) for d in dims
+        ],
+        "other_properties": [
+            d.header for d in table.dimensions if d.col_index not in asked and d.header
         ],
     }
 
 
-def _property_entry(dim: Dimension) -> dict:
+# Trailing markers and qualifiers a row label carries that its name in prose does not:
+# "CaT (this work)", "kPAM [12] and its variants".
+_LABEL_TAIL_RE = re.compile(r"\s*(?:[\(\[].*$|\band\s+(?:its|their)\s+variants?\b.*$)", re.IGNORECASE)
+_REDACTED = "a compared method"
+
+
+def _looks_like_a_name(label: str) -> bool:
+    """A proper name ("MetaMix", "S3K", "Skeleton Merger"), not a category ("Rule-based").
+
+    Rows are sometimes families rather than methods — "Rule-based", "Inference-time" —
+    and the citing paper's criterion is often stated in exactly those words ("rule-based
+    watermarking is efficient because …"). Redacting them would delete the criterion, not
+    the mark. A name shows an internal capital or a digit; a category is ordinary words.
+    """
+    return bool(re.search(r"(?<=.)[A-Z]|\d", label))
+
+
+def redact_methods(text: str, method_names: list[str]) -> str:
+    """Replace the table's row names in ``text`` with a neutral placeholder.
+
+    The citing paper's criterion notes can say how a property was applied to a named
+    method ("X and Y approach this via cross-task mixup, at the expense of erroneous
+    tasks"). Read with the names in, that is the table's mark in prose, and the judge would
+    be answering the table rather than the cited work's text. With the names out, the
+    criterion survives ("cross-task mixup … erroneous tasks") and whether THIS work is
+    such a method still has to be read off its own evidence.
+    """
+    out = text or ""
+    for raw in method_names or []:
+        name = _LABEL_TAIL_RE.sub("", (raw or "").strip()).strip(" .,;:")
+        if len(name) < 3 or not _looks_like_a_name(name):
+            continue
+        words = [re.escape(w) for w in re.split(r"[\s\-]+", name) if w]
+        if not words:
+            continue
+        pat = re.compile(r"(?<![\w-])" + r"[\s\-]+".join(words) + r"(?![\w-])", re.IGNORECASE)
+        out = pat.sub(_REDACTED, out)
+    return out
+
+
+def _property_entry(dim: Dimension, *, method_names: list[str] | None = None) -> dict:
     """One property for the judge: its name and what the paper says it means.
 
     ``test_question`` is included only when it carries information. Without a glosser it
     is a template ("Does the cited work satisfy '<header>'?") that merely restates the
     header, so sending it adds a line of noise to every property.
+
+    ``criterion`` carries the citing paper's own notes on how it applied the column (see
+    :attr:`Dimension.criterion_notes`), with the table's row names redacted.
     """
     entry = {
         "col_index": dim.col_index,
@@ -146,6 +255,13 @@ def _property_entry(dim: Dimension) -> dict:
     templated = f"Does the cited work satisfy '{dim.header}'?"
     if dim.test_question and dim.test_question not in (templated, DEFAULT_TEST_QUESTION):
         entry["question"] = dim.test_question
+    notes = [
+        redact_methods(clean_property_text(n), list(method_names or []))
+        for n in (getattr(dim, "criterion_notes", None) or [])
+    ]
+    notes = [n for n in notes if n]
+    if notes:
+        entry["criterion"] = " | ".join(notes)
     return entry
 
 
@@ -206,6 +322,9 @@ def verify_table(
     """
     findings: list[CellFinding] = []
     notes: list[str] = []
+    # Why the model cannot be reached, once a call has said so. From then on no evidence
+    # is fetched and no question asked: the remaining cells are marked as never judged.
+    model_down = ""
 
     for d in [d for d in table.dimensions if d.gloss_source == GlossSource.HEADER_ONLY.value]:
         notes.append(
@@ -260,7 +379,11 @@ def verify_table(
         # One retrieval + one judge call per cited paper, covering all its columns.
         # Without a judge there is nothing to do with the evidence, so don't fetch it.
         evidence, source = "", ""
-        if judge is not None:
+        named_in_paper: dict[int, bool] = {}
+        search_report: dict[int, dict] = {}
+        complete_text = False
+        segments: list[str] = []
+        if judge is not None and not model_down:
             try:
                 got_ev = evidence_for(row.cite_keys[0] if row.cite_keys else None, row.label)
                 # Coerce: a retriever returning None/partial must degrade, not crash.
@@ -271,6 +394,11 @@ def verify_table(
                 elif isinstance(got_ev, list | tuple):
                     evidence = str((got_ev[0] if got_ev else "") or "")
                     source = str((got_ev[1] if len(got_ev) > 1 else "") or "")
+                    meta = got_ev[2] if len(got_ev) > 2 and isinstance(got_ev[2], dict) else {}
+                    named_in_paper = dict(meta.get("named") or {})
+                    search_report = dict(meta.get("search") or {})
+                    complete_text = bool(meta.get("complete"))
+                    segments = [str(x) for x in (meta.get("segments") or []) if str(x)]
                 else:
                     evidence, source = "", ""
                     notes.append(f"{row.label}: evidence_for returned {type(got_ev).__name__}")
@@ -278,17 +406,44 @@ def verify_table(
                 evidence, source = "", ""
                 notes.append(f"{row.label}: evidence retrieval failed: {exc!r}")
 
+        # ONE QUESTION PER CELL. Asked together, the properties of a comparison table
+        # compete for one bounded answer and for the model's attention, and a failure took
+        # every cell of the row with it. Asked separately, each cell gets the whole answer
+        # and a failure costs only that cell — and the cited work, which is the long part
+        # of the request, is a cacheable prefix that does not change between them.
         answers: dict[int, dict] = {}
-        row_failure = ""
+        cell_failure: dict[int, str] = {}
         if evidence.strip() and judge is not None:
-            try:
-                got = judge(build_row_payload(table, row.row_index, row_dims, evidence))
-                for item in got or []:
-                    if isinstance(item, dict) and item.get("col_index") is not None:
-                        answers[int(item["col_index"])] = item
-            except Exception as exc:  # noqa: BLE001 — degrade-not-crash
-                notes.append(f"{row.label}: judge failed: {exc!r}")
-                row_failure = f"the judge call for this row failed ({type(exc).__name__})"
+            # A paper too long for one request arrives already cut into parts; the same
+            # question is put to each and the answers combined.
+            parts = segments or [evidence]
+            for dim in row_dims:
+                if model_down:
+                    break
+                try:
+                    per_part = []
+                    for part in parts:
+                        got = judge(build_row_payload(table, row.row_index, [dim], part))
+                        found = next((x for x in (got or []) if isinstance(x, dict)), None)
+                        if found is not None:
+                            per_part.append(found)
+                    item = combine_segment_answers(per_part) if per_part else None
+                    if item:
+                        # The answer is to the one question asked, whatever index the
+                        # model echoed back.
+                        answers[dim.col_index] = dict(item, col_index=dim.col_index)
+                except ModelUnavailable as exc:
+                    model_down = str(exc) or "no reason given"
+                    notes.append(f"the model could not be reached ({model_down}); no cell judged from here on")
+                except Exception as exc:  # noqa: BLE001 — degrade-not-crash
+                    notes.append(f"{row.label} / {dim.header}: judge failed: {exc!r}")
+                    cell_failure[dim.col_index] = (
+                        f"the judge call for this cell failed ({type(exc).__name__})"
+                    )
+        if model_down:
+            for dim in row_dims:
+                if dim.col_index not in answers:
+                    cell_failure[dim.col_index] = f"the model could not be reached ({model_down})"
 
         for dim in row_dims:
             cell = table.cell(row.row_index, dim.col_index)
@@ -298,18 +453,73 @@ def verify_table(
             answer = str(got.get("answer", _UNCLEAR)).strip().lower()
             if answer not in (_HAS, _LACKS, _ABSENT, _UNCLEAR, _WRONG_PAPER):
                 answer = _UNCLEAR
+            absent_note = ""
+            rec = search_report.get(dim.col_index) or {}
+            # Without a search record nothing is known about what was shown: not all.
+            # With the COMPLETE paper there is nothing the judge was not shown, so its
+            # reading of the whole text stands as it is.
+            all_shown = complete_text or (
+                bool(rec) and int(rec.get("shown") or 0) >= int(rec.get("mentions") or 0)
+            )
+            if answer == _ABSENT and named_in_paper.get(dim.col_index, False) and not all_shown:
+                # The judge saw excerpts; the paper mentions this property in passages it
+                # was not shown. Paper-level absence is not the judge's to assert then —
+                # only the code knows what the whole paper contains. (When every mention
+                # WAS shown, the judge has read all the paper says under those wordings,
+                # and its 'absent' stands.)
+                answer = _UNCLEAR
+                n, shown = int(rec.get("mentions") or 0), int(rec.get("shown") or 0)
+                where = (
+                    f"in {n} passages of which only {shown} were shown"
+                    if rec else "by name elsewhere"
+                )
+                absent_note = (
+                    f"[the judge found no claim in the excerpts, but the paper does mention "
+                    f"this property {where}, so absence cannot be concluded] "
+                )
             verdict = _DECISION.get((cell.mark, answer), CellVerdict.UNVERIFIABLE.value)
-            if not evidence.strip():
+            if judge is None:
+                # Nothing was looked up and nothing was asked. Saying "no evidence could
+                # be retrieved" here would report a retrieval failure that never happened.
+                verdict = CellVerdict.UNVERIFIABLE.value
+                got = {"justification": "not judged — this run had no model to judge table cells with"}
+            elif model_down and dim.col_index in cell_failure:
+                # Not a retrieval failure and not an open question: nobody was asked.
+                verdict = CellVerdict.UNVERIFIABLE.value
+                got = {}
+            elif not evidence.strip():
                 verdict = CellVerdict.UNVERIFIABLE.value
                 got = {"justification": "no evidence could be retrieved for the cited work"}
+            elif answer == _ABSENT:
+                # Say what the search covered: absence is only as good as the wordings
+                # tried, and a reader auditing the cell needs to see them.
+                terms = ", ".join(str(t) for t in (rec.get("terms") or [])[:12])
+                where = f" under any of: {terms}" if terms else ""
+                n = int(rec.get("mentions") or 0)
+                if complete_text:
+                    read = "[the complete text of the paper was read and it never claims this property"
+                elif n:
+                    read = (
+                        f"[every passage mentioning this property ({n}) was read and none "
+                        f"claims it for this work"
+                    )
+                else:
+                    read = f"[the paper never mentions this property{where}"
+                lead = (
+                    f"{read}; silence is consistent with the ✗ but does not establish it] "
+                    if cell.mark == CellMark.NO.value
+                    else f"{read}] "
+                )
+                got = dict(got, justification=lead + str(got.get("justification", "") or ""))
 
-            note = str(got.get("justification", "") or "")[:500]
+            note = absent_note + str(got.get("justification", "") or "")[:500]
             severity_floor = ""
+            row_failure = cell_failure.get(dim.col_index, "")
             if row_failure and not note:
-                # A crashed judge call is a pipeline failure, and every cell in the row
-                # inherits it. Left blank it renders as an ordinary "could not verify" with
-                # no reason given, indistinguishable from the cited paper simply not
-                # settling the question — measured: five cells of one table read that way.
+                # A crashed judge call is a pipeline failure. Left blank it renders as an
+                # ordinary "could not verify" with no reason given, indistinguishable from
+                # the cited paper simply not settling the question — measured: five cells
+                # of one table read that way.
                 note = f"[pipeline failure: {row_failure}, so this cell was never judged]"
             if answer == _WRONG_PAPER:
                 note = (

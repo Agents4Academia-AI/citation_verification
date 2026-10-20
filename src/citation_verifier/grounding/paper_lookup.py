@@ -97,6 +97,35 @@ _throttle_lock = threading.Lock()
 _next_allowed: dict[str, float] = {}
 
 
+# ───────────────────────────────────────────────────────────────
+# Which sources FAILED (as opposed to answering "no such paper")
+# ───────────────────────────────────────────────────────────────
+# Every lookup here fails soft to ``[]``, which makes "the source was rate-limiting" and
+# "the source has no such paper" the same value to the caller. They are opposite facts
+# about a reference: the second is the strongest hint there is that it was invented, the
+# first is nothing at all. The hosts that failed are therefore recorded per thread, so the
+# resolver can say which sources it actually heard from.
+_failure_log = threading.local()
+
+
+def reset_failures() -> None:
+    """Start a fresh failure record for the calling thread."""
+    _failure_log.hosts = []
+
+
+def failures() -> list[str]:
+    """Hosts whose requests failed (after retries) on this thread since the last reset."""
+    return list(dict.fromkeys(getattr(_failure_log, "hosts", [])))
+
+
+def _record_failure(host: str) -> None:
+    hosts = getattr(_failure_log, "hosts", None)
+    if hosts is None:
+        hosts = _failure_log.hosts = []
+    if host:
+        hosts.append(host)
+
+
 def _throttle(host: str) -> None:
     """Block until this thread's reserved slot for ``host`` (no-op if untracked).
 
@@ -187,17 +216,29 @@ def _get(
         except urllib.error.HTTPError as exc:
             last_exc = exc
             if exc.code not in _RETRY_CODES or attempt == retries:
+                # A 404 is the source ANSWERING ("no such paper"); a 429/5xx that
+                # outlasted the retries is the source not answering.
+                if exc.code in _RETRY_CODES or exc.code in (401, 403):
+                    _record_failure(host)
                 raise
             wait = _retry_after_seconds(exc)
             wait = wait if wait is not None else delay + random.uniform(0.0, 0.5)
         except (urllib.error.URLError, TimeoutError) as exc:
             last_exc = exc
             if attempt == retries:
+                _record_failure(host)
                 raise
             wait = delay + random.uniform(0.0, 0.5)
         time.sleep(wait)
         delay = min(delay * 2, 16.0)
     raise last_exc  # pragma: no cover — loop returns or raises above
+
+
+# An abstract is kept whole. Cut at 600 characters — the default every field once
+# shared — the relevance judge saw the first third of a typical abstract, and a claim
+# about what the paper shows came back "inconclusive" when the answer was in the part it
+# never received. 4000 characters holds any abstract; past that it is not one.
+_ABSTRACT_CHARS = 4000
 
 
 def _clean(text: str | None, limit: int = 600) -> str:
@@ -281,7 +322,7 @@ def _parse_crossref_item(it: dict) -> dict:
         "doi": (it.get("DOI") or "").lower(),
         "arxiv_id": "",
         "url": it.get("URL", ""),
-        "abstract": _clean(it.get("abstract")),
+        "abstract": _clean(it.get("abstract"), limit=_ABSTRACT_CHARS),
     }
 
 
@@ -345,7 +386,7 @@ def _parse_arxiv_entry(e: ET.Element) -> dict:
         "doi": (text(f"{_ARXIV}doi") or "").lower(),
         "url": arxiv_url,
         "arxiv_id": arxiv_url.rsplit("/", 1)[-1] if arxiv_url else "",
-        "abstract": _clean(text(f"{_ATOM}summary")),
+        "abstract": _clean(text(f"{_ATOM}summary"), limit=_ABSTRACT_CHARS),
     }
 
 
@@ -483,6 +524,7 @@ def _requests_get_json(
         except Exception as exc:  # noqa: BLE001 — network/connection error
             last_exc = exc
             if attempt == retries:
+                _record_failure(host)
                 raise
             time.sleep(delay + random.uniform(0.0, 0.5))
             delay = min(delay * 2, 16.0)
@@ -492,6 +534,8 @@ def _requests_get_json(
             time.sleep(wait if wait is not None else delay + random.uniform(0.0, 0.5))
             delay = min(delay * 2, 16.0)
             continue
+        if resp.status_code in _RETRY_CODES or resp.status_code in (401, 403):
+            _record_failure(host)
         resp.raise_for_status()
         return resp.json()
     raise last_exc  # pragma: no cover — loop returns or raises above
@@ -546,7 +590,7 @@ def _parse_s2_item(it: dict) -> dict:
         "doi": (ext.get("DOI") or "").lower(),
         "arxiv_id": ext.get("ArXiv", "") or "",
         "url": it.get("url", "") or "",
-        "abstract": _clean(it.get("abstract")),
+        "abstract": _clean(it.get("abstract"), limit=_ABSTRACT_CHARS),
         # S2's one-line AI summary. The API exposes it even when the licensed full
         # abstract is withheld (e.g. the GPT-2/GPT-1 tech reports), so it is the
         # only API-accessible evidence for those — carried through Candidate.extra
@@ -711,7 +755,7 @@ def _reconstruct_openalex_abstract(inverted: dict | None) -> str:
         for i in idxs:
             positions.append((i, word))
     positions.sort(key=lambda p: p[0])
-    return _clean(" ".join(w for _, w in positions))
+    return _clean(" ".join(w for _, w in positions), limit=_ABSTRACT_CHARS)
 
 
 # ───────────────────────────────────────────────────────────────

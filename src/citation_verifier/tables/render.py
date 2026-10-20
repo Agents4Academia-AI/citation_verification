@@ -23,7 +23,19 @@ from .model import (
 )
 from .verify import asymmetry_summary
 
-__all__ = ["render_table_report", "render_table_reports"]
+__all__ = ["render_table_report", "render_table_reports", "FLAGGED_VERDICTS", "flagged_count"]
+
+# The two verdicts that ask a person to look. They are kept apart in the schema because
+# they say different things about the evidence — "the cited work refutes this mark" is not
+# "the cited work never backs it" — but a reader's next action is the same for both, so
+# the counts a report leads with merge them. Splitting them there made a table with three
+# of each read as though nothing much was wrong.
+FLAGGED_VERDICTS = (CellVerdict.CONTRADICTED.value, CellVerdict.MAY_NOT_SUPPORT.value)
+
+
+def flagged_count(counts: dict[str, int]) -> int:
+    """How many cells a person should look at, from a verdict histogram."""
+    return sum(counts.get(v, 0) for v in FLAGGED_VERDICTS)
 
 _SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2, "ok": 3}
 _GLOSS_LABEL = {
@@ -92,10 +104,13 @@ def _findings_block(report: TableReport) -> list[str]:
         if f.evidence_quote:
             why = f"{why} — “{_cell(f.evidence_quote)[:160]}”"
         flag = " ⚑" if f.understates_prior_work else ""
+        verdict = VERDICT_STR.get(f.verdict, f.verdict)
+        if f.verdict in FLAGGED_VERDICTS:
+            verdict = f"**⚑ Flagged** — {verdict.lower()}"
         out.append(
             f"| {i} | {_cell(f.row_label)}"
             f"{f' (`{f.cite_key}`)' if f.cite_key else ''} | {_cell(f.dimension)} "
-            f"| {MARK_STR.get(f.claimed, '?')} | {VERDICT_STR.get(f.verdict, f.verdict)}{flag} "
+            f"| {MARK_STR.get(f.claimed, '?')} | {verdict}{flag} "
             f"| {why[:260]} |"
         )
     return out
@@ -110,10 +125,17 @@ def render_table_report(report: TableReport) -> str:
     parts = [head, "", *_grid_block(report), "", "**Columns**", "", *_columns_block(report), ""]
 
     verdicts = report.counts()
-    bits = [
+    flagged = flagged_count(verdicts)
+    bits = []
+    if flagged:
+        detail = ", ".join(
+            f"{VERDICT_STR.get(v, v)} {verdicts[v]}" for v in FLAGGED_VERDICTS if verdicts.get(v)
+        )
+        bits.append(f"**⚑ Flagged for review {flagged}** ({detail})")
+    bits += [
         f"{VERDICT_STR.get(k, k)} {v}"
         for k, v in sorted(verdicts.items(), key=lambda kv: _order_verdict(kv[0]))
-        if k != CellVerdict.SKIPPED.value
+        if k != CellVerdict.SKIPPED.value and k not in FLAGGED_VERDICTS
     ]
     parts += ["**Findings** — " + (", ".join(bits) if bits else "none"), "", *_findings_block(report), ""]
 
@@ -176,10 +198,16 @@ def render_table_reports(reports: list[TableReport]) -> str:
         if f.verdict != CellVerdict.SKIPPED.value
     )
     understated = sum(1 for r in reports for f in r.findings if f.understates_prior_work)
+    concluded = (CellVerdict.SUPPORTED.value, *FLAGGED_VERDICTS)
+    judged = sum(1 for r in reports for f in r.findings if f.verdict in concluded)
+    flagged = sum(1 for r in reports for f in r.findings if f.verdict in FLAGGED_VERDICTS)
     head = [
         "## Comparison tables",
         "",
-        f"{len(reports)} comparison table(s); {total} cell claim(s) checked"
+        # "Checked" only for cells that got a verdict: a run without a model, or over its
+        # budget, extracts every cell and concludes nothing, and must not read otherwise.
+        f"{len(reports)} comparison table(s); {total} cell claim(s), {judged} with a verdict"
+        + (f", **{flagged} flagged for review**" if flagged else "")
         + (f"; **{understated} refuted ✗ mark(s)**" if understated else "")
         + ".",
         "",

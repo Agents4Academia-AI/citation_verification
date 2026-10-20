@@ -70,12 +70,27 @@ becomes N records (it can be obligatory in one spot, background in another).
    fuzzy-title** (fuzzy gated by author overlap + year ±1), validate the cited
    URL, and fill `exists`, `resolved`, `metadata_issues`, `evidence`. Never from
    memory; if nothing resolves and web is gated off, the verdict is `unresolved/inconclusive`,
-   not `no`.
+   not `no`. One work often has several records — the article and its anniversary
+   reprint, a paper and a repost under a new DOI — so among records with the same title
+   and lead author the one dated as cited is preferred, and a record dated well away from
+   the cited year does not end the search. The venue comparison goes through an alias table (`venues.py` over
+   `data/venues.yaml`): every spelling of a venue maps to one key, so "NeurIPS", "NIPS"
+   and "Adv. Neural Inf. Process. Syst." are one venue; a mismatch is asserted only when
+   both sides are known venues that differ, and a preprint or proceedings-series record
+   ("arXiv", "PMLR") contradicts nothing.
 4. **Relevance** (`stages/relevance.py`): only when correctness holds — compare
    the retrieved abstract/snippet against the claim and fill `supports_claim`,
    `priority`, `confidence`, and a quoted `evidence` item (the justification).
 5. **Comparison** (`stages/comparison.py`): reserved seam (STEP 3) — for
    obligatory baselines, `compared_against`.
+5b. **Tables** (`tables/`, run by the orchestrator after the backend): the ✓/✗ cells of
+   related-work comparison tables, each verified against the paper its row cites. A
+   different unit from a record — "cited method R has property D", not a
+   `(claim, citation)` pair — so the findings travel beside the records
+   (`VerificationResult.tables`, `tables.json`), not inside them. The pass reuses the
+   prose pass's references and resolutions (`tables/pipeline.py`); a row the prose pass
+   did not cover goes through the same correctness stage. Results tables and tables
+   without cited rows are out of scope. `tables="only"` runs this step alone.
 6. **Severity**: derived deterministically from
    `(exists, supports_claim, priority)` via `derive_severity` (see DECISIONS.md),
    so agent output and gold agree by construction.

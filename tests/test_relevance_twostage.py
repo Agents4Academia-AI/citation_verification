@@ -115,24 +115,66 @@ def test_does_not_from_abstract_escalates_to_full_text(monkeypatch):
     assert "based on full text" in (rec.notes or "")
 
 
-def test_detail_partial_escalates_but_generic_partial_does_not(monkeypatch):
-    # partial escalates ONLY when the claim is about specific methods/data/results
-    # (those live in the body); a generic background partial stands on the abstract.
+def test_every_partial_is_checked_against_the_body(monkeypatch):
+    # "Related but weaker than the claim", said on an abstract, is a statement about the
+    # abstract. Escalating only claims a keyword list took for methods/data/results left
+    # a third of one batch's pairs at "partial" with the paper unread.
     monkeypatch.setattr(
         fulltext, "fetch_full_text_with_source",
         lambda *a, **k: fulltext.FullTextResult(
-            r"\section{Results} It reaches 95% accuracy on the benchmark.", "arxiv_eprint", "u"),
+            r"\section{Results} It reaches 95% accuracy on the benchmark. "
+            r"\section{Related} Prior work has explored this direction broadly.", "arxiv_eprint", "u"),
     )
-    judge = _stage2_supports_on(
-        "accuracy", lambda it: RelevanceVerdict(SupportsClaim.PARTIAL, justification="abstract partial")
+    for claim, word in (("the model reaches 95% accuracy on the QA benchmark", "accuracy"),
+                        ("prior work has explored this direction broadly", "explored")):
+        judge = _stage2_supports_on(
+            word, lambda it: RelevanceVerdict(SupportsClaim.PARTIAL, justification="abstract partial")
+        )
+        rec = _rec(claim)
+        fill_relevance_batch([rec], resolver=_NoResolver(), judge_batch=judge)
+        assert rec.supports_claim == SupportsClaim.SUPPORTS, claim
+        assert "based on full text" in (rec.notes or "")
+
+
+def test_a_claim_the_full_text_answer_left_out_keeps_its_first_verdict(monkeypatch):
+    from citation_verifier.backends.relevance_judge import _abstain
+
+    monkeypatch.setattr(
+        fulltext, "fetch_full_text_with_source",
+        lambda *a, **k: fulltext.FullTextResult(r"\section{Results} Something.", "arxiv_eprint", "u"),
     )
-    # detail-bearing claim (accuracy/benchmark) -> escalates -> upgraded on full text
-    detail = _rec("the model reaches 95% accuracy on the QA benchmark")
-    fill_relevance_batch([detail], resolver=_NoResolver(), judge_batch=judge)
-    assert detail.supports_claim == SupportsClaim.SUPPORTS
-    assert "based on full text" in (detail.notes or "")
-    # generic background claim -> partial stands, abstract-only (no escalation)
-    generic = _rec("prior work has explored this direction broadly")
-    fill_relevance_batch([generic], resolver=_NoResolver(), judge_batch=judge)
-    assert generic.supports_claim == SupportsClaim.PARTIAL
-    assert "based on abstract only" in (generic.notes or "")
+
+    def judge_batch(items):
+        if "Something" in items[0]["abstract"]:          # stage 2: the answer omits the claim
+            return [_abstain("batch judge returned no verdict")]
+        return [RelevanceVerdict(SupportsClaim.PARTIAL, justification="abstract partial")]
+
+    rec = _rec("the model reaches 95% accuracy")
+    fill_relevance_batch([rec], resolver=_NoResolver(), judge_batch=judge_batch)
+    assert rec.supports_claim == SupportsClaim.PARTIAL and "abstract partial" in rec.notes
+
+
+def test_a_paper_short_enough_is_judged_whole(monkeypatch):
+    from citation_verifier.stages import relevance as R
+
+    paper = r"\section{Intro} " + ("Background words here. " * 50) + r"\section{Results} The answer is 42."
+    monkeypatch.setattr(fulltext, "fetch_full_text_with_source",
+                        lambda *a, **k: fulltext.FullTextResult(paper, "arxiv_eprint", "u"))
+    seen = []
+
+    def judge_batch(items):
+        seen.extend(it["abstract"] for it in items)
+        return [RelevanceVerdict(SupportsClaim.PARTIAL, justification="p") for _ in items]
+
+    fill_relevance_batch([_rec("an unrelated phrasing of the claim")], resolver=_NoResolver(), judge_batch=judge_batch)
+    assert any("The answer is 42." in e and "Background words" in e for e in seen[1:])
+    assert len(paper) < R._WHOLE_PAPER_CHARS
+
+
+def test_judge_batches_respect_a_size_budget():
+    from citation_verifier.backends.relevance_judge import _chunks_by_budget
+
+    sizes = {"a": 100, "b": 150, "c": 300, "d": 10}
+    groups = list(_chunks_by_budget(list(sizes), sizes.get, max_items=10, max_chars=260))
+    assert groups == [["a", "b"], ["c"], ["d"]]
+    assert list(_chunks_by_budget(list("abcde"), lambda _: 1, max_items=2, max_chars=99)) == [["a", "b"], ["c", "d"], ["e"]]

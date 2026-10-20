@@ -32,8 +32,21 @@ arXiv id/URL · PDF (local file or URL) · LaTeX source .zip/.tar.gz
   → extract      → LaTeX .bbl/.bib + \cite sites (PDF fallback) → record stubs
   → correctness  → resolve DOI > arXiv-id > fuzzy-title; validate URL → exists, metadata_issues
   → relevance    → judge the claim against the retrieved abstract / full text → supports_claim, priority
-  → render       → the SKILL.md table + report.json under papers/<paper_id>/
+  → tables       → each ✓/✗ of a related-work comparison table vs. the paper its row cites
+  → render       → the SKILL.md table + report.json (+ tables.json) under papers/<paper_id>/
 ```
+
+**Comparison tables.** A citation inside a table is not a sentence, so the prose
+pipeline skips it — and a related-work table ("prior method R has / lacks property
+D") is exactly where a paper positions itself against the work it cites. Those cells
+are verified as part of every run: the column's meaning is recovered from the paper's
+own text, the cited paper is read whole, and each cell gets a verdict (`supported`,
+`contradicted`, `may_not_support`, `unverifiable`; the middle two are reported together
+as *flagged for review*). Results tables (numbers) are never touched, nor are tables
+with no cited rows. The table pass shares the prose pass's references and resolutions,
+so a citation is the same paper in a table as in a sentence. Turn it off with
+`--tables off` / `ENABLE_TABLE_VERIFICATION=false`, or run it alone with
+`--tables only` (see Quickstart).
 
 A stuck pair degrades to one `unresolved` / `inconclusive` row and the run
 continues. The full layered design, the `(claim, citation)` data flow, and the
@@ -77,6 +90,9 @@ cverify 1706.03762 --out papers/1706.03762        # 'agentic' is the default bac
 cverify https://arxiv.org/abs/2005.14165 --format json
 cverify https://some.site/paper.pdf               # any PDF URL — downloaded, then parsed
 cverify path/to/source.zip                        # a LaTeX source .zip/.tar.gz — uses the (more accurate) LaTeX path
+#    Exit code 3 with "error: MODEL UNAVAILABLE" on stderr = the login / API key was rejected.
+#    The report is still written (existence + metadata need no model) but nothing in it was
+#    judged, and it says so at the top. Fix: `claude auth login`, or set ANTHROPIC_API_KEY.
 
 # 4. Check one reference against the grounding sources (no LLM, no key)
 python -m citation_verifier.grounding.paper_lookup "Vaswani et al. Attention Is All You Need 2017"
@@ -94,6 +110,22 @@ The **keyless floor** — schema + render + eval + Crossref/arXiv grounding +
 open-access full-text — runs with no API keys, no `claude-agent-sdk`, and degrades
 softly offline. Keyed sources and the LLM backends turn on only when their keys are
 present.
+
+### Comparison tables on their own
+
+```bash
+cverify 2209.13864 --tables only                 # the tables and nothing else -> Markdown
+cverify 2209.13864 --tables only --format json   # one TableReport per line
+```
+
+Writes `papers/<paper_id>/tables.json` and `tables.md`, and leaves any existing
+`report.json` untouched. This is the same code path a normal run uses for its table
+pass (`citation_verifier.tables.verify_paper_tables`), so table results are
+reproducible from the CLI alone. To score a run against human cell labels:
+
+```bash
+python -m evals.table_eval --labels labels.csv papers/*/tables.json
+```
 
 ### Web UI (`cverify-web`)
 

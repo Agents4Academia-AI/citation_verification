@@ -227,6 +227,15 @@ class AgenticBackend(BaseBackend):
                     rec.supports_claim = SupportsClaim.INCONCLUSIVE.value
             for rec in eligible:
                 rec.model_tier = ModelTier.JUDGE.value
+            down = getattr(self.judge, "unavailable", "")
+            if down:
+                # Every pair came back "inconclusive" for a reason that has nothing to do
+                # with the evidence. Say so where it cannot be missed.
+                from ..errors import unavailable_message
+
+                result.errors.append(
+                    unavailable_message(down, f"relevance was NOT judged for {len(eligible)} pair(s)")
+                )
             return
 
         # Per-record path: an injected non-batch judge, or deterministic abstain.

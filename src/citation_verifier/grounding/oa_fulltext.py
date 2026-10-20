@@ -137,9 +137,19 @@ def arxiv_html_text_with_url(
         html = _http_get_text(url, timeout)
         if "<html" in html[:2000].lower():
             text = _html_to_text(html)
-            if len(text) > _MIN_TEXT:
+            if len(text) > _MIN_PAPER_TEXT and not _ARXIV_HTML_FAILURE.search(text[:6000]):
                 return text[:max_chars], url
     return "", ""
+
+
+# A page arXiv serves when it could not render the paper: its own navigation plus "please
+# view the build logs" — 1.7k characters that were taken for a paper's full text, so the
+# e-print and the PDF, which hold the paper, were never asked for.
+_MIN_PAPER_TEXT = 5000
+_ARXIV_HTML_FAILURE = re.compile(
+    r"(?i)conversion to HTML had a Fatal error|view the build logs|"
+    r"HTML (?:is )?not available for (?:the|this) (?:source|paper)|No HTML for"
+)
 
 
 def arxiv_html_text(arxiv_id: str, *, timeout: int = _TIMEOUT, max_chars: int = 200_000) -> str:

@@ -80,7 +80,12 @@ def extract_link_citations(pdf_path) -> list[dict]:
                 ]
                 if not anchors:
                     continue
-                words = page.get_text("words")
+                from .pdf_margin import content_clip
+
+                # Without a review template's line numbers: read with the text, they
+                # land inside sentences ("ques- 068 tion") and shift sentence
+                # boundaries, so a citation was paired with the sentence before it.
+                words = page.get_text("words", clip=content_clip(page))
                 width = page.rect.width
                 for rect, cite_key in anchors:
                     if not cite_key:
@@ -89,7 +94,8 @@ def extract_link_citations(pdf_path) -> list[dict]:
                     if claim:
                         base = pno * 1_000_000
                         sites.append(
-                            {"cite_key": cite_key, "claim": claim, "span": (base + cs, base + ce)}
+                            {"cite_key": cite_key, "claim": claim, "span": (base + cs, base + ce),
+                             "anchor": _text_under(words, rect)}
                         )
         return _dedupe(sites)
     except Exception:  # noqa: BLE001 — fail soft on any PyMuPDF error
@@ -191,12 +197,17 @@ def _sentence_at_rect(words, rect, page_width: float) -> tuple[str, tuple[int, i
         offsets.append(pos)
         pos += len(w[4]) + 1
     text = " ".join(w[4] for w in cw)
-    ti = next(
-        (i for i, w in enumerate(cw) if not (w[3] < y0 or w[1] > y1 or w[2] < x0 or w[0] > x1)),
-        None,
-    )
-    if ti is None:
+    # The word the link sits on is the one it covers MOST. "The first word it touches"
+    # was wrong: a link box is a point or two taller than its line, grazes the bottom of
+    # the line above, and the citation was paired with the sentence before it — and
+    # then judged "does not support" a claim it was never attached to.
+    def overlap(w) -> float:
+        return max(0.0, min(w[2], x1) - max(w[0], x0)) * max(0.0, min(w[3], y1) - max(w[1], y0))
+
+    best = max(range(len(cw)), key=lambda i: overlap(cw[i]))
+    if overlap(cw[best]) <= 0:
         return "", (0, 0)
+    ti = best
     return _sentence_around(text, offsets[ti])
 
 
@@ -231,6 +242,19 @@ def _sentence_around(text: str, pos: int, window: int = 460) -> tuple[str, tuple
     return _normalize(raw), (lo + start_off, lo + start_off + len(raw))
 
 
+def _text_under(words: list, rect) -> str:
+    """The words a link box covers — what the reader sees as the citation ("Bengio &
+    Grandvalet", "(2011)"). Mostly-inside only, so a word on the line above is not taken."""
+    out = []
+    for w in words:
+        ix = max(0.0, min(w[2], rect.x1) - max(w[0], rect.x0))
+        iy = max(0.0, min(w[3], rect.y1) - max(w[1], rect.y0))
+        area = max(1e-6, (w[2] - w[0]) * (w[3] - w[1]))
+        if ix * iy >= 0.5 * area:
+            out.append(w[4])
+    return " ".join(out)
+
+
 def _dedupe(sites: list[dict]) -> list[dict]:
     """Collapse sites of one cite_key whose spans OVERLAP (the name + year link
     halves of a citation, or the same sentence reached from two rects) — keep the
@@ -244,7 +268,11 @@ def _dedupe(sites: list[dict]) -> list[dict]:
         kept: list[dict] = []
         for s in group:
             a0, a1 = s["span"]
-            if not any(a0 < k["span"][1] and a1 > k["span"][0] for k in kept):
-                kept.append(s)
+            same = next((k for k in kept if a0 < k["span"][1] and a1 > k["span"][0]), None)
+            if same is None:
+                kept.append(dict(s))
+            elif s.get("anchor") and s["anchor"] not in (same.get("anchor") or ""):
+                # The name half and the year half of one citation: keep both texts.
+                same["anchor"] = f"{same.get('anchor') or ''} {s['anchor']}".strip()
         out.extend(kept)
     return out

@@ -79,7 +79,7 @@ class RelevanceVerdict:
     defaults so a partial judge response still degrades cleanly.
     """
 
-    __slots__ = ("supports_claim", "priority", "confidence", "justification", "model_tier")
+    __slots__ = ("supports_claim", "priority", "confidence", "justification", "model_tier", "basis", "missing")
 
     def __init__(
         self,
@@ -94,6 +94,11 @@ class RelevanceVerdict:
         self.confidence = confidence
         self.justification = justification
         self.model_tier = ModelTier(model_tier)
+        # What the judge was shown, for the report's "(based on …)" label; None = abstract.
+        self.basis: str | None = None
+        # True when no judgement was made at all (the judge's answer left this claim out,
+        # or there was nothing to judge from) — a placeholder, not a verdict.
+        self.missing = False
 
 
 # Cue words for the deterministic priority heuristic (lowercased substrings).
@@ -272,7 +277,7 @@ def fill_relevance_batch(
                 sec = escalated[pos]
                 basis = f"full text §{sec}" if sec else "full text"
             else:
-                basis = "abstract only"
+                basis = getattr(verdict, "basis", None) or "abstract only"
             note = f"(based on {basis}) {verdict.justification}"
             rec.notes = (rec.notes + "\n" if rec.notes else "") + note
         if item["abstract"]:
@@ -328,7 +333,12 @@ def _abstract_evidence(record: CitationRecord, abstract: str) -> Evidence:
     )
 
 
-_FULLTEXT_CHUNKS = 3  # claim-relevant chunks fetched per escalated citation (Stage 2)
+_FULLTEXT_CHUNKS = 8  # claim-relevant chunks per escalated citation, for a paper too long to send whole
+# Up to this length the WHOLE paper is the evidence. Chunks picked by word overlap with
+# the claim missed the one sentence that settled it — "temperature scaling does not change
+# the argmax, so accuracy is unaffected" shares few words with "leaves top-1 predictions
+# unchanged" — and five such claims stayed "inconclusive" with the paper in hand.
+_WHOLE_PAPER_CHARS = 100_000
 
 
 def _escalate_to_full_text(
@@ -347,7 +357,6 @@ def _escalate_to_full_text(
     """
     from ..grounding.fulltext import (
         FullTextResult,
-        _needs_experimental,
         fetch_full_text_from_url,
         fetch_full_text_via_search_with_source,
         fetch_full_text_with_source,
@@ -368,13 +377,13 @@ def _escalate_to_full_text(
         #   - inconclusive: the abstract couldn't decide;
         #   - does_not: the most consequential verdict — the body often supports a
         #     claim the abstract never mentions, so confirm before accusing of miscite;
-        #   - partial, but only when the claim is about specific methods/data/results
-        #     (those live in the body); a general/background partial can stand.
+        #   - partial: "related but weaker than the claim" said on an abstract and an
+        #     introduction is a statement about what those two parts contain. It was
+        #     escalated only for claims a keyword list took for methods/data/results, and
+        #     a third of one batch's pairs stopped at "partial" with the body unread.
         # A clear abstract-level `supports` is terminal and skips this.
-        escalate = (
-            sc == SupportsClaim.INCONCLUSIVE.value
-            or sc == SupportsClaim.DOES_NOT.value
-            or (sc == SupportsClaim.PARTIAL.value and _needs_experimental(rec.claim.text))
+        escalate = sc in (
+            SupportsClaim.INCONCLUSIVE.value, SupportsClaim.DOES_NOT.value, SupportsClaim.PARTIAL.value
         )
         if not escalate:
             continue
@@ -412,10 +421,15 @@ def _escalate_to_full_text(
         ftr = fulltext_cache[key]
         if not ftr:
             continue
-        chunks = select_evidence_chunks(rec.claim.text, split_sections(ftr.text), k=_FULLTEXT_CHUNKS)
-        if not chunks:
-            continue
-        evidence = "\n\n".join(f"[{h or 'body'}] {c}" for h, c in chunks)
+        sections = split_sections(ftr.text)
+        if len(ftr.text) <= _WHOLE_PAPER_CHARS:
+            chunks = select_evidence_chunks(rec.claim.text, sections, k=1)  # for the label
+            evidence = f"[complete text of the cited paper]\n{ftr.text}"
+        else:
+            chunks = select_evidence_chunks(rec.claim.text, sections, k=_FULLTEXT_CHUNKS)
+            if not chunks:
+                continue
+            evidence = "\n\n".join(f"[{h or 'body'}] {c}" for h, c in chunks)
         esc_items.append(
             {
                 "cite_key": rec.cite_key,
@@ -436,7 +450,9 @@ def _escalate_to_full_text(
 
     escalated: dict[int, str] = {}  # pos -> top section heading the verdict rests on
     for (pos, chunks, source, url), v2 in zip(esc_meta, esc_verdicts, strict=False):
-        if v2 is None:
+        # A claim the full-text answer left out keeps its first verdict: "the judge
+        # returned no verdict" replaced a real one in an earlier run.
+        if v2 is None or getattr(v2, "missing", False):
             continue
         verdicts[pos] = v2
         escalated[pos] = (chunks[0][0] if chunks else "") or ""

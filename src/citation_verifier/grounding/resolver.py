@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import re
 import threading
+import unicodedata
 from typing import TYPE_CHECKING, Any
 
 from ..interfaces import Candidate
@@ -358,7 +359,25 @@ def _should_search_arxiv(reference: str) -> bool:
     # "Proceedings of the IEEE/CVF International Conference on Computer Vision" instead of
     # "ICCV" — carries none of the acronyms above, so arXiv was never queried for it even
     # though the paper is mirrored there. Both spellings are common in one bibliography.
-    return bool(_SPELLED_OUT_VENUE_RE.search(reference or ""))
+    if _SPELLED_OUT_VENUE_RE.search(reference or ""):
+        return True
+    # …and a third spelling is the abbreviated one a journal house style imposes ("Adv
+    # Neural Inf Proces Syst", "Proc IEEE Conf Comput Vis Pattern Recognit"), which
+    # shares no whole word with either list above. The venue alias table reads all three.
+    return _cites_known_conference(reference)
+
+
+def _cites_known_conference(reference: str) -> bool:
+    """True when some clause of the reference names a conference the alias table knows."""
+    from .. import venues  # noqa: PLC0415 — pure, but keeps this module's import light
+
+    for clause in re.split(r"[.;]\s+|\bIn:?\s+", reference or ""):
+        clause = clause.strip(" .,;:")
+        if not (1 <= len(clause.split()) <= 16):
+            continue  # an author list or a long title, not a venue clause
+        if any(venues.venue_kind(v) == "conference" for v in venues.venue_ids(clause)):
+            return True
+    return False
 
 
 # Venue names written out in full. Deliberately anchored on the conference/journal words
@@ -428,19 +447,62 @@ def _subtitle_reference(reference: str) -> str:
     return reference.replace(title, subtitle, 1)
 
 
+def _fold(text: str) -> str:
+    """Lowercase with diacritics removed — "Müller" and "Muller" are one surname."""
+    decomposed = unicodedata.normalize("NFKD", text or "")
+    return "".join(ch for ch in decomposed if not unicodedata.combining(ch)).lower()
+
+
 def _ref_first_surname(reference: str) -> str:
     """The reference's leading surname, folded — 'Hindle, A., …' -> 'hindle'."""
-    m = re.match(r"\s*([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’-]{1,})", reference or "")
-    return m.group(1).lower() if m else ""
+    m = re.match(r"\s*([^\W\d_][^\W\d_'’-]{1,})", reference or "")
+    return _fold(m.group(1)) if m else ""
 
 
 def _cand_first_surname(c) -> str:
-    """A candidate's first-author surname, folded — 'Premkumar T. Devanbu' -> 'devanbu'."""
+    """A candidate's first-author surname, folded — 'Premkumar T. Devanbu' -> 'devanbu'.
+
+    Handles the ``Last, First`` form some sources return, and keeps accented letters (an
+    ASCII-only filter read "Müller" as "ller").
+    """
     authors = getattr(c, "authors", None) or []
     if not authors:
         return ""
-    toks = re.sub(r"[^A-Za-z\s'’-]", " ", authors[0]).split()
-    return toks[-1].lower() if toks else ""
+    name = authors[0]
+    if "," in name:
+        name = name.split(",", 1)[0]
+    toks = re.sub(r"[^\w\s'’-]|[\d_]", " ", name).split()
+    return _fold(toks[-1]) if toks else ""
+
+
+def _ref_lead_author_tokens(reference: str) -> set[str]:
+    """The name tokens of a reference's FIRST author, folded.
+
+    References open with the first author in whatever order the style prints it —
+    "Ashish Vaswani, …", "A. Vaswani, …", "Vaswani, A., …", "Vaswani A, …" — so the
+    surname is not reliably the first word (:func:`_ref_first_surname` assumes it is,
+    and for every given-name-first bibliography it returned the given name). The surname
+    is, however, always inside the first name chunk; a chunk of bare initials means the
+    surname follows the comma, so the next chunk is taken too.
+    """
+    head = re.split(r"[\"“‘]", reference or "", maxsplit=1)[0][:160]
+    chunks = [c for c in re.split(r"\s*(?:,|;|\band\b|&)\s*", head) if c.strip()]
+    tokens: set[str] = set()
+    for chunk in chunks[:2]:
+        words = [_fold(w) for w in re.findall(r"[^\W\d_]{2,}", chunk)][:4]
+        tokens.update(words)
+        if any(len(w) > 2 for w in words) and chunk is chunks[0] and len(words) >= 2:
+            break  # a full name ("Ashish Vaswani"): the surname is in it
+    return tokens
+
+
+def _first_author_agrees(reference: str, c) -> bool | None:
+    """Does the candidate's first author open the reference? ``None`` when unknowable."""
+    surname = _cand_first_surname(c)
+    lead = _ref_lead_author_tokens(reference)
+    if not surname or not lead:
+        return None
+    return any(_surname_matches_token(surname, t) for t in lead)
 
 
 def _fuzzy_title_score(reference: str, candidate_title: str) -> float:
@@ -465,6 +527,15 @@ def _fuzzy_title_score(reference: str, candidate_title: str) -> float:
         float(fuzz.token_sort_ratio(na, nb)),
         float(fuzz.token_set_ratio(na, nb)),
     )
+
+
+_HOST_NAMES = {
+    "api.crossref.org": "Crossref",
+    "export.arxiv.org": "arXiv",
+    "dblp.org": "DBLP",
+    "api.semanticscholar.org": "Semantic Scholar",
+    "api.openalex.org": "OpenAlex",
+}
 
 
 # ───────────────────────────────────────────────────────────────
@@ -496,6 +567,27 @@ def _arxiv_from_siblings(winner: Candidate, siblings: list[Candidate] | None) ->
     return ""
 
 
+def _abstract_from_siblings(winner: Candidate, siblings: list[Candidate] | None) -> str:
+    """The abstract of a same-title record returned beside ``winner``, when it has none.
+
+    Same gate as :func:`_arxiv_from_siblings`: the normalised titles are equal.
+    """
+    if winner.abstract or not siblings:
+        return ""
+    want = _norm_title(winner.title)
+    if not want:
+        return ""
+    for other in siblings:
+        if other is not winner and other.abstract and _norm_title(other.title) == want:
+            return other.abstract
+    return ""
+
+
+def _is_thin(m: Resolved) -> bool:
+    """A record with nothing to read: no abstract, and no arXiv id to fetch the text by."""
+    return not (m.abstract or m.arxiv_id)
+
+
 class MultiSourceResolver:
     """Resolve a cited reference to a canonical record via a match cascade.
 
@@ -524,6 +616,7 @@ class MultiSourceResolver:
         self.validate_urls = validate_urls
         self._fetch_cache: dict[tuple[str, tuple[Any, ...]], list[Candidate]] = {}
         self._fetch_cache_lock = threading.RLock()
+        self._failed = threading.local()  # per-thread: resolve() runs on worker threads
 
     # ── source fan-out ────────────────────────────────────────
     def candidates(self, reference: str, /, max_results: int = 4) -> list[Candidate]:
@@ -674,13 +767,33 @@ class MultiSourceResolver:
         reference and bibliographic records do not change. Set
         ``CITATION_VERIFIER_CACHE=""`` to disable.
         """
+        self._failed.hosts = []
         cached = resolve_cache.read(reference, Resolved)
         if cached is not None:
             return cached
+        paper_lookup.reset_failures()
         found = self._resolve_uncached(reference)
-        if found is not None:
+        self._failed.hosts = paper_lookup.failures()
+        if found is not None and not (self._failed.hosts and self._second_best(reference, found)):
             resolve_cache.write(reference, found)
         return found
+
+    @staticmethod
+    def _second_best(reference: str, found: Resolved) -> bool:
+        """A hit that the index which failed might well have bettered: nothing to read,
+        or dated away from the citation. Cached, it would outlive the outage that caused
+        it — every later run would be handed the same abstract-less record or the same
+        repost. A miss is not cached for that reason; neither is this."""
+        return _is_thin(found) or _year_rank(_extract_year(reference), found.year) == 0
+
+    def failed_sources(self) -> list[str]:
+        """Sources that did not answer during this thread's most recent :meth:`resolve`.
+
+        Empty means every source that was asked replied — so an unresolved reference
+        was looked for and not found. Non-empty means the lookup was incomplete, and
+        "not found" would be a claim about the sources that the run cannot back.
+        """
+        return [_HOST_NAMES.get(h, h) for h in getattr(self._failed, "hosts", [])]
 
     def _resolve_uncached(self, reference: str) -> Resolved | None:
         """:meth:`resolve` without the disk cache — the network cascade itself."""
@@ -695,16 +808,79 @@ class MultiSourceResolver:
         #    same-title record by a different lead author — e.g. S2 returning
         #    "Devanbu" for the Hindle paper — must not win over the right one), and
         #    fall back to it only if nothing better turns up.
-        ref_first = _ref_first_surname(reference)
+        #    Agreement is "the candidate's first-author surname is in the reference's
+        #    first name", not "equals its first word": for a given-name-first
+        #    bibliography the first word is a given name, the test never passed, and
+        #    every such reference ran the whole tier — five lookups where one had
+        #    already found the paper — only to return the first match anyway.
+        #    The same goes for the YEAR: a record dated well away from the year the
+        #    reference prints is a reprint, a repost or another edition of the cited
+        #    work. It is kept in hand while the remaining steps look for the edition
+        #    that was cited — with the index that usually has it rate-limited, the
+        #    first record to turn up for a 2017 paper was a 2025 repost.
+        ref_year = _extract_year(reference)
+
+        def standing(m: Resolved) -> tuple[bool, bool]:
+            return (
+                _first_author_agrees(reference, m) is not False,
+                _year_rank(ref_year, m.year) > 0,
+            )
+
+        #    And for what the record CARRIES: a publisher's record with no abstract and
+        #    no arXiv id is the right work with nothing to read. With the index that
+        #    usually answers first rate-limited, twenty of one paper's sixty citations
+        #    were resolved to such records and came back "no abstract or introduction to
+        #    judge from" — while the same papers sat on arXiv, one step further down this
+        #    list. Such a match is held while arXiv is asked — also when the routing had
+        #    left it out, since the routing reads the title's vocabulary and half of those
+        #    twenty titles carry none of its keywords — and the answer is then chosen
+        #    among everything the tier returned.
         fallback = None
+        thin: Resolved | None = None
+        pool: list[Candidate] = []
+        asked_arxiv = False
         for fn, args in self._title_query_steps(reference, 4):
-            match = self._match(reference, self._fetch(fn, *args))
+            if thin is not None and fn is not paper_lookup.search_arxiv_by_title:
+                continue  # the work is found; only a readable copy of it is still wanted
+            cands = self._fetch(fn, *args)
+            pool += cands
+            asked_arxiv = asked_arxiv or fn is paper_lookup.search_arxiv_by_title
+            match = self._match(reference, cands)
             if match is None:
                 continue
-            if not ref_first or _cand_first_surname(match) == ref_first:
-                return match
-            fallback = fallback or match
+            if all(standing(match)):
+                if not _is_thin(match):
+                    return match
+                thin = thin or match
+                continue
+            if fallback is None or standing(match) > standing(fallback):
+                fallback = match
+        if thin is not None:
+            if not asked_arxiv:
+                for title in _likely_titles(reference)[:1]:
+                    pool += self._fetch(
+                        paper_lookup.search_arxiv_by_title, title, 4, _first_author(reference) or None
+                    )
+            # Over the whole pool the ranking prefers a record that carries an abstract,
+            # and a publisher record that still wins takes the arXiv id (and abstract) of
+            # a same-title record beside it.
+            best = self._match(reference, _dedupe_candidates(pool))
+            return best if best is not None and all(standing(best)) else thin
         if fallback is not None:
+            if standing(fallback)[1]:
+                return fallback  # the year stands; only the lead author is in doubt
+            # Ask what has not been asked yet before settling for a copy: arXiv by title
+            # when the routing skipped it (it holds the original of most papers that get
+            # reposted), then the broad search.
+            extra: list[Candidate] = []
+            if not _should_search_arxiv(reference):
+                for title in _likely_titles(reference)[:1]:
+                    extra += self._fetch(
+                        paper_lookup.search_arxiv_by_title, title, 4, _first_author(reference) or None
+                    )
+            other = self._match(reference, extra + self._broad_candidates(reference))
+            if other is not None and standing(other) > standing(fallback):
+                return other
             return fallback
 
         # 3) broad fallback.
@@ -760,17 +936,27 @@ class MultiSourceResolver:
         #    acceptance threshold when they agree.
         # Rank by fuzzy title, then by first-author agreement with the reference
         # (so a same-title record by a different lead author loses to the right
-        # one when both are returned), then by having an abstract.
-        ref_first = _ref_first_surname(reference)
+        # one when both are returned), then by the YEAR the reference prints, then by
+        # having an abstract. One work has several records — the 1966 article and its
+        # 1983 anniversary reprint, a 2017 paper and a 2025 repost under a new DOI — all
+        # with the same title and authors; without the year the order among them was
+        # whatever the index returned, and the reprint's year was then reported as a
+        # year mismatch in the citation.
         ranked = sorted(
             (
-                (_fuzzy_title_score(reference, c.title), _cand_first_surname(c) == ref_first, bool(c.abstract), c)
+                (
+                    _fuzzy_title_score(reference, c.title),
+                    _first_author_agrees(reference, c) is True,
+                    _year_rank(ref_year, c.year),
+                    bool(c.abstract),
+                    c,
+                )
                 for c in cands
             ),
-            key=lambda t: (t[0], t[1], t[2]),
+            key=lambda t: (t[0], t[1], t[2], t[3]),
             reverse=True,
         )
-        for score, _first_ok, _has_abs, c in ranked:
+        for score, _first_ok, _year_ok, _has_abs, c in ranked:
             if score < FUZZY_TITLE_GATED_THRESHOLD:
                 break  # ranked descending: no later candidate can clear the bar
             if _title_tokens_contradict(reference, c.title):
@@ -843,8 +1029,8 @@ class MultiSourceResolver:
         url_valid: bool | None = None
         if self.validate_urls and url:
             url_valid = paper_lookup.validate_url(url)
-        abstract = c.abstract or self._abstract_top_up(c)
         arxiv_id = c.arxiv_id or _arxiv_from_siblings(c, siblings)
+        abstract = c.abstract or _abstract_from_siblings(c, siblings) or self._abstract_top_up(c)
         return Resolved(
             source=c.source,
             match_method=method,
@@ -896,6 +1082,14 @@ class MultiSourceResolver:
 # Module-level reference parsers (shared with stages via the resolver)
 # ───────────────────────────────────────────────────────────────
 _YEAR_RE = re.compile(r"\b(1[89]\d{2}|20\d{2})\b")
+
+
+def _year_rank(ref_year: int | None, year: int | None) -> int:
+    """2 when a record's year agrees with the reference's (within the window), 1 when
+    either is unknown, 0 when they disagree — for ranking, never for rejecting."""
+    if ref_year is None or year is None:
+        return 1
+    return 2 if abs(int(year) - ref_year) <= YEAR_CORROBORATION_WINDOW else 0
 
 
 def _extract_year(reference: str) -> int | None:

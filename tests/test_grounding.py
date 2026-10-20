@@ -432,9 +432,13 @@ def test_oa_norm_doi_strips_prefixes():
 def test_oa_arxiv_html_text_extracts_and_guards(monkeypatch):
     from citation_verifier.grounding import oa_fulltext as oa
 
-    body = "word " * 400  # comfortably past the _MIN_TEXT guard
+    body = "word " * 1200  # comfortably past the paper-length guard
     monkeypatch.setattr(oa, "_http_get_text", lambda url, timeout=30: f"<html><body>{body}</body></html>")
     assert "word" in oa.arxiv_html_text("2310.12345v2")
+    # arXiv's "could not render this paper" page is not the paper, however long
+    failed = f"<html><body>Report GitHub Issue. Experimental support, please view the build logs for errors. {body}</body></html>"
+    monkeypatch.setattr(oa, "_http_get_text", lambda url, timeout=30: failed)
+    assert oa.arxiv_html_text("2310.12345") == ""
     # too-short pages are rejected (stub / error / landing page guard)
     monkeypatch.setattr(oa, "_http_get_text", lambda url, timeout=30: "<html><body>tiny</body></html>")
     assert oa.arxiv_html_text("2310.12345") == ""
@@ -447,7 +451,7 @@ def test_oa_arxiv_html_reports_actual_host(monkeypatch):
     # the returned URL must be the ar5iv one — not assumed to be arxiv.org/html.
     from citation_verifier.grounding import oa_fulltext as oa
 
-    body = "word " * 400
+    body = "word " * 1200
 
     def fake_get(url, timeout=30):
         return "" if "arxiv.org/html" in url else f"<html><body>{body}</body></html>"

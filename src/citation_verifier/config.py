@@ -51,7 +51,12 @@ class Settings(BaseModel):
         default=_DEFAULT_MODEL_JUDGE, description="Strong model for the JUDGE (relevance/justification) tier."
     )
     cost_ceiling_usd: float = Field(
-        default=0.50, ge=0.0, description="Per-run USD ceiling; 0 disables the cap. Orchestrator aborts gracefully past it."
+        default=10.0, ge=0.0,
+        description="Per-run USD ceiling; 0 disables the cap. A pass is not STARTED once "
+        "the run's spend has reached it (the relevance pass after correctness, then each "
+        "comparison table in turn) — so a run can overshoot by one pass, never by more. "
+        "Sized for a whole paper: measured runs spend $0.7-$3.9 on the citations alone and "
+        "roughly $0.09 per table cell on top (one call carrying the cited paper)."
     )
     enable_relevance_judge: bool = Field(
         default=True,
@@ -59,6 +64,19 @@ class Settings(BaseModel):
         "default — relevance is the product's core check. Fails soft to abstain when no "
         "SDK/auth is available, so the keyless floor stays green; set false to force "
         "keyless abstention on supports_claim.",
+    )
+
+    enable_table_verification: bool = Field(
+        default=True,
+        description="Verify the ✓/✗ cells of related-work comparison tables against the "
+        "cited papers, as part of every run. Results tables are never touched. Needs the "
+        "same model transport as the relevance judge; without one the tables are still "
+        "extracted and their columns defined, with every cell left unverifiable.",
+    )
+    table_max_cells: int = Field(
+        default=150, ge=0,
+        description="Ceiling on table cells judged per paper (one cell = one model call "
+        "carrying the whole cited paper). Tables past it are reported, not judged. 0 = no cap.",
     )
 
     # ── Grounding sources ──
@@ -164,8 +182,10 @@ def load_settings(env_file: str | Path | None = ".env") -> Settings:
         anthropic_api_key=_opt(get("ANTHROPIC_API_KEY")),
         model_bulk=_opt(get("MODEL_BULK")) or _DEFAULT_MODEL_BULK,
         model_judge=_opt(get("MODEL_JUDGE")) or _DEFAULT_MODEL_JUDGE,
-        cost_ceiling_usd=_as_float(get("COST_CEILING_USD"), 0.50),
+        cost_ceiling_usd=_as_float(get("COST_CEILING_USD"), 10.0),
         enable_relevance_judge=_as_bool(get("ENABLE_RELEVANCE_JUDGE"), True),
+        enable_table_verification=_as_bool(get("ENABLE_TABLE_VERIFICATION"), True),
+        table_max_cells=int(_as_float(get("TABLE_MAX_CELLS"), 150)),
         crossref_mailto=_opt(get("CROSSREF_MAILTO")),
         s2_api_key=_opt(get("S2_API_KEY")),
         openalex_api_key=_opt(get("OPENALEX_API_KEY")),

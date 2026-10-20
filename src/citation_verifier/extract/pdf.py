@@ -27,11 +27,13 @@ from pathlib import Path
 
 from ..interfaces import PaperSource
 from ..schema import CitationRecord, CitedAs, Claim, Paper
-from .latex import TABLE_NOTE, _coerce_year, _split_authors, make_claim_id
+from .latex import TABLE_NOTE, _split_authors, make_claim_id, publication_year
 from .pdf_links import extract_link_citations, extract_text_citations
-from .pdf_refs import extract_reference_entries
+from .pdf_refs import extract_reference_sections
 
-__all__ = ["PdfExtractor", "extract_pdf_text"]
+__all__ = [
+    "PdfExtractor", "extract_pdf_text", "load_pdf_references", "load_pdf_reference_sections",
+]
 
 
 # ───────────────────────────────────────────────────────────────
@@ -103,10 +105,13 @@ def _text_via_pymupdf(path: Path) -> str:
     except Exception:
         return ""
     try:
+        from .pdf_margin import content_clip
+
         pages: list[str] = []
         with fitz.open(str(path)) as doc:
             for page in doc:
-                blocks = [b for b in page.get_text("blocks") if b[4].strip()]
+                # Without a review template's line numbers (see pdf_margin).
+                blocks = [b for b in page.get_text("blocks", clip=content_clip(page)) if b[4].strip()]
                 pages.append("\n".join(_reading_order(blocks, page.rect.width)))
         return "\n".join(pages).strip()
     except Exception:
@@ -236,11 +241,12 @@ _REF_TAIL_RE = re.compile(
     r"\b(?:Publisher['’]?s\s+Note|Springer\s+Nature\s+remains|author\s+self-archiving)",
     re.IGNORECASE,
 )
-# arXiv id in either the "arXiv:2102.00182" form or a URL form
+# arXiv id in either the "arXiv:2102.00182" form, a URL form
 # "arxiv.org/abs/2102.00182" / "arxiv.org/pdf/2102.00182(.pdf)" (optional v-suffix,
-# or old-style "math/0211159"). Many bibliographies cite only the URL.
+# or old-style "math/0211159"), or the DBLP/Semantic-Scholar BibTeX form
+# "ArXiv, abs/1706.04599" / "CoRR, abs/1412.6980". Many bibliographies cite only the URL.
 _ARXIV_RE = re.compile(
-    r"(?:arXiv:\s*|arxiv\.org/(?:abs|pdf)/)"
+    r"(?:arXiv:\s*|arxiv\.org/(?:abs|pdf)/|\b(?:arXiv|CoRR)\s*[,.]?\s*(?:preprint\s*)?abs/)"
     r"([0-9]{4}\.[0-9]{4,5}(?:v\d+)?|[a-z\-]+/\d{7})",
     re.IGNORECASE,
 )
@@ -334,12 +340,148 @@ def _references_from_layout(pdf_path: str | Path) -> dict[str, CitedAs]:
     :meth:`PdfExtractor.extract` then falls back to :func:`parse_reference_block`
     over the flat text (the always-available floor).
     """
-    out: dict[str, CitedAs] = {}
-    for cite_key, body in extract_reference_entries(pdf_path):
-        body = _clean_ref_body(body)
-        if body:
-            out[cite_key] = _parse_ref_entry(body)
+    sections = _sections_from_layout(pdf_path)
+    return sections[0] if sections else {}
+
+
+def _sections_from_layout(pdf_path: str | Path) -> list[dict[str, CitedAs]]:
+    """Every reference list of the PDF, parsed, each keyed by its own ``ref-<n>``."""
+    out: list[dict[str, CitedAs]] = []
+    for entries in extract_reference_sections(pdf_path):
+        parsed: dict[str, CitedAs] = {}
+        for cite_key, body in entries:
+            body = _clean_ref_body(body)
+            if body:
+                parsed[cite_key] = _parse_ref_entry(body)
+        if parsed:
+            out.append(parsed)
     return out
+
+
+def section_key(index: int, key: str) -> str:
+    """The document-wide key of entry ``key`` in reference list number ``index`` (0-based).
+
+    The paper's own list keeps the plain ``ref-<n>`` every consumer already knows. A
+    later list — an appendix's or a supplement's, numbered from 1 again — is prefixed so
+    its ``[3]`` and the main text's ``[3]`` stay two different references: ``s2-ref-3``.
+    """
+    return key if index == 0 else f"s{index + 1}-{key}"
+
+
+def _alnum(text: str) -> tuple[str, list[int]]:
+    """``text`` reduced to lowercase letters and digits, with each one's index in ``text``.
+
+    The layout parser and the flat text extractor read the same PDF and disagree about
+    everything else — spaces, hyphenation at line ends, ligatures, where a diacritic
+    landed. Stripped to alphanumerics they agree, so a passage from one can be located
+    in the other.
+    """
+    chars: list[str] = []
+    index: list[int] = []
+    for i, ch in enumerate(text):
+        for part in unicodedata.normalize("NFKD", ch):
+            if part.isalnum() and not unicodedata.combining(part):
+                chars.append(part.lower())
+                index.append(i)
+    return "".join(chars), index
+
+
+_ANCHOR = 24      # alphanumerics of an entry used to find it in the flat text
+_ANCHOR_REACH = 600  # how far past a heading its list's first entry may start
+
+
+def _locate_sections(
+    text: str, sections: list[dict[str, CitedAs]]
+) -> list[tuple[int, int | None]] | None:
+    """Where each reference list sits in the flat text: ``(heading_start, list_end)``.
+
+    A list is found by its own first entry appearing right after a ``References``
+    heading, and its end by its last entry. ``list_end`` is ``None`` when the last entry
+    cannot be found; the whole result is ``None`` when any list's START cannot — the
+    caller then keeps the single-list behaviour rather than guess at boundaries.
+    """
+    import bisect  # noqa: PLC0415 — only needed on this path
+
+    heads = list(_REF_HEADING_RE.finditer(text))
+    if not heads or not sections:
+        return None
+    norm, index = _alnum(text)
+    spans: list[tuple[int, int | None]] = []
+    floor = 0  # raw offset the next heading must come after
+    for refs in sections:
+        entries = list(refs.values())
+        first = _alnum(entries[0].raw or "")[0][:_ANCHOR]
+        last = _alnum(entries[-1].raw or "")[0][-_ANCHOR:]
+        if len(first) < 12:
+            return None
+        found: tuple[int, int] | None = None
+        for m in heads:
+            if m.start() < floor:
+                continue
+            n0 = bisect.bisect_left(index, m.end())
+            hit = norm.find(first, n0, n0 + _ANCHOR_REACH + len(first))
+            if hit != -1:
+                found = (m.start(), hit)
+                break
+        if found is None:
+            return None
+        start, n_first = found
+        end: int | None = None
+        if len(last) >= 12:
+            n_last = norm.find(last, n_first)
+            if n_last != -1:
+                end = index[n_last + len(last) - 1] + 1
+        spans.append((start, end))
+        floor = end if end is not None else start + 1
+    return spans
+
+
+def load_pdf_reference_sections(
+    pdf_path: str | Path, *, text: str | None = None
+) -> tuple[list[dict[str, CitedAs]], list[str]]:
+    """Every reference list of a PDF, and the stretch of text each one answers.
+
+    Returns ``(sections, bodies)`` of equal length. ``sections[0]`` is the paper's own
+    bibliography and ``bodies[0]`` the text before it; a further section is the list of an
+    appendix or supplement and its body is the text BETWEEN the previous list and its
+    own heading — the appendix that cites it. Keys are local to each section
+    (``ref-<n>``); use :func:`section_key` for a document-wide key.
+
+    A supplement's bibliography restarts at ``[1]``. Reading only the last list in the
+    file (as this did) bound every ``[n]`` of the MAIN text to the supplement's n-th
+    entry — each claim checked against a paper it never cited — and scanned the main
+    reference list itself as if it were body text.
+
+    Degrades to the single-list reading whenever the lists cannot be placed in the text:
+    one section (the last one found, as before) and the text before the last heading.
+    """
+    if text is None:
+        text = extract_pdf_text(pdf_path)
+    text = text or ""
+    sections = _sections_from_layout(pdf_path)
+    if not sections:  # no PyMuPDF / no layout section: the flat-text floor
+        body, block = split_body_and_references(text)
+        flat = parse_reference_block(block)
+        return ([flat], [body]) if flat else ([], [body])
+    spans = _locate_sections(text, sections)
+    if spans is None:
+        return [sections[-1]], [split_body_and_references(text)[0]]
+    bodies = [text[: spans[0][0]]]
+    for prev, cur in zip(spans, spans[1:], strict=False):
+        bodies.append(text[prev[1] : cur[0]] if prev[1] is not None else "")
+    return sections, bodies
+
+
+def load_pdf_references(pdf_path: str | Path, *, text: str | None = None) -> dict[str, CitedAs]:
+    """The PDF's references as one map: ``ref-<n>`` for the paper's own list, and
+    ``s2-ref-<n>`` … for the list of an appendix or supplement (see :func:`section_key`).
+
+    Primary: the layout-aware parse straight from the PDF geometry. Falls back to the
+    flat-text reference block only when PyMuPDF cannot run (a sidecar ``.txt``). ``text``
+    is the already-extracted document text, when the caller has it.
+    """
+    sections, _bodies = load_pdf_reference_sections(pdf_path, text=text)
+    return {section_key(i, k): v for i, refs in enumerate(sections) for k, v in refs.items()}
 
 
 def _clean_ref_body(text: str) -> str:
@@ -412,6 +554,17 @@ _AY_RUN_RE = re.compile(
     rf"^\s*(?P<authors>{_AY_NAME}(?:\s*[,;]?\s*(?:and\s+)?{_AY_NAME})*"
     rf"(?:\s*[,;]?\s+et\s+al\.?)?)\s*(?P<rest>[A-Z0-9].+)$",
     re.DOTALL,
+)
+
+
+# What follows a "Surname, I." run when the run was a misreading: a given-name-first list
+# with abbreviated co-authors — "Anastasios Nikolas Angelopoulos, E. Candes, and R.
+# Tibshirani." — matches "<multi-word surname>, <initial>" at its start, and the rest of
+# the author list ("Candes, and R. Tibshirani") was then taken for the title's opening.
+# The first author became "Anastasios Nikolas Angelopoulos, E.", bound to nothing, and
+# would have been reported as a first-author mismatch.
+_AUTHOR_LIST_GOES_ON_RE = re.compile(
+    r"[A-Z][\w'’`-]+(?:\s*,\s*and\s+[A-Z]|\s+and\s+[A-Z]\.|\s*,\s*[A-Z]\.\s*[A-Z][a-z])"
 )
 
 
@@ -535,8 +688,11 @@ def _title_from(title_raw: str) -> str | None:
     # Cut at a sentence boundary before the title, or a venue marker. A "?"/"!" title
     # ("How attentive are graph attention networks?") is followed by " In <Venue>"
     # with no period — the lookbehind keeps the "?" but drops the leaked venue.
+    # A lowercase page or volume marker ends it too: "From external to internal regret.
+    # pp. 621–636, 2005." kept "… regret. pp" as its title.
     title = re.split(
-        r"\.\s+(?=[A-Z0-9])|(?<=[?!])\s+(?=In\s+[A-Z])|\s+In:\s",
+        r"\.\s+(?=[A-Z0-9])|(?<=[?!])\s+(?=In\s+[A-Z])|\s+In:\s"
+        r"|\.\s+(?=(?:pp?|pages?|vol|volume)\b\.?\s*\d)",
         title_raw,
         maxsplit=1,
     )[0].strip(" .,")
@@ -605,7 +761,7 @@ def _split_author_title(body: str) -> tuple[list[str], str | None]:
     # regex requires a comma right after a surname, which Vancouver ("Surname I")
     # never has — so numbered/Vancouver references fall straight through.
     m = _AY_RUN_RE.match(head)
-    if m:
+    if m and not _AUTHOR_LIST_GOES_ON_RE.match(m.group("rest")):
         ay_authors = _split_ay_authors(m.group("authors"))
         if ay_authors:
             return ay_authors, _title_from(m.group("rest"))
@@ -698,15 +854,14 @@ def _parse_ref_entry(body: str) -> CitedAs:
     arxiv = _ARXIV_RE.search(body)
     doi = _DOI_RE.search(body)
     url = _URL_RE.search(body)
-    # Strip the arXiv-id / DOI spans before reading the year, so their digits
-    # (e.g. the 1911 in "arXiv:1911.03688") aren't mistaken for a publication year.
-    year = _YEAR_RE.search(_DOI_RE.sub(" ", _ARXIV_RE.sub(" ", body)))
     authors, title = _split_author_title(body)
     return CitedAs(
         raw=body,
         authors=authors,
         title=title,
-        year=_coerce_year(year.group(0)) if year else None,
+        # Not the first four digits in the entry: those are as often in the title
+        # ("A ConvNet for the 2020s"), a page range or an arXiv id (see publication_year).
+        year=publication_year(_DOI_RE.sub(" ", _ARXIV_RE.sub(" ", body)), title),
         venue=None,
         doi=doi.group(0).rstrip(".,;)") if doi else None,
         arxiv_id=arxiv.group(1) if arxiv else None,
@@ -809,7 +964,16 @@ def _is_cjk_boilerplate(line: str) -> bool:
 
 
 def _expand_num_marker(group: str) -> list[str]:
-    """Expand "3, 5-7" -> ['ref-3','ref-5','ref-6','ref-7']."""
+    """Expand "3, 5-7" -> ['ref-3','ref-5','ref-6','ref-7'].
+
+    A group with a 0 in it is not a citation at all — bibliographies count from 1 — but
+    an interval or a set: "[0, 1]", "[0, 100]". Dropping only the 0 kept the rest, and in
+    a probability paper every "p ∈ [0, 1]" then read as a citation of reference 1: the
+    style test saw dozens of "resolving" markers, declared the paper numbered, and its
+    real author-year citations were never looked for. Such a group yields nothing.
+    """
+    if re.search(r"(?<!\d)0+(?!\d)", group):
+        return []
     keys: list[str] = []
     for part in re.split(r"\s*,\s*", group):
         rng = re.match(r"(\d+)\s*[-–]\s*(\d+)", part)
@@ -1133,6 +1297,45 @@ def _bind_from_visible_text(
     return None
 
 
+_LINK_NAME_RE = re.compile(r"[A-ZÀ-Þ][\w'’`´¨-]+")
+_NOT_A_NAME = frozenset({"et", "al", "and", "see", "e.g", "i.e", "cf"})
+
+
+def _bind_from_link_text(anchor: str, references: dict[str, CitedAs]) -> CitedAs | None:
+    """Bind a hyperlink by the names it SHOWS when its key says nothing.
+
+    A bibkey need not encode an author and year at all — one generated paper cites
+    ``\\cite{none}``, rendered "(Bengio & Grandvalet)" because the entry has no year —
+    and then neither the key nor a visible "Surname, YEAR" can bind it. The link text
+    still names the authors: the reference whose first author (and second, when two are
+    shown) carries those surnames is the one, if exactly one does; a year shown in the
+    link must agree.
+    """
+    names = [
+        _fold(re.sub(r"[^A-Za-z]", "", n)) for n in _LINK_NAME_RE.findall(anchor or "")
+    ]
+    names = [n for n in names if len(n) >= 2 and n not in _NOT_A_NAME]
+    if not names:
+        return None
+    years = {int(y) for y in re.findall(r"(?<!\d)(?:19|20)\d{2}(?!\d)", anchor)}
+
+    def surnames(author: str) -> set[str]:
+        return set(_ay_surnames(author)) | {_fold(re.sub(r"[^A-Za-z]", "", (author.split() or [""])[-1]))}
+
+    hits = []
+    for c in references.values():
+        if not c.authors or not any(_surname_matches(names[0], s) for s in surnames(c.authors[0])):
+            continue
+        if len(names) > 1 and len(c.authors) > 1 and not any(
+            _surname_matches(names[1], s) for s in surnames(c.authors[1])
+        ):
+            continue
+        if years and c.year and c.year not in years:
+            continue
+        hits.append(c)
+    return hits[0] if len(hits) == 1 else None
+
+
 # ───────────────────────────────────────────────────────────────
 # The extractor
 # ───────────────────────────────────────────────────────────────
@@ -1153,47 +1356,57 @@ class PdfExtractor:
         if not text:
             return []
 
-        body, ref_block = split_body_and_references(text)
-        claim_body = _claim_scan_body(body)
-        # Primary: layout-aware parse straight from the PDF geometry. Fall back to
-        # the flat-text reference block only when PyMuPDF can't run (sidecar/.txt).
-        references = _references_from_layout(source.pdf_path) or parse_reference_block(ref_block)
+        # Every reference list in the file, with the text whose citations it answers:
+        # the paper and its bibliography, then — when a supplement carries its own —
+        # the appendix and that one. A marker is read against ITS list.
+        sections, bodies = load_pdf_reference_sections(source.pdf_path, text=text)
+        main = sections[0] if sections else {}
+        references = {section_key(i, k): v for i, refs in enumerate(sections) for k, v in refs.items()}
+        claim_body = _claim_scan_body(bodies[0]) if bodies else ""
         paper = self._build_paper(source)
         records: list[CitationRecord] = []
         seen: set[tuple[str, str, str]] = set()
 
-        # Only mine [n] markers when this is actually a numbered-citation paper.
-        # Otherwise a stray math interval (e.g. "Si ∈ [0, 100]") would be read as a
-        # citation and suppress the author-year/hyperlink path entirely.
-        numbered = _has_numbered_citations(claim_body, references)
-        for mm in _INTEXT_NUM_RE.finditer(claim_body) if numbered else ():
-            cite_keys = [k for k in _expand_num_marker(mm.group(1)) if _valid_marker_key(k, references)]
-            if not cite_keys:
+        for index, raw_body in enumerate(bodies):
+            local = sections[index] if index < len(sections) else {}
+            scan = claim_body if index == 0 else _claim_scan_body(raw_body)
+            # What a marker in THIS stretch of text can mean: its own list first, and —
+            # for an appendix whose numbering continues the paper's — the main list.
+            in_scope = {**main, **local}
+            # Only mine [n] markers when this is actually a numbered-citation paper.
+            # Otherwise a stray math interval (e.g. "Si ∈ [0, 100]") would be read as a
+            # citation and suppress the author-year/hyperlink path entirely.
+            if not _has_numbered_citations(scan, in_scope):
                 continue
-            sentence, span = _sentence_around(claim_body, mm.start())
-            in_table = bool(_TABLE_CAPTION_RE.match(sentence)) or _looks_like_table_dump(sentence)
-            for cite_key in cite_keys:
-                claim_id = make_claim_id(source.paper_id, None, span, cite_key)
-                dedup = (source.paper_id, claim_id, cite_key)
-                if dedup in seen:
+            for mm in _INTEXT_NUM_RE.finditer(scan):
+                markers = [k for k in _expand_num_marker(mm.group(1)) if _valid_marker_key(k, in_scope)]
+                if not markers:
                     continue
-                seen.add(dedup)
-                cited_as = references.get(cite_key) or CitedAs(raw="")
-                notes = None if cite_key in references else "no reference-list entry for marker"
-                if in_table:
-                    notes = f"{notes}; {TABLE_NOTE}" if notes else TABLE_NOTE
-                records.append(
-                    CitationRecord(
-                        paper_id=source.paper_id,
-                        claim_id=claim_id,
-                        cite_key=cite_key,
-                        paper=paper,
-                        claim=Claim(claim_id=claim_id, text=sentence, section=None, char_span=span),
-                        cited_as=cited_as,
-                        in_table=in_table,
-                        notes=notes,
+                sentence, span = _sentence_around(scan, mm.start())
+                in_table = bool(_TABLE_CAPTION_RE.match(sentence)) or _looks_like_table_dump(sentence)
+                for marker in markers:
+                    cite_key = section_key(index, marker) if marker in local else marker
+                    claim_id = make_claim_id(source.paper_id, None, span, cite_key)
+                    dedup = (source.paper_id, claim_id, cite_key)
+                    if dedup in seen:
+                        continue
+                    seen.add(dedup)
+                    cited_as = in_scope.get(marker) or CitedAs(raw="")
+                    notes = None if marker in in_scope else "no reference-list entry for marker"
+                    if in_table:
+                        notes = f"{notes}; {TABLE_NOTE}" if notes else TABLE_NOTE
+                    records.append(
+                        CitationRecord(
+                            paper_id=source.paper_id,
+                            claim_id=claim_id,
+                            cite_key=cite_key,
+                            paper=paper,
+                            claim=Claim(claim_id=claim_id, text=sentence, section=None, char_span=span),
+                            cited_as=cited_as,
+                            in_table=in_table,
+                            notes=notes,
+                        )
                     )
-                )
 
         # Author-year citations (no [n] markers) — recover sites from cite.* link
         # anchors (hyperref PDFs), else from author-year text patterns, and pair
@@ -1212,6 +1425,7 @@ class PdfExtractor:
                 cited_as = (
                     _bind_author_year(cite_key, references)
                     or _bind_from_visible_text(cite_key, claim_text, references)
+                    or _bind_from_link_text(site.get("anchor") or "", references)
                     or CitedAs(raw="")
                 )
                 matched = bool(cited_as.title or cited_as.authors)

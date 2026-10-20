@@ -22,7 +22,7 @@ from ..diskcache import key_for, namespace_dir, read_json, write_json
 
 __all__ = ["cache_dir", "clear", "read", "write"]
 
-_VERSION = "v1"  # bump when the glosser prompt changes materially
+_VERSION = "v2"  # bump when the glosser prompt changes materially
 
 
 def cache_dir():
@@ -39,6 +39,7 @@ def _key(paper_id: str, table_id: str, payload: dict) -> str:
             "siblings": sorted(payload.get("siblings") or []),
             "legend": list(payload.get("legend") or []),
             "snippets": [s.get("quote") for s in payload.get("snippets") or []],
+            "table_context": list(payload.get("table_context") or []),
         },
         ensure_ascii=False,
         sort_keys=True,
@@ -64,7 +65,9 @@ def write(paper_id: str, table_id: str, payload: dict, answer: Any) -> None:
         cache_dir(),
         _key(paper_id, table_id, payload),
         {"gloss": (answer.get("gloss") or "").strip(),
-         "test_question": (answer.get("test_question") or "").strip()},
+         "test_question": (answer.get("test_question") or "").strip(),
+         "search_terms": [str(t).strip() for t in (answer.get("search_terms") or [])
+                          if str(t).strip()]},
     )
 
 
