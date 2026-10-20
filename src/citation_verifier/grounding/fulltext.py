@@ -21,6 +21,8 @@ import re
 import tarfile
 from dataclasses import dataclass
 
+from . import fulltext_cache
+
 __all__ = [
     "FullTextResult",
     "split_sections",
@@ -185,6 +187,43 @@ def _chunks(body: str, max_chars: int) -> list[str]:
     return out
 
 
+def _is_heading_like(chunk: str) -> bool:
+    """True when a chunk names a topic rather than saying anything about it.
+
+    Scoring is overlap-with-the-CLAIM, normalised by the claim's length, so a chunk is
+    never penalised for being short — and a heading is the densest possible match, being
+    nothing but signal words. "E.2 High-order Features" was returned as evidence for
+    whether a method composes higher-order features; the judge could only reply that it
+    had been shown a section heading. The section's actual paragraphs are what carry the
+    answer, and they are separate chunks that rank behind it.
+
+    A passage states something and therefore ends a sentence somewhere; a heading does
+    not.
+    """
+    text = (chunk or "").strip()
+    if not text:
+        return True
+    if len(text.split()) > 12 or re.search(r"[.!?][\"'\u201d\u2019)\]]*(?:\s|$)", text):
+        return False
+    # Short and unpunctuated is not enough — a table row or a clipped sentence is short too
+    # and does assert something. A heading also LOOKS like one: a section number, a
+    # trailing colon, or title case.
+    return bool(
+        re.match(r"^\(?(?:[A-Z]|\d+)(?:\.\d+)*\)?[.\s]", text)      # "E.2 …", "4.1 …", "3 …"
+        or text.endswith(":")
+        or _is_title_case(text)
+    )
+
+
+def _is_title_case(text: str) -> bool:
+    """True when most content words are capitalised, as in a heading."""
+    words = [w for w in re.findall(r"[A-Za-z][\w'-]*", text) if len(w) > 3]
+    if len(words) < 2:
+        return False
+    caps = sum(1 for w in words if w[0].isupper())
+    return caps / len(words) >= 0.6
+
+
 def select_evidence_chunks(
     claim: str,
     sections: list[tuple[str, str]],
@@ -208,6 +247,8 @@ def select_evidence_chunks(
         if not _section_in_scope(heading, want_exp):
             continue
         for chunk in _chunks(body, max_chars):
+            if _is_heading_like(chunk):
+                continue
             ct = _tokens(chunk)
             overlap = len(claim_toks & ct) / len(claim_toks) if claim_toks and ct else 0.0
             scored.append((overlap, order, heading, chunk))
@@ -275,6 +316,21 @@ def fetch_full_text_with_source(
     stem = _arxiv_stem(arxiv_id)
     if not stem:
         return FullTextResult("")
+    # Served from disk when we have fetched this paper before: the content does not
+    # change, and re-fetching it is also a source of run-to-run variance — which channel
+    # answers first can differ, and a different channel yields different text, from which
+    # different passages are then selected. Set CITATION_VERIFIER_CACHE="" to disable.
+    hit = fulltext_cache.read(f"arxiv:{stem}")
+    if hit is not None:
+        return FullTextResult(hit[0], hit[1], hit[2])
+    got = _fetch_arxiv_full_text(stem, timeout=timeout, max_chars=max_chars)
+    if got.text:
+        fulltext_cache.write(f"arxiv:{stem}", got.text, got.source, got.url)
+    return got
+
+
+def _fetch_arxiv_full_text(stem: str, *, timeout: int, max_chars: int) -> FullTextResult:
+    """:func:`fetch_full_text_with_source` without the disk cache — the fetch cascade."""
     # arXiv's HTML rendering first — clean text, no LaTeX/PDF parsing (adapted from
     # Klara Kaleb's prior/fulltext.py); fall back to the LaTeX e-print, then PDF.
     from .oa_fulltext import arxiv_html_text_with_url
@@ -314,10 +370,16 @@ def fetch_full_text_from_url(
     """
     if not (url or "").strip():
         return ""
+    hit = fulltext_cache.read(f"url:{url}")
+    if hit is not None:
+        return hit[0]
     data = _http_get_bytes(url, timeout)
     if data[:5] != b"%PDF-":  # not a PDF (HTML landing page, paywall, error) -> skip
         return ""
-    return _pdf_bytes_to_text(data)[:max_chars]
+    text = _pdf_bytes_to_text(data)[:max_chars]
+    if text:
+        fulltext_cache.write(f"url:{url}", text, "resolved_url", url)
+    return text
 
 
 # Title-token overlap required between the cited title and a fetched PDF before we

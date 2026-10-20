@@ -8,11 +8,13 @@ from __future__ import annotations
 
 from citation_verifier.grounding import fulltext as ft
 from citation_verifier.grounding.fulltext import (
+    _is_heading_like,
     fetch_full_text_from_url,
     fetch_full_text_via_search,
     select_evidence_chunks,
     split_sections,
 )
+from citation_verifier.grounding.oa_fulltext import _html_to_text
 
 _LATEX = r"""
 \section{Introduction}
@@ -178,3 +180,60 @@ def test_text_matches_paper_gate():
     assert ft._text_matches_paper(body, "Conversational AI: Social and Ethical Considerations")
     # a different paper sharing only some tokens is rejected.
     assert not ft._text_matches_paper(body, "Conversational AI for Healthcare Diagnosis")
+
+
+def test_arxiv_html_keeps_the_maths():
+    r"""arXiv's HTML is LaTeXML output: the expression lives in the `alttext` attribute,
+    and deleting the whole <math> node takes it with it.
+
+    What survives is a mutilated sentence — "Here, , where is a permutation sampled
+    uniformly from all permutations ." A paper that defines its terms in equations then
+    reads as though it defines nothing, and a column whose criterion IS an equation cannot
+    be checked against it at all. Measured: eight of one table's twelve cells came back
+    unverifiable on a paper whose full text we already had.
+    """
+    html = (
+        "<p>Here, <math id='m2' class='ltx_Math' alttext='y^{\\prime}=g(\\epsilon,y)' "
+        "display='inline'><semantics><mrow><mi>y</mi></mrow></semantics></math>, where "
+        "<math alttext='\\epsilon'><mi>ϵ</mi></math> is a permutation.</p>"
+    )
+    text = _html_to_text(html)
+    assert "y^{\\prime}=g(\\epsilon,y)" in text
+    assert "\\epsilon" in text
+    assert "<math" not in text and "semantics" not in text
+
+
+def test_a_math_element_without_alttext_is_still_dropped():
+    """Raw MathML markup is noise, not evidence — only the TeX is worth keeping."""
+    text = _html_to_text("<p>Before <math><mi>x</mi><mo>+</mo><mi>y</mi></math> after.</p>")
+    assert "Before" in text and "after" in text
+    assert "mi>" not in text
+
+
+def test_a_section_heading_is_not_evidence():
+    """Scoring is overlap-with-the-claim normalised by the claim's length, so a chunk is
+    never penalised for being short — and a heading is the densest possible match, being
+    nothing but signal words.
+
+    Measured: "E.2 High-order Features" was returned as evidence for whether a method
+    composes higher-order features, and the judge could only reply that it had been shown
+    a section heading. The paragraphs that answer the question rank behind it.
+    """
+    assert _is_heading_like("E.2 High-order Features")
+    assert _is_heading_like("4.1 Experimental Setup")
+    assert _is_heading_like("Feature generation:")
+    assert not _is_heading_like("OpenFE generates higher-order features iteratively.")
+    assert not _is_heading_like(
+        "Table 7: Additional results on 49 datasets where feature generation helps."
+    )
+    # a short passage that nonetheless asserts something is not a heading
+    assert not _is_heading_like("[Results] F1 92 on the dataset")
+
+    sections = [
+        ("Abstract", "E.2 High-order Features\n\nWe compose earlier features into "
+                     "higher-order combinations over several rounds of generation."),
+    ]
+    picked = select_evidence_chunks("higher-order features composed over rounds",
+                                    sections, k=2, max_chars=400)
+    assert picked, "the section's real content must still be reachable"
+    assert all("compose" in c or "combination" in c for _h, c in picked)

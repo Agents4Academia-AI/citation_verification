@@ -38,10 +38,10 @@ import re
 from collections.abc import Callable
 from pathlib import Path
 
-from .latex_grid import _is_self_row
+from .latex_grid import _is_self_row, looks_like_comparison_table
 from .model import CellMark, ComparisonTable, Dimension, TableCell, TableRow
 
-__all__ = ["tables_from_pdf", "mark_from_pdf_cell", "citation_markers"]
+__all__ = ["tables_from_pdf", "mark_from_pdf_cell", "citation_markers", "repair_dingbats"]
 
 # Glyph artifacts seen when ✓/✗ come from symbol fonts and lose their unicode mapping.
 _PDF_YES = {"", "", "", "✓", "✔", "√"}
@@ -60,12 +60,39 @@ _AY_MARKER_RE = re.compile(
 )
 
 
+def repair_dingbats(text: str) -> str:
+    r"""Restore Dingbats glyphs whose embedded font lost its ToUnicode map.
+
+    ``\ding{51}``/``\ding{53}`` reach the text layer as the LOW BYTE of the character they
+    should have been — 0x13 for ✓ (U+2713), 0x17 for ✗ (U+2717) — whenever the PDF ships
+    no usable CMap for the symbol font. The same LaTeX macro yields proper Unicode from
+    one toolchain and a bare control byte from another, so this is about how the PDF was
+    produced, not about the paper. Measured: two of seven papers extracted zero marks, the
+    grid lost every anchor, and both tables were silently dropped.
+
+    Only C0 control codes are repaired — no printable character maps into the mark set
+    under this offset, so ordinary text cannot be corrupted.
+    """
+    if not text:
+        return text
+    out = []
+    for ch in text:
+        o = ord(ch)
+        if o < 0x20:
+            cand = chr(o + 0x2700)
+            if cand in _ALL_MARK_CHARS:
+                out.append(cand)
+                continue
+        out.append(ch)
+    return "".join(out)
+
+
 def mark_from_pdf_cell(raw: str) -> str:
     """Classify a PDF cell string into a :class:`CellMark` value.
 
     Handles the symbol-font artifacts above before falling back to words/values.
     """
-    s = (raw or "").strip()
+    s = repair_dingbats(raw or "").strip()
     if not s:
         return CellMark.EMPTY.value
     chars = set(s)
@@ -76,8 +103,11 @@ def mark_from_pdf_cell(raw: str) -> str:
     if chars & _PDF_PARTIAL:
         return CellMark.PARTIAL.value
     low = re.sub(r"\s+", " ", s).strip().lower()
-    # "N/A" is an abstention, not the paper asserting the method lacks the property.
-    if low in {"-", "–", "—", "", "n/a", "na", "n.a.", "--", "?"}:
+    # A dash is the paper saying NO — the typographic alternative to ✗ (see the matching
+    # note in latex_grid.normalize_mark). "N/A" and "?" stay abstentions.
+    if low in {"-", "–", "—", "--", "---"}:
+        return CellMark.NO.value
+    if low in {"", "n/a", "na", "n.a.", "n.a", "?", "unknown", "unk", "tbd"}:
         return CellMark.EMPTY.value
     if low in {"yes", "y", "true", "full"}:
         return CellMark.YES.value
@@ -108,8 +138,34 @@ def citation_markers(label: str) -> list[str]:
 
 def _is_mark_token(text: str) -> bool:
     """True when a whole word token is nothing but mark glyphs (``"✓"``, ``"✗✗"``)."""
-    t = (text or "").strip()
+    t = repair_dingbats(text or "").strip()
     return bool(t) and all(ch in _ALL_MARK_CHARS for ch in t)
+
+
+def _recovered_mark_words(page: object) -> list[tuple]:
+    """Mark glyphs that ``get_text("words")`` drops, as word tuples.
+
+    MuPDF's word extractor discards control codes, so a ✓ that reached the text layer as
+    0x13 (see :func:`repair_dingbats`) is absent from ``words`` while present in the
+    character-level extraction. The marks ARE the grid's anchors, so losing them does not
+    degrade the table — it deletes it. Measured: two of seven papers whose headers and row
+    labels extracted perfectly yielded no table at all.
+    """
+    out: list[tuple] = []
+    try:
+        raw = page.get_text("rawdict")
+    except Exception:  # noqa: BLE001 — degrade to whatever `words` gave us
+        return out
+    for block in raw.get("blocks", []):
+        for line in block.get("lines", []):
+            for span in line.get("spans", []):
+                for ch in span.get("chars", []):
+                    c = ch.get("c") or ""
+                    fixed = repair_dingbats(c)
+                    if fixed != c and fixed in _ALL_MARK_CHARS:
+                        x0, y0, x1, y1 = ch.get("bbox", (0, 0, 0, 0))
+                        out.append((x0, y0, x1, y1, fixed, 0, 0, 0))
+    return out
 
 
 def _cluster_1d(values: list[float], gap: float) -> list[float]:
@@ -190,6 +246,11 @@ def _grid_from_marks(page, *, x_tol: float = 12.0, y_tol: float = 6.0) -> list[l
     """
     words = page.get_text("words")  # (x0, y0, x1, y1, text, block, line, word_no)
     marks = [w for w in words if _is_mark_token(w[4])]
+    if not marks:
+        # No mark survived word extraction — the symbol font may have lost its unicode
+        # mapping. Recover the glyphs from the character layer before giving up.
+        marks = _recovered_mark_words(page)
+        words = [*words, *marks]
     if len(marks) < 4:
         return None
 
@@ -222,17 +283,47 @@ def _grid_from_marks(page, *, x_tol: float = 12.0, y_tol: float = 6.0) -> list[l
     mark_right = max(w[2] for w in marks)
     top_y = min(w[1] for w in marks)
 
+    # How far apart consecutive rows actually are. The mark tolerance is a clustering
+    # parameter, not a row height: a dense table can put its rows 7.6pt apart, and a
+    # ±6pt label window then reaches into the neighbouring row. Measured consequence —
+    # every row inherited the row above's citation marker, so five of six cited rows in
+    # two papers were verified against the WRONG paper while looking perfectly resolved.
+    pitch = (
+        min(b - a for a, b in zip(row_y, row_y[1:], strict=False))
+        if len(row_y) > 1 else 2 * y_tol
+    )
+    label_reach = max(2.0, min(y_tol, pitch / 2))
+
     # Row labels sit beside the mark block — usually to its left, but some tables put the
     # marks first and the method names to the right. Pick whichever side carries words.
     def band(ry: float, *, left: bool) -> str:
-        picked = [
+        side = [
             w for w in words
-            if abs((w[1] + w[3]) / 2 - ry) <= y_tol
-            and (w[2] < mark_left - 3 if left else w[0] > mark_right + 3)
+            if (w[2] < mark_left - 3 if left else w[0] > mark_right + 3)
             and not _is_mark_token(w[4])
         ]
+        # Nearest row wins, so a word belongs to exactly one row however tight the
+        # spacing — the same rule the header words below use for their columns.
+        picked = [
+            w for w in side
+            if abs((w[1] + w[3]) / 2 - ry) <= label_reach
+            and min(row_y, key=lambda y: abs((w[1] + w[3]) / 2 - y)) == ry
+        ]
         picked.sort(key=lambda w: w[0])
-        return " ".join(w[4] for w in picked).strip()
+        # Keep only the run of words ADJACENT to the mark block. A capability table often
+        # sits beside the abstract (ACL page 1), and taking everything on that side made
+        # the abstract's prose the row labels — inventing rows the table never had.
+        if left:
+            picked.reverse()
+        run: list[tuple] = []
+        for w in picked:
+            if run:
+                gap = (run[-1][0] - w[2]) if left else (w[0] - run[-1][2])
+                if gap > 40:
+                    break
+            run.append(w)
+        run.sort(key=lambda w: w[0])
+        return " ".join(w[4] for w in run).strip()
 
     left_labels = [band(ry, left=True) for ry in row_y]
     right_labels = [band(ry, left=False) for ry in row_y]
@@ -247,9 +338,12 @@ def _grid_from_marks(page, *, x_tol: float = 12.0, y_tol: float = 6.0) -> list[l
     # Only the text LINES immediately above the marks, and never a caption line: a wide
     # window pulls "Table 1: Comparison of …" into the headers, which then match nothing
     # in the body and get reported as columns the paper never defined.
+    # Compare word TOPS, not bottoms: a header line sits directly on the first mark row
+    # (measured: header y1=84.27 vs first mark y0=83.82), so requiring the header to end
+    # above the marks excludes it and every column comes back unnamed.
     band = [
         w for w in words
-        if w[3] <= top_y - 1 and top_y - w[3] <= 60 and not _is_mark_token(w[4])
+        if w[1] < top_y - 2 and top_y - w[1] <= 70 and not _is_mark_token(w[4])
     ]
     # Group into lines FIRST and test each unclipped — "Table 1:" sits left of the mark
     # block, so clipping before the caption test removes the very words that identify it
@@ -279,6 +373,12 @@ def _grid_from_marks(page, *, x_tol: float = 12.0, y_tol: float = 6.0) -> list[l
         bucket.sort(key=lambda w: (round(w[1]), w[0]))
         headers.append(" ".join(w[4] for w in bucket).strip())
 
+    # A cell that holds no mark may still hold a VALUE — a technique name ("ILP", "SMT",
+    # "Heuristics"), a count, a dash. Reading only the marks empties those cells, and a
+    # column of techniques then looks like a plain ✓/✗ column: measured, that turned three
+    # "no technique reported for this phase" cells into three high-severity accusations,
+    # because the guard that protects such columns keys off the column's value type.
+    cell_reach = max(x_tol, _median_gap(col_x) / 2 - 2) if len(col_x) > 1 else x_tol
     grid: list[list[str]] = [["Method", *headers]]
     for ry, label in zip(row_y, labels, strict=False):
         row = [label]
@@ -287,7 +387,21 @@ def _grid_from_marks(page, *, x_tol: float = 12.0, y_tol: float = 6.0) -> list[l
                 w[4] for w in marks
                 if abs((w[1] + w[3]) / 2 - ry) <= y_tol and abs((w[0] + w[2]) / 2 - cx) <= x_tol
             ]
-            row.append(hit[0] if hit else "")
+            if hit:
+                row.append(hit[0])
+                continue
+            # Nearest-anchor, so a word belongs to exactly one column however tight the
+            # spacing — the same rule the row labels and headers already use.
+            words_here = [
+                w for w in words
+                if abs((w[1] + w[3]) / 2 - ry) <= y_tol
+                and abs((w[0] + w[2]) / 2 - cx) <= cell_reach
+                and min(col_x, key=lambda x: abs((w[0] + w[2]) / 2 - x)) == cx
+                and mark_left - 3 <= (w[0] + w[2]) / 2 <= mark_right + 3
+                and not _is_mark_token(w[4])
+            ]
+            words_here.sort(key=lambda w: w[0])
+            row.append(" ".join(w[4] for w in words_here).strip())
         grid.append(row)
     # Drop rows that ended up with no label AND no marks.
     body = [r for r in grid[1:] if r[0].strip() or any(c.strip() for c in r[1:])]
@@ -571,19 +685,15 @@ def _caption_on_page(page) -> str:
 
 
 def _looks_like_comparison_pdf(grid: list[list[str]], *, min_rows: int = 2) -> bool:
-    """Same intent as the LaTeX heuristic, using the PDF mark vocabulary."""
-    if len(grid) < min_rows + 1:
-        return False
-    marks = total = 0
-    for row in grid[1:]:
-        for cell in row[1:]:
-            m = mark_from_pdf_cell(cell)
-            if m == CellMark.EMPTY.value:
-                continue
-            total += 1
-            if m in (CellMark.YES.value, CellMark.NO.value, CellMark.PARTIAL.value):
-                marks += 1
-    return total >= 3 and marks / total >= 0.6
+    """The shared acceptance rule, using the PDF mark vocabulary.
+
+    Reusing it matters: a comparison table need not contain a single ✓. IJCAI's graph-
+    unlearning survey compares seven cited methods with cells like "K+1 hops" / "GCN,
+    GAT, GIN", and a marks-only rule discarded the whole table.
+    """
+    return looks_like_comparison_table(
+        grid, min_rows=min_rows, normalizer=mark_from_pdf_cell
+    )
 
 
 def _dimension_kind_pdf(grid: list[list[str]], col: int) -> str:

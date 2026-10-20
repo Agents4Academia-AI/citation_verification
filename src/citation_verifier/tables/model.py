@@ -66,6 +66,11 @@ class CellVerdict(str, Enum):
 
     SUPPORTED = "supported"        # retrieved evidence confirms the mark
     CONTRADICTED = "contradicted"  # retrieved evidence refutes the mark — the ✓/✗ is wrong
+    # The cited paper's FULL TEXT never claims the property, and the table marks ✓. Weaker
+    # than CONTRADICTED — nothing shows the method cannot do it — but it is a real finding:
+    # the citing paper credited prior work with a capability its own paper never asserts.
+    # Distinct from UNVERIFIABLE, which means we never got enough of the paper to say.
+    MAY_NOT_SUPPORT = "may_not_support"
     UNVERIFIABLE = "unverifiable"  # not enough evidence retrieved (abstention, NOT a refutation)
     UNDEFINED = "undefined"        # the dimension is never defined → uncheckable by construction
     SKIPPED = "skipped"            # self row / uncited row / non-binary value cell
@@ -84,7 +89,13 @@ class DimensionKind(str, Enum):
 class GlossSource(str, Enum):
     """Where the meaning of a column header was recovered from (never invented).
 
-    Ordered by strength. The distinction that matters is ``MENTION`` vs ``HEADER_ONLY``:
+    Ordered by strength. ``RECOVERED`` sits between them: the paper does carry the meaning,
+    in a caption, a symbol legend or an abbreviation expansion the keyword search cannot
+    reach, and a model read it off that material. Usable for checking a cell, never strong
+    enough to accuse the authors — so it is grouped with ``MENTION`` by the verdict gate
+    but must not be reported to a reader as "the paper merely mentions this column".
+
+    The other distinction that matters is ``MENTION`` vs ``HEADER_ONLY``:
     a term the paper discusses but never crisply defines is still checkable (weakly),
     whereas a term that appears *nowhere outside the table* cannot be checked at all —
     and only that second case is reported as an undefined column, because calling a
@@ -95,6 +106,7 @@ class GlossSource(str, Enum):
     LEGEND = "legend"            # a table footnote / legend line
     BODY = "body"                # a definition in the body (definition env, "X is …", "X: …")
     MENTION = "mention"          # discussed in the body, but never actually defined
+    RECOVERED = "recovered"      # a model read the meaning off the caption/legend/context
     HEADER_ONLY = "header_only"  # never occurs outside the table — genuinely undefined
     NONE = "none"
 
@@ -112,6 +124,7 @@ MARK_STR: dict[str, str] = {
 VERDICT_STR: dict[str, str] = {
     CellVerdict.SUPPORTED.value: "Supported",
     CellVerdict.CONTRADICTED.value: "Contradicted",
+    CellVerdict.MAY_NOT_SUPPORT.value: "May not support",
     CellVerdict.UNVERIFIABLE.value: "Unverifiable",
     CellVerdict.UNDEFINED.value: "Undefined dimension",
     CellVerdict.SKIPPED.value: "Skipped",
@@ -186,6 +199,11 @@ class ComparisonTable(_Model):
         default_factory=list,
         description="Footnote/legend lines under the table (symbol keys). Paper text — it "
         "is mined for column definitions, so only real page content belongs here.",
+    )
+    symbol_legend: dict[str, str] = Field(
+        default_factory=dict,
+        description="Symbol -> the meaning THIS paper gives it, read from the caption or "
+        "legend (e.g. {'\\tmark': 'medium'}). A ▲ means whatever the paper says it means.",
     )
     warnings: list[str] = Field(
         default_factory=list,
@@ -274,6 +292,9 @@ def derive_cell_severity(mark: str, verdict: str, *, is_self: bool = False) -> s
         if mark == CellMark.YES.value and is_self:
             return "high"  # an unearned claim about the authors' own method
         return "medium"
+    if verdict == CellVerdict.MAY_NOT_SUPPORT.value:
+        # A ✓ the cited work never claims: the citing paper's own assertion, unbacked.
+        return "low" if is_self else "medium"
     if verdict == CellVerdict.UNDEFINED.value:
         return "medium"
     if verdict == CellVerdict.UNVERIFIABLE.value:

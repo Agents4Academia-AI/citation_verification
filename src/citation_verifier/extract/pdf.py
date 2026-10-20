@@ -463,6 +463,34 @@ _GNF_SOLO_RE = re.compile(
 )
 
 
+# Initials-first Vancouver ("Y. You, W. Liu, and C. Lu. Title. In Venue…") — the house
+# style of IEEE/CVPR/ICRA and most robotics venues. Each name is one or more initials
+# (hyphenated compounds included: "Y.-L. Li") followed by a surname, and the run closes
+# with a period. Without a tier of its own the given-name-first tier splits it on commas,
+# cannot see where the run ends, and cuts mid-name: "and J" became an author and "Scholz"
+# became the title. Measured: two of eight cited rows in one table resolved to a venue
+# name and to an author's surname instead of the paper.
+_INITIALS_NAME = r"(?:[A-ZÀ-Þ]\.(?:-?[A-ZÀ-Þ]\.)*\s*)+[A-ZÀ-Þ][\w'’-]+"
+_INITIALS_RUN_RE = re.compile(
+    rf"^\s*(?P<authors>{_INITIALS_NAME}"
+    rf"(?:\s*,\s*{_INITIALS_NAME})*"
+    rf"(?:\s*,?\s+(?:and|&)\s+{_INITIALS_NAME})?"
+    rf"(?:\s*,?\s+et\s+al)?)"
+    # The title may open lowercase — system names routinely do ("kpam:", "arXiv", "de
+    # novo") — and this tier can afford it: a lowercase word cannot continue the author
+    # run, which only admits an initial-plus-surname, so the boundary stays unambiguous.
+    rf"\.\s+(?P<rest>[^\s].+)$",
+    re.DOTALL,
+)
+
+
+def _split_initials_authors(author_str: str) -> list[str]:
+    """Split an initials-first run into names, dropping ``and``/``et al``."""
+    cleaned = re.sub(r"\s*,?\s+et\s+al\.?\s*$", "", author_str)
+    cleaned = re.sub(r"\s*,?\s+(?:and|&)\s+", ", ", cleaned)
+    return [p.strip(" .,") for p in cleaned.split(",") if p.strip(" .,")]
+
+
 def _split_gnf_authors(author_str: str) -> list[str]:
     """Split a given-name-first run into individual names, dropping ``and``/``et al``."""
     author_str = _ETAL_TAIL_RE.sub("", author_str)
@@ -581,6 +609,16 @@ def _split_author_title(body: str) -> tuple[list[str], str | None]:
         ay_authors = _split_ay_authors(m.group("authors"))
         if ay_authors:
             return ay_authors, _title_from(m.group("rest"))
+
+    # Tier 0b: initials-first run ("Y. You, W. Liu, and C. Lu. Title"). Tried before the
+    # given-name-first tier, which has no way to see where such a run ends and cuts
+    # mid-name. Unambiguous when it matches: a leading initial-plus-surname sequence
+    # closed by a period is not any of the other styles.
+    m = _INITIALS_RUN_RE.match(head)
+    if m:
+        initials_authors = _split_initials_authors(m.group("authors"))
+        if initials_authors:
+            return initials_authors, _title_from(m.group("rest"))
 
     # Tier 1: given-name-first run ("First Last, …, and First Last. Title"). Tried
     # before Vancouver because Vancouver would mis-read a given-name + middle-initial
