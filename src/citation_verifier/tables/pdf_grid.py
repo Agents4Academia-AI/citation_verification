@@ -38,6 +38,7 @@ import re
 from collections.abc import Callable
 from pathlib import Path
 
+from ..extract.pdf_margin import content_clip  # review-template line numbers
 from .latex_grid import _is_self_row, looks_like_comparison_table
 from .model import CellMark, ComparisonTable, Dimension, TableCell, TableRow
 
@@ -153,7 +154,7 @@ def _recovered_mark_words(page: object) -> list[tuple]:
     """
     out: list[tuple] = []
     try:
-        raw = page.get_text("rawdict")
+        raw = page.get_text("rawdict", clip=content_clip(page))
     except Exception:  # noqa: BLE001 — degrade to whatever `words` gave us
         return out
     for block in raw.get("blocks", []):
@@ -244,7 +245,7 @@ def _grid_from_marks(page, *, x_tol: float = 12.0, y_tol: float = 6.0) -> list[l
         ``[[label, mark, mark, …], …]`` with a header row first, or ``None`` when the
         page has too few marks to be a comparison table.
     """
-    words = page.get_text("words")  # (x0, y0, x1, y1, text, block, line, word_no)
+    words = page.get_text("words", clip=content_clip(page))  # (x0, y0, x1, y1, text, block, line, word_no)
     marks = [w for w in words if _is_mark_token(w[4])]
     if not marks:
         # No mark survived word extraction — the symbol font may have lost its unicode
@@ -679,7 +680,7 @@ def _build_table(
 
 def _caption_on_page(page) -> str:
     """The first 'Table N: …' caption on the page (the mark block has no bbox of its own)."""
-    text = " ".join((page.get_text() or "").split())
+    text = " ".join((page.get_text(clip=content_clip(page)) or "").split())
     m = re.search(r"((?:Table|TABLE|Tab\.)\s*[IVXLC0-9]+\s*[.:]\s+.{0,300})", text)
     return m.group(1).strip() if m else ""
 

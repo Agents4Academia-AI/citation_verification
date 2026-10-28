@@ -12,7 +12,6 @@ from citation_verifier.backends.relevance_judge import (
     LLMRelevanceJudge,
     _parse_batch_verdicts,
     _parse_verdict,
-    _slice_intro,
 )
 from citation_verifier.schema import (
     CitationRecord,
@@ -66,15 +65,20 @@ def test_parse_verdict_garbage_abstains():
 
 
 # ── intro slicing ────────────────────────────────────────────────────
-def test_slice_intro_cuts_at_next_section():
-    text = "Title Abstract blah. 1 Introduction this is the intro body. Related Work other stuff."
-    intro = _slice_intro(text)
-    assert "this is the intro body" in intro
-    assert "other stuff" not in intro
+def test_the_introduction_is_read_from_the_section_structure():
+    """A table of contents at the top of a rendering ("1 Introduction 1.1 … 2 Methods")
+    was taken for the section: 23 characters where the section had thousands."""
+    from citation_verifier.grounding.fulltext import introduction_of
 
-
-def test_slice_intro_absent_returns_empty():
-    assert _slice_intro("no such heading here") == ""
+    body = "We study how conformal prediction adapts under distribution shift. " * 10
+    text = (
+        "Adaptive Conformal Inference\n1 Introduction 1.1 Conformal inference 2 Methods\n"
+        f"1 Introduction\n{body}\n2 Related Work\nOther things entirely.\n"
+    )
+    intro = introduction_of(text)
+    assert intro.startswith("We study how conformal prediction") and "Other things" not in intro
+    assert introduction_of("no headings in this text at all") == ""
+    assert len(introduction_of(text, max_chars=100)) <= 101
 
 
 # ── honest abstain without evidence (no SDK/network) ─────────────────
@@ -325,3 +329,17 @@ def test_full_text_escalation_caps_distinct_cites(monkeypatch):
     j._escalate_full_text(items, verdicts)
     assert len(fetched) == 2  # capped at 2 distinct papers (4 qualified)
     assert sum(SupportsClaim(v.supports_claim) is SupportsClaim.SUPPORTS for v in verdicts) == 2
+
+
+def test_the_introduction_after_a_contents_list_and_in_journal_style():
+    from citation_verifier.grounding.fulltext import introduction_of
+
+    prose = "Machine learning predictions are increasingly employed by downstream decision makers.\n" * 8
+    html_like = (
+        "Report Issue\nBack to Abstract\nAbstract\n1 Introduction\nOur Contributions.\n2 Background\n"
+        "2.1 Setup\nAbstract text here.\n1 Introduction\n" + prose + "2 Background\nOther section.\n"
+    )
+    assert introduction_of(html_like).startswith("Machine learning predictions")
+    journal = "Keywords — x, y.\n1 | INTRODUCTION\n" + prose + "2 | METHODS\nNot this.\n"
+    got = introduction_of(journal)
+    assert got.startswith("Machine learning predictions") and "Not this" not in got

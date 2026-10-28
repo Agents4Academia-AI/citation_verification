@@ -79,6 +79,7 @@ def _env_float(name: str, default: float) -> float:
 # never throttled.
 _HOST_MIN_INTERVAL: dict[str, float] = {
     "export.arxiv.org": _env_float("ARXIV_MIN_INTERVAL_SECONDS", 3.0),
+    "arxiv.org": _env_float("ARXIV_PAGE_MIN_INTERVAL_SECONDS", 1.0),
     # Semantic Scholar's keyless pool is ~1 req/s shared; pace it so a batch of
     # title-match lookups doesn't 429. A key (S2_API_KEY) raises the real limit.
     "api.semanticscholar.org": _env_float("S2_MIN_INTERVAL_SECONDS", 1.1),
@@ -87,6 +88,9 @@ _HOST_MIN_INTERVAL: dict[str, float] = {
     # the tail. OpenAlex's polite pool is lenient (~10 req/s) — a gentle pace only.
     "dblp.org": _env_float("DBLP_MIN_INTERVAL_SECONDS", 1.5),
     "api.openalex.org": _env_float("OPENALEX_MIN_INTERVAL_SECONDS", 0.2),
+    # Open Library and OpenReview publish no hard limit; both ask callers to be gentle.
+    "openlibrary.org": _env_float("OPENLIBRARY_MIN_INTERVAL_SECONDS", 1.0),
+    "api2.openreview.net": _env_float("OPENREVIEW_MIN_INTERVAL_SECONDS", 0.5),
 }
 _RETRY_AFTER_CAP = 30.0  # ignore absurd Retry-After values
 
@@ -95,6 +99,96 @@ _RETRY_AFTER_CAP = 30.0  # ignore absurd Retry-After values
 # it, so concurrent callers queue distinct slots instead of serializing on sleep.
 _throttle_lock = threading.Lock()
 _next_allowed: dict[str, float] = {}
+
+
+# ───────────────────────────────────────────────────────────────
+# Which sources FAILED (as opposed to answering "no such paper")
+# ───────────────────────────────────────────────────────────────
+# Every lookup here fails soft to ``[]``, which makes "the source was rate-limiting" and
+# "the source has no such paper" the same value to the caller. They are opposite facts
+# about a reference: the second is the strongest hint there is that it was invented, the
+# first is nothing at all. The hosts that failed are therefore recorded per thread, so the
+# resolver can say which sources it actually heard from.
+_failure_log = threading.local()
+
+
+def reset_failures() -> None:
+    """Start a fresh failure record for the calling thread."""
+    _failure_log.hosts = []
+
+
+def failures() -> list[str]:
+    """Hosts whose requests failed (after retries) on this thread since the last reset."""
+    return list(dict.fromkeys(getattr(_failure_log, "hosts", [])))
+
+
+def _record_failure(host: str) -> None:
+    hosts = getattr(_failure_log, "hosts", None)
+    if hosts is None:
+        hosts = _failure_log.hosts = []
+    if host:
+        hosts.append(host)
+
+
+# ───────────────────────────────────────────────────────────────
+# A breaker per host: a source that keeps failing is left alone for a while
+# ───────────────────────────────────────────────────────────────
+# Without one, every request to a source that is rate-limiting (S2 without a key), out of
+# its daily budget (OpenAlex without a key) or behind a bot check (DBLP from some
+# networks) was retried four times — some 15 seconds — and the next reference did the
+# same: one paper's lookups took nine minutes, most of it waiting on answers that never
+# came. After a few failures in a row the host is skipped for a cool-down; a request
+# made meanwhile fails at once, and is recorded as the source not answering. The first
+# request after the cool-down is a probe: one more failure re-opens the breaker.
+_BREAKER_TRIP = 3
+_COOLDOWN_SECONDS: dict[str, float] = {
+    "api.semanticscholar.org": _env_float("S2_COOLDOWN_SECONDS", 60.0),
+    "api.openalex.org": _env_float("OPENALEX_COOLDOWN_SECONDS", 600.0),  # a spent daily budget
+    "dblp.org": _env_float("DBLP_COOLDOWN_SECONDS", 900.0),  # a bot check does not lift soon
+}
+_DEFAULT_COOLDOWN = 60.0
+_breaker_lock = threading.Lock()
+_breakers: dict[str, dict] = {}
+
+
+class SourceDown(RuntimeError):
+    """A request not made: the host's breaker is open."""
+
+
+def reset_breakers() -> None:
+    """Close every breaker (tests; a new batch)."""
+    with _breaker_lock:
+        _breakers.clear()
+
+
+def _breaker_check(host: str) -> None:
+    """Raise :class:`SourceDown` (recording the failure) when ``host`` is being left alone."""
+    with _breaker_lock:
+        state = _breakers.get(host)
+        is_open = bool(state and state["open_until"] > time.monotonic())
+    if is_open:
+        _record_failure(host)
+        raise SourceDown(host)
+
+
+def _breaker_note(host: str, ok: bool, *, hard: bool = False) -> bool:
+    """Record one request's outcome; ``True`` when the breaker is now open.
+
+    ``hard``: a failure that will not pass with a retry (a bot-check page) opens it at once.
+    """
+    if not host:
+        return False
+    with _breaker_lock:
+        state = _breakers.setdefault(host, {"fails": 0, "open_until": 0.0, "tripped": False})
+        if ok:
+            state.update(fails=0, tripped=False)
+            return False
+        state["fails"] += 1
+        if hard or state["tripped"] or state["fails"] >= _BREAKER_TRIP:
+            state.update(fails=0, tripped=True,
+                         open_until=time.monotonic() + _COOLDOWN_SECONDS.get(host, _DEFAULT_COOLDOWN))
+            return True
+        return False
 
 
 def _throttle(host: str) -> None:
@@ -143,6 +237,8 @@ SOURCE_ARXIV = "arxiv"
 SOURCE_DBLP = "dblp"
 SOURCE_S2 = "s2"
 SOURCE_OPENALEX = "openalex"
+SOURCE_OPENLIBRARY = "openlibrary"
+SOURCE_OPENREVIEW = "openreview"
 
 
 # ───────────────────────────────────────────────────────────────
@@ -180,24 +276,80 @@ def _get(
     delay = 1.0
     last_exc: Exception = RuntimeError("no attempt made")
     for attempt in range(retries + 1):
+        _breaker_check(host)
         _throttle(host)  # space rate-limited hosts across threads (also paces retries)
         try:
             with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
-                return resp.read()
+                body = resp.read()
+            _breaker_note(host, True)
+            return body
         except urllib.error.HTTPError as exc:
             last_exc = exc
-            if exc.code not in _RETRY_CODES or attempt == retries:
+            failing = exc.code in _RETRY_CODES or exc.code in (401, 403)
+            opened = _breaker_note(host, not failing)
+            if exc.code not in _RETRY_CODES or attempt == retries or opened:
+                # A 404 is the source ANSWERING ("no such paper"); a 429/5xx that
+                # outlasted the retries is the source not answering.
+                if failing:
+                    _record_failure(host)
                 raise
             wait = _retry_after_seconds(exc)
             wait = wait if wait is not None else delay + random.uniform(0.0, 0.5)
         except (urllib.error.URLError, TimeoutError) as exc:
             last_exc = exc
-            if attempt == retries:
+            if _breaker_note(host, False) or attempt == retries:
+                _record_failure(host)
                 raise
             wait = delay + random.uniform(0.0, 0.5)
         time.sleep(wait)
         delay = min(delay * 2, 16.0)
     raise last_exc  # pragma: no cover — loop returns or raises above
+
+
+# An abstract is kept whole. Cut at 600 characters — the default every field once
+# shared — the relevance judge saw the first third of a typical abstract, and a claim
+# about what the paper shows came back "inconclusive" when the answer was in the part it
+# never received. 4000 characters holds any abstract; past that it is not one.
+_ABSTRACT_CHARS = 4000
+# At least this long, an abstract is taken as one. Shorter, it must also be about the work:
+# a series' boilerplate ("This paper presents research carried out at <institute> and aims
+# at encouraging discussion and comment.") is a placeholder, while an old paper's real
+# abstract can be a single sentence on its own subject.
+MIN_ABSTRACT_CHARS = 200
+_MIN_SHORT_ABSTRACT_CHARS = 60
+_GENERIC_WORDS = frozenset(
+    "this that these those with from into onto over under about which where when their there "
+    "between among within without "
+    "they them then than have been being were will would shall should could also more most "
+    "such some other each only very upon paper papers article study studies work works "
+    "present presents presented research report reports results result method methods "
+    "approach based using used discuss discussion comment comments aims aim note notes "
+    "series scientific technical working university institute centre center".split()
+)
+
+
+def _content_words(text: str) -> set[str]:
+    words = re.findall(r"[a-z]{4,}", (text or "").lower())
+    return {w[:-1] if w.endswith("s") and len(w) > 4 else w for w in words} - _GENERIC_WORDS
+
+
+def substantive_abstract(abstract: str | None, title: str | None = None) -> bool:
+    """Is ``abstract`` an abstract of the work titled ``title``, not a placeholder?
+
+    Long enough (``MIN_ABSTRACT_CHARS``), it is. Shorter, it is when it is a sentence or
+    more and speaks of the title's subject — shares two of its content words (one, for a
+    title that has only one or two). With no title to compare against, length decides.
+    """
+    text = (abstract or "").strip()
+    if len(text) >= MIN_ABSTRACT_CHARS:
+        return True
+    if len(text) < _MIN_SHORT_ABSTRACT_CHARS or not title:
+        return False
+    wanted = _content_words(title)
+    if not wanted:
+        return False
+    shared = len(wanted & _content_words(text))
+    return shared >= (1 if len(wanted) <= 2 else 2)
 
 
 def _clean(text: str | None, limit: int = 600) -> str:
@@ -281,7 +433,7 @@ def _parse_crossref_item(it: dict) -> dict:
         "doi": (it.get("DOI") or "").lower(),
         "arxiv_id": "",
         "url": it.get("URL", ""),
-        "abstract": _clean(it.get("abstract")),
+        "abstract": _clean(it.get("abstract"), limit=_ABSTRACT_CHARS),
     }
 
 
@@ -345,7 +497,7 @@ def _parse_arxiv_entry(e: ET.Element) -> dict:
         "doi": (text(f"{_ARXIV}doi") or "").lower(),
         "url": arxiv_url,
         "arxiv_id": arxiv_url.rsplit("/", 1)[-1] if arxiv_url else "",
-        "abstract": _clean(text(f"{_ATOM}summary")),
+        "abstract": _clean(text(f"{_ATOM}summary"), limit=_ABSTRACT_CHARS),
     }
 
 
@@ -364,9 +516,52 @@ def fetch_arxiv_by_id(arxiv_id: str) -> list[dict]:
     url = f"http://export.arxiv.org/api/query?id_list={urllib.parse.quote(stem)}&max_results=1"
     try:
         root = ET.fromstring(_get(url))
-    except Exception:  # noqa: BLE001 — fail soft (bad id / network)
-        return []
+    except Exception:  # noqa: BLE001 — the API did not answer: the paper's page may
+        return _arxiv_from_abs_page(stem)
     return [_parse_arxiv_entry(e) for e in root.findall(f"{_ATOM}entry")]
+
+
+_ARXIV_ABS_URL = "https://arxiv.org/abs/{id}"
+_CITATION_META_RE = re.compile(r'(?is)<meta\s+name="citation_([a-z_]+)"\s+content="([^"]*)"')
+
+
+def _arxiv_from_abs_page(stem: str) -> list[dict]:
+    """The arXiv record for ``stem`` read off the paper's own page — its ``citation_*``
+    meta tags (title, authors, date, id, abstract).
+
+    The fallback for when arXiv's query API does not answer: it is a separate service from
+    the paper pages, and the one that rate-limits and goes down. In one run it failed for
+    four of nine references that printed their arXiv id; each then matched another
+    index's record of the same work without the id, and so without its full text.
+    ``[]`` when the page does not answer or names no title and id.
+    """
+    import html as _html  # noqa: PLC0415
+
+    try:
+        page = _get(_ARXIV_ABS_URL.format(id=urllib.parse.quote(stem)), retries=1).decode("utf-8", "replace")
+    except Exception:  # noqa: BLE001 — fail soft
+        return []
+    meta: dict[str, list[str]] = {}
+    for m in _CITATION_META_RE.finditer(page):
+        meta.setdefault(m.group(1).lower(), []).append(_html.unescape(m.group(2)).strip())
+    title = (meta.get("title") or [""])[0]
+    arxiv_id = (meta.get("arxiv_id") or [""])[0]
+    if not (title and arxiv_id):
+        return []
+    # "Abbasi, Ali" -> "Ali Abbasi", as the API writes names.
+    authors = [" ".join(reversed([p.strip() for p in a.split(",", 1)])).strip() for a in meta.get("author", [])]
+    return [{
+        "source": SOURCE_ARXIV,
+        "title": _clean(title, limit=400),
+        "authors": [a for a in authors if a],
+        "year": _coerce_year((meta.get("date") or [""])[0]),
+        "venue": "arXiv (preprint)",
+        "type": "preprint",
+        "doi": ((meta.get("doi") or [""])[0]).lower(),
+        "url": f"http://arxiv.org/abs/{arxiv_id}",
+        "arxiv_id": arxiv_id,
+        "abstract": _clean((meta.get("abstract") or [""])[0], limit=_ABSTRACT_CHARS),
+    }]
 
 
 def search_arxiv_by_title(
@@ -406,8 +601,17 @@ def search_dblp(query: str, max_results: int = 4) -> list[dict]:
     """
     params = urllib.parse.urlencode({"q": query, "format": "json", "h": max_results})
     try:
-        data = json.loads(_get(f"https://dblp.org/search/publ/api?{params}"))
+        body = _get(f"https://dblp.org/search/publ/api?{params}")
     except Exception:  # noqa: BLE001
+        return []
+    try:
+        data = json.loads(body)
+    except ValueError:
+        # Not JSON: DBLP's bot-check page ("Making sure you're not a bot!"), served with
+        # a 202. That is the source not answering, not the source finding nothing — and it
+        # will not answer on a retry either.
+        _record_failure("dblp.org")
+        _breaker_note("dblp.org", False, hard=True)
         return []
 
     hits = (((data or {}).get("result") or {}).get("hits") or {}).get("hit") or []
@@ -477,21 +681,27 @@ def _requests_get_json(
     delay = 1.0
     last_exc: Exception = RuntimeError("no attempt made")
     for attempt in range(retries + 1):
+        _breaker_check(host)
         _throttle(host)  # pace rate-limited hosts across threads (also paces retries)
         try:
             resp = requests.get(url, params=params, headers=headers, timeout=timeout)
         except Exception as exc:  # noqa: BLE001 — network/connection error
             last_exc = exc
-            if attempt == retries:
+            if _breaker_note(host, False) or attempt == retries:
+                _record_failure(host)
                 raise
             time.sleep(delay + random.uniform(0.0, 0.5))
             delay = min(delay * 2, 16.0)
             continue
-        if resp.status_code in _RETRY_CODES and attempt < retries:
+        failing = resp.status_code in _RETRY_CODES or resp.status_code in (401, 403)
+        opened = _breaker_note(host, not failing)
+        if resp.status_code in _RETRY_CODES and attempt < retries and not opened:
             wait = _parse_retry_after(resp.headers.get("Retry-After"))
             time.sleep(wait if wait is not None else delay + random.uniform(0.0, 0.5))
             delay = min(delay * 2, 16.0)
             continue
+        if failing:
+            _record_failure(host)
         resp.raise_for_status()
         return resp.json()
     raise last_exc  # pragma: no cover — loop returns or raises above
@@ -546,7 +756,7 @@ def _parse_s2_item(it: dict) -> dict:
         "doi": (ext.get("DOI") or "").lower(),
         "arxiv_id": ext.get("ArXiv", "") or "",
         "url": it.get("url", "") or "",
-        "abstract": _clean(it.get("abstract")),
+        "abstract": _clean(it.get("abstract"), limit=_ABSTRACT_CHARS),
         # S2's one-line AI summary. The API exposes it even when the licensed full
         # abstract is withheld (e.g. the GPT-2/GPT-1 tech reports), so it is the
         # only API-accessible evidence for those — carried through Candidate.extra
@@ -677,6 +887,159 @@ def fetch_openalex_by_doi(doi: str, api_key: str | None = None) -> list[dict]:
     return [_parse_openalex_item(data)] if isinstance(data, dict) and data.get("display_name") else []
 
 
+def _filter_value(text: str) -> str:
+    """Text safe inside an OpenAlex ``filter`` value (``,`` ``|`` ``:`` are its syntax)."""
+    return " ".join(re.sub(r"[^\w\s'’-]", " ", text or "").split())
+
+
+def search_openalex_by_title(
+    title: str,
+    author: str | None = None,
+    year: int | None = None,
+    max_results: int = 4,
+    api_key: str | None = None,
+) -> list[dict]:
+    """OpenAlex works whose TITLE matches, narrowed by first-author surname and year.
+
+    Fielded, unlike :func:`search_openalex`: OpenAlex now reads a free-text ``search`` as
+    a full-text search, and "Deep learning Goodfellow" returned reviews of the book that
+    mention it rather than the book. ``title.search`` + ``raw_author_name.search`` +
+    ``publication_year`` returns the book first. Works without a key (OpenAlex shares a
+    small daily budget per address; a key or ``CROSSREF_MAILTO`` is better). Fail-soft.
+    """
+    title = _filter_value(title)
+    if len(title) < 4:
+        return []
+    filters = [f"title.search:{title}"]
+    if author and _filter_value(author):
+        filters.append(f"raw_author_name.search:{_filter_value(author)}")
+    if year:
+        filters.append(f"publication_year:{year - 2}-{year + 2}")
+    params: dict[str, Any] = {"filter": ",".join(filters), "per-page": max_results}
+    key = api_key or os.environ.get("OPENALEX_API_KEY", "") or CONTACT_EMAIL
+    if key:
+        params["mailto" if "@" in str(key) else "api_key"] = key
+    try:
+        data = json.loads(_get("https://api.openalex.org/works?" + urllib.parse.urlencode(params)))
+    except Exception:  # noqa: BLE001
+        return []
+    return [_parse_openalex_item(it) for it in (data.get("results") or [])]
+
+
+def search_openlibrary(
+    title: str, author: str | None = None, year: int | None = None, max_results: int = 4
+) -> list[dict]:
+    """Books on Open Library by title (and author). Keyless; fail-soft to ``[]``.
+
+    Books are what the scholarly indexes miss: a monograph has no DOI, so it is not in
+    Crossref, and the records Semantic Scholar and OpenAlex keep under its title are as
+    often reviews of it. The year is the edition's when one matches the cited year, else
+    the first publication's.
+    """
+    title = " ".join((title or "").split())
+    if len(title) < 4:
+        return []
+    params = {"title": title, "limit": max_results,
+              "fields": "key,title,subtitle,author_name,first_publish_year,publish_year,publisher,isbn"}
+    if author:
+        params["author"] = author
+    try:
+        data = json.loads(_get("https://openlibrary.org/search.json?" + urllib.parse.urlencode(params)))
+    except Exception:  # noqa: BLE001
+        return []
+    return [_parse_openlibrary_doc(doc, year) for doc in data.get("docs") or []]
+
+
+def fetch_openlibrary_by_isbn(isbn: str, year: int | None = None) -> list[dict]:
+    """The Open Library work for one ISBN. Keyless; fail-soft to ``[]``."""
+    isbn = re.sub(r"[^0-9Xx]", "", isbn or "")
+    if len(isbn) not in (10, 13):
+        return []
+    params = {"q": f"isbn:{isbn}", "limit": 2,
+              "fields": "key,title,subtitle,author_name,first_publish_year,publish_year,publisher,isbn"}
+    try:
+        data = json.loads(_get("https://openlibrary.org/search.json?" + urllib.parse.urlencode(params)))
+    except Exception:  # noqa: BLE001
+        return []
+    return [_parse_openlibrary_doc(doc, year) for doc in data.get("docs") or []]
+
+
+def _parse_openlibrary_doc(doc: dict, year: int | None) -> dict:
+    """One Open Library search doc as a candidate dict."""
+    years = sorted({y for y in (doc.get("publish_year") or []) if isinstance(y, int)})
+    near = [y for y in years if year and abs(y - year) <= 1]
+    edition = min(near, key=lambda y: abs(y - year)) if near else None
+    full = doc.get("title") or ""
+    if doc.get("subtitle"):
+        full = f"{full}: {doc['subtitle']}"
+    return {
+        "source": SOURCE_OPENLIBRARY,
+        "title": _clean(full, limit=400),
+        "authors": [a for a in (doc.get("author_name") or []) if a],
+        "year": edition or _coerce_year(doc.get("first_publish_year")),
+        "venue": ((doc.get("publisher") or [""])[0] or ""),
+        "type": "book",
+        "doi": "",
+        "arxiv_id": "",
+        "url": f"https://openlibrary.org{doc['key']}" if doc.get("key") else "",
+        "abstract": "",
+    }
+
+
+def search_openreview(title: str, max_results: int = 4) -> list[dict]:
+    """Papers on OpenReview by title. Keyless; fail-soft to ``[]``.
+
+    The one index that holds most workshop papers, and ICLR/TMLR submissions that never
+    went to arXiv — with their abstracts.
+    """
+    term = " ".join(re.sub(r"[^\w\s'’:-]", " ", title or "").split())
+    if len(term) < 8:
+        return []
+    params = {"term": term, "type": "terms", "content": "all", "source": "forum", "limit": max_results}
+    try:
+        data = json.loads(_get("https://api2.openreview.net/notes/search?" + urllib.parse.urlencode(params)))
+    except Exception:  # noqa: BLE001
+        return []
+    return [_parse_openreview_note(note) for note in data.get("notes") or []]
+
+
+def fetch_openreview_by_id(note_id: str) -> list[dict]:
+    """The OpenReview paper (forum) with this id. Keyless; fail-soft to ``[]``."""
+    note_id = (note_id or "").strip()
+    if not re.fullmatch(r"[\w-]{4,40}", note_id):
+        return []
+    try:
+        data = json.loads(_get("https://api2.openreview.net/notes?" + urllib.parse.urlencode({"id": note_id})))
+    except Exception:  # noqa: BLE001
+        return []
+    return [_parse_openreview_note(note) for note in data.get("notes") or []]
+
+
+def _parse_openreview_note(note: dict) -> dict:
+    """One OpenReview note (API v2) as a candidate dict."""
+    content = note.get("content") or {}
+
+    def field(name: str) -> Any:
+        value = content.get(name)
+        return value.get("value") if isinstance(value, dict) else value
+
+    stamp = note.get("pdate") or note.get("odate") or note.get("cdate")
+    year = time.gmtime(stamp / 1000).tm_year if isinstance(stamp, int | float) else None
+    forum = note.get("forum") or note.get("id") or ""
+    return {
+        "source": SOURCE_OPENREVIEW,
+        "title": _clean(field("title"), limit=400),
+        "authors": [a for a in (field("authors") or []) if isinstance(a, str)],
+        "year": year,
+        "venue": _clean(field("venue"), limit=200),
+        "type": "",
+        "doi": "",
+        "arxiv_id": "",
+        "url": f"https://openreview.net/forum?id={forum}" if forum else "",
+        "abstract": _clean(field("abstract"), limit=_ABSTRACT_CHARS),
+    }
+
+
 def _parse_openalex_item(it: dict) -> dict:
     """Map one OpenAlex work object to a candidate dict."""
     authorships = it.get("authorships") or []
@@ -711,7 +1074,7 @@ def _reconstruct_openalex_abstract(inverted: dict | None) -> str:
         for i in idxs:
             positions.append((i, word))
     positions.sort(key=lambda p: p[0])
-    return _clean(" ".join(w for _, w in positions))
+    return _clean(" ".join(w for _, w in positions), limit=_ABSTRACT_CHARS)
 
 
 # ───────────────────────────────────────────────────────────────

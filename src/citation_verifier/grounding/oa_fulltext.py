@@ -137,9 +137,19 @@ def arxiv_html_text_with_url(
         html = _http_get_text(url, timeout)
         if "<html" in html[:2000].lower():
             text = _html_to_text(html)
-            if len(text) > _MIN_TEXT:
+            if len(text) > _MIN_PAPER_TEXT and not _ARXIV_HTML_FAILURE.search(text[:6000]):
                 return text[:max_chars], url
     return "", ""
+
+
+# A page arXiv serves when it could not render the paper: its own navigation plus "please
+# view the build logs" — 1.7k characters that were taken for a paper's full text, so the
+# e-print and the PDF, which hold the paper, were never asked for.
+_MIN_PAPER_TEXT = 5000
+_ARXIV_HTML_FAILURE = re.compile(
+    r"(?i)conversion to HTML had a Fatal error|view the build logs|"
+    r"HTML (?:is )?not available for (?:the|this) (?:source|paper)|No HTML for"
+)
 
 
 def arxiv_html_text(arxiv_id: str, *, timeout: int = _TIMEOUT, max_chars: int = 200_000) -> str:
@@ -245,20 +255,35 @@ def oa_pdf_urls(doi: str, *, timeout: int = _TIMEOUT) -> list[str]:
     return [u for u, _ in _oa_pdf_sources(doi, timeout)]
 
 
-def fulltext_by_doi_with_source(doi: str, *, timeout: int = _TIMEOUT, max_chars: int = 200_000):
+def fulltext_by_doi_with_source(
+    doi: str, *, timeout: int = _TIMEOUT, max_chars: int = 200_000, title: str | None = None
+):
     """Full text for a DOI **with provenance** via the open-access cascade.
 
     Resolves OA PDF URLs (OpenAlex / Unpaywall / landing page) and extracts the
     first that yields real text, reusing the project's ``%PDF``-checked extractor;
     the returned :class:`~citation_verifier.grounding.fulltext.FullTextResult`
-    carries the channel + URL that succeeded. Empty result if nothing fetchable.
+    carries the channel + URL that succeeded. With ``title``, a location that is a web
+    page (Unpaywall lists landing pages too) is followed to the work's PDF. An empty
+    result's ``tried`` says what was found and why it gave no text.
     """
-    from .fulltext import FullTextResult, fetch_full_text_from_url
+    from .fulltext import FullTextResult, _host, fetch_full_text_from_url, source_notes
 
-    for url, channel in _oa_pdf_sources(doi, timeout):
-        if text := fetch_full_text_from_url(url, timeout=timeout, max_chars=max_chars):
-            return FullTextResult(text, channel, url)
-    return FullTextResult("")
+    sources = _oa_pdf_sources(doi, timeout)
+    if not sources:
+        return FullTextResult(
+            "", tried=(f"DOI {_norm_doi(doi)}: no open-access copy listed (OpenAlex, Unpaywall, publisher page)",)
+        )
+    notes: list[str] = []
+    for url, channel in sources:
+        report: dict = {}
+        extra = {"title": title, "report": report} if title else {}
+        if text := fetch_full_text_from_url(url, timeout=timeout, max_chars=max_chars, **extra):
+            return FullTextResult(text, channel + source_notes(report.get("source")), report.get("url") or url)
+        notes.append(report.get("note") or f"{_host(url)}: no text could be read")
+    return FullTextResult(
+        "", tried=(f"DOI {_norm_doi(doi)}: open-access copy not readable ({'; '.join(notes[:2])})",)
+    )
 
 
 def fulltext_by_doi(doi: str, *, timeout: int = _TIMEOUT, max_chars: int = 200_000) -> str:

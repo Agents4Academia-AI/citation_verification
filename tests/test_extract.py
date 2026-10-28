@@ -359,10 +359,12 @@ def test_pdf_claim_scan_strips_page_footer_before_claim_sentence():
 
 
 def test_sentence_around_caps_table_sized_claims():
-    table = " ".join(f"Column{i} value" for i in range(80)) + " Important cell [25]."
+    from citation_verifier.extract.sentences import MAX_CLAIM_CHARS
+
+    table = " ".join(f"Column{i} value" for i in range(160)) + " Important cell [25]."
     sent, _ = _sentence_around(table, table.index("[25]"))
     assert "[25]" in sent
-    assert len(sent) <= 360
+    assert len(sent) <= MAX_CLAIM_CHARS
 
 
 _SAMPLE = r"""

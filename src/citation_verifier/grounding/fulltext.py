@@ -11,20 +11,35 @@ This module is the **pure, offline core**: ``split_sections`` and
 ``select_evidence_chunks`` do no network and no heavy imports, so they are unit
 testable on a fixture. Fetching the text (arXiv LaTeX source preferred, PDF
 fallback) is a separate, network, fail-soft concern layered on top.
+
+A record's link is often a web page, not a PDF: a publisher's landing page, or an
+institution's list of its reports. Such a page is read for the link to the work's PDF —
+the page's ``citation_pdf_url``, a link whose text is the work's title, or a PDF link
+beside the title — and the PDF is accepted only when it carries the title itself. A PDF
+whose pages are images (a scan) has no text layer; runs that use a model install a reader
+for it (:func:`reading_scans`), and the transcription is labelled as such.
 """
 
 from __future__ import annotations
 
 import gzip
+import html as _html
 import io
 import re
 import tarfile
+import urllib.parse
+from contextlib import contextmanager
 from dataclasses import dataclass
+from typing import Any
 
 from . import fulltext_cache
 
 __all__ = [
     "FullTextResult",
+    "full_text_of",
+    "full_text_with_trail",
+    "reading_scans",
+    "introduction_of",
     "split_sections",
     "select_evidence_chunks",
     "fetch_full_text",
@@ -41,14 +56,19 @@ class FullTextResult:
 
     ``source`` is a coarse channel label for debugging judge misfires
     (``arxiv_html`` | ``arxiv_eprint`` | ``arxiv_pdf`` | ``resolved_url`` |
-    ``openalex_oa`` | ``unpaywall`` | ``meta_pdf`` | ``web_search``); ``url`` is the
-    document actually fetched. Truthy iff non-empty text — so callers keep using
+    ``linked_pdf`` | ``openalex_oa`` | ``unpaywall`` | ``meta_pdf`` | ``web_search``,
+    with :data:`SCAN_LABEL` appended when a model read the text off a scan); ``url`` is
+    the document actually fetched. Truthy iff non-empty text — so callers keep using
     ``if not result:`` / ``if result:`` exactly as with the bare-string fetchers.
+
+    ``tried`` says, when there is no text, what was tried and why each attempt failed —
+    a few words each, for the reader of the report.
     """
 
     text: str
     source: str = ""
     url: str = ""
+    tried: tuple[str, ...] = ()
 
     def __bool__(self) -> bool:
         return bool(self.text)
@@ -347,6 +367,96 @@ def _fetch_arxiv_full_text(stem: str, *, timeout: int, max_chars: int) -> FullTe
     return FullTextResult(tex[:max_chars], "arxiv_eprint", _ARXIV_EPRINT_URL.format(stem=stem)) if tex else FullTextResult("")
 
 
+def full_text_of(resolved: Any) -> str:
+    """The cited paper's body, through every channel the project has; ``""`` when none
+    answers. See :func:`full_text_with_trail`."""
+    return full_text_with_trail(resolved).text
+
+
+def full_text_with_trail(resolved: Any) -> FullTextResult:
+    """The cited paper's body with its provenance — or, when there is none, why.
+
+    arXiv first (HTML, LaTeX e-print, PDF), then the resolved URL (a PDF, or a page that
+    links the work's PDF), then the DOI's open-access copy (Unpaywall / OpenAlex /
+    publisher meta tags), then a title search (when a search backend is wired — none is
+    by default). Stopping after the first two silently reduces a whole class of papers to
+    their abstract: an IEEE or Springer reference resolves to a ``doi.org`` landing page,
+    not a PDF, while an open-access copy exists. Every channel is cached on disk and
+    fails soft. An empty result's ``tried`` names each channel asked and what it gave.
+    """
+    from .oa_fulltext import fulltext_by_doi_with_source  # noqa: PLC0415 — sibling, lazy
+
+    tried: list[str] = []
+    title = (getattr(resolved, "title", "") or "").strip()
+    arxiv_id = getattr(resolved, "arxiv_id", None)
+    if arxiv_id:
+        got = fetch_full_text_with_source(arxiv_id)
+        if getattr(got, "text", ""):
+            return got
+        tried.append(f"arXiv {arxiv_id}: no text could be fetched")
+    url = (getattr(resolved, "url", "") or "").strip()
+    if url:
+        report: dict = {}
+        got = fetch_full_text_from_url(url, title=title or None, report=report)
+        text = got if isinstance(got, str) else (getattr(got, "text", "") or "")
+        if text:
+            return FullTextResult(text, report.get("source") or "resolved_url", report.get("url") or url)
+        tried.append(report.get("note") or f"{_host(url)}: nothing could be read")
+    doi = (getattr(resolved, "doi", "") or "").strip()
+    if doi:
+        got = fulltext_by_doi_with_source(doi, title=title or None)
+        if getattr(got, "text", ""):
+            return got
+        tried += list(getattr(got, "tried", ()) or ()) or [f"DOI {doi}: no open-access copy found"]
+    if title:
+        got = fetch_full_text_via_search_with_source(title, year=getattr(resolved, "year", None))
+        if getattr(got, "text", ""):
+            return got
+    if not tried:
+        tried.append("no arXiv id, link or DOI to fetch it by")
+    return FullTextResult("", tried=tuple(tried))
+
+
+def introduction_of(text: str, max_chars: int = 2500) -> str:
+    """The Introduction of a paper's full text, capped; ``""`` when it has none.
+
+    Read from the section structure, not by searching for the word: a table of contents
+    ("1 Introduction 1.1 Conformal inference 2 Methods …") at the top of an HTML
+    rendering made "the text after 'Introduction' up to the next numbered heading" a
+    single line of the contents — 23 characters where the section has thousands.
+    """
+    def capped(body: str) -> str:
+        body = re.sub(r"\s+", " ", body).strip()
+        return body[:max_chars] + ("…" if len(body) > max_chars else "")
+
+    for heading, body in split_sections(text or ""):
+        if "introduction" in _heading_key(heading) and _is_prose(body):
+            return capped(body)
+    # The section split can miss it — a rendering's contents list names "1 Introduction"
+    # first and the split keeps that one; a journal prints "1 | INTRODUCTION". Every
+    # heading line that says Introduction is tried, and the first followed by prose wins.
+    for m in _INTRO_HEADING_RE.finditer(text or ""):
+        rest = text[m.end() : m.end() + max_chars * 3]
+        stop = _NEXT_HEADING_RE.search(rest, 1)
+        body = rest[: stop.start()] if stop else rest
+        if _is_prose(body):
+            return capped(body)
+    return ""
+
+
+_INTRO_HEADING_RE = re.compile(
+    r"(?im)^[ \t]*(?:(?:\d+|[IVX]+)[ \t]*[.|:]?[ \t]*)?introduction[ \t]*$"
+)
+_NEXT_HEADING_RE = re.compile(r"(?m)^[ \t]*(?:\d+|[IVX]+)[ \t]*[.|]?[ \t]+[A-Z][^\n]{0,80}$")
+
+
+def _is_prose(body: str) -> bool:
+    """Running text, not a contents list: most of it sits in long lines."""
+    lines = [ln.strip() for ln in (body or "").splitlines() if ln.strip()]
+    total = sum(len(ln) for ln in lines)
+    return total > 400 and sum(len(ln) for ln in lines if len(ln) > 60) >= 0.5 * total
+
+
 def fetch_full_text(arxiv_id: str | None, *, timeout: int = 30, max_chars: int = 200_000) -> str:
     """Bare-text arXiv full text (HTML → LaTeX → PDF). See
     :func:`fetch_full_text_with_source` for provenance; this is the back-compat
@@ -355,31 +465,330 @@ def fetch_full_text(arxiv_id: str | None, *, timeout: int = 30, max_chars: int =
 
 
 def fetch_full_text_from_url(
-    url: str | None, *, timeout: int = 30, max_chars: int = 200_000
+    url: str | None,
+    *,
+    timeout: int = 30,
+    max_chars: int = 200_000,
+    title: str | None = None,
+    report: dict | None = None,
+    _depth: int = 0,
 ) -> str:
-    """Best-effort full text from a direct PDF URL (e.g. S2's ``openAccessPdf``).
+    """Best-effort full text from a URL: a PDF, or a web page that links the work's PDF.
 
-    Stage-2 source for **off-arXiv** papers: when the resolved record has no arXiv
-    id but carries an open-access PDF link, fetch it and extract the text. The
-    bytes are content-sniffed for the ``%PDF`` magic so a landing page / HTML
-    response (or a paywall interstitial) fails soft to ``""`` instead of feeding
-    the judge garbage. Network + fail-soft: ``""`` for an empty url or ANY error.
+    The bytes are content-sniffed for the ``%PDF`` magic. A PDF is extracted (a scan is
+    handed to the installed reader, see :func:`reading_scans`). A web page — a landing
+    page, an institution's list of its reports — is read for the work's PDF when
+    ``title`` is given: its ``citation_pdf_url``, a link whose text is the title, a PDF link
+    on the work's own page or beside the title in a list (:func:`_pdf_links_for`). A
+    linked PDF is accepted only when it carries the title itself: a list page links many
+    works. Network + fail-soft: ``""`` for an empty url or ANY error.
 
-    No title verification is needed here because the URL is the curated OA link for
-    an already-matched paper — it carries no namesake risk (contrast a title search).
+    ``report``, when given, is filled with ``url`` (the document read) and ``source``
+    (``resolved_url`` | ``linked_pdf``, plus :data:`PREVIEW_LABEL` for a publisher's
+    preview and :data:`SCAN_LABEL` for a scan), or, when nothing was read, ``note`` — why,
+    in a few words — and ``reason``, the innermost cause on its own.
     """
-    if not (url or "").strip():
+    report = {} if report is None else report
+    url = (url or "").strip()
+    if not url:
         return ""
-    hit = fulltext_cache.read(f"url:{url}")
-    if hit is not None:
-        return hit[0]
+    keys = [f"url:{url}"] + ([_linked_key(url, title)] if title else [])
+    for key in keys:
+        hit = fulltext_cache.read(key)
+        if hit is not None:
+            report.update(url=hit[2] or url, source=hit[1] or "resolved_url")
+            return hit[0][:max_chars]
     data = _http_get_bytes(url, timeout)
-    if data[:5] != b"%PDF-":  # not a PDF (HTML landing page, paywall, error) -> skip
+    host = _host(url)
+
+    def fail(reason: str, note: str = "") -> str:
+        report.update(reason=reason, note=note or reason)
         return ""
-    text = _pdf_bytes_to_text(data)[:max_chars]
-    if text:
-        fulltext_cache.write(f"url:{url}", text, "resolved_url", url)
-    return text
+
+    if not data:
+        return fail(f"{host}: no response")
+    if data[:5] == b"%PDF-":
+        text, how, why = _pdf_text(data, title or "")
+        text = text[:max_chars]
+        if not text:
+            return fail(f"{host}: {why or 'no text could be extracted from the PDF'}")
+        source = _labelled("resolved_url", preview=_is_preview(url), scan=how == "scan")
+        fulltext_cache.write(f"url:{url}", text, source, url)
+        report.update(url=url, source=source)
+        return text
+    if _depth and (not title or _depth >= _MAX_LINK_DEPTH):
+        return fail(f"{host}: the link returns a web page, not the PDF")
+    if not title:
+        return fail(f"{host}: a web page, not a PDF")
+    page = data[:_MAX_PAGE_BYTES].decode("utf-8", errors="replace")
+    here = _host(_page_base(page, url))  # a doi.org link lands on the publisher's page
+    links = _pdf_link_candidates(page, url, title)
+    if not links:
+        if _depth:
+            return fail(f"{host}: the link returns a web page, not the PDF")
+        return fail(f"{here}: a web page that links no PDF of the work")
+    reason = ""
+    for link, preview in links:
+        sub: dict = {}
+        text = fetch_full_text_from_url(
+            link, timeout=timeout, max_chars=max_chars, title=title, report=sub, _depth=_depth + 1
+        )
+        if text and _text_matches_paper(text, title):
+            got = sub.get("source") or ""
+            source = _labelled(
+                "linked_pdf", preview=preview or PREVIEW_LABEL in got, scan=SCAN_LABEL in got
+            )
+            fulltext_cache.write(_linked_key(url, title), text, source, sub.get("url") or link)
+            report.update(url=sub.get("url") or link, source=source)
+            return text
+        reason = reason or (
+            f"{_host(link)}: the linked PDF is another work" if text else sub.get("reason", "")
+        )
+    reason = reason or "nothing could be read from it"
+    # One clause per page would repeat itself down a chain of pages ("doi.org links the
+    # work's PDF, but cambridge.org links the work's PDF, but …"): the page the record
+    # points to and the innermost cause say it all.
+    shown = reason[len(here) + 2 :] if reason.startswith(f"{here}: ") else reason
+    return fail(reason, f"{here} links the work's PDF, but {shown}")
+
+
+def _labelled(channel: str, *, preview: bool = False, scan: bool = False) -> str:
+    """A full-text source label with what qualifies the text appended."""
+    return channel + (PREVIEW_LABEL if preview else "") + (SCAN_LABEL if scan else "")
+
+
+def source_notes(source: str | None) -> str:
+    """The labels in a full-text source that qualify its text — a publisher preview, a
+    transcription of a scan — or ``""``."""
+    return "".join(label for label in (PREVIEW_LABEL, SCAN_LABEL) if label in (source or ""))
+
+
+# A publisher's preview is the work's first page or pages: it is the work, so its text is
+# evidence, but not all of it — what it does not say, the rest of the work may.
+PREVIEW_LABEL = " (publisher preview: first pages only)"
+_PREVIEW_RE = re.compile(r"(?i)\bpreview\b|\bfirst[ -]pages?\b|\bsample[ -]pages?\b|\blook[ -]inside\b")
+
+
+def _is_preview(url: str, label: str = "") -> bool:
+    """True when a link says it leads to a preview — in its address or in its text."""
+    parts = urllib.parse.urlparse(_html.unescape(url or ""))
+    return bool(_PREVIEW_RE.search(f"{parts.netloc} {parts.path}") or _PREVIEW_RE.search(label or ""))
+
+
+# ── Following a web page to the work's PDF ──────────────────────────
+_MAX_LINK_DEPTH = 2  # a list page -> the work's own page -> its PDF
+_MAX_LINKS = 3  # candidate links fetched from one page
+_MAX_PAGE_BYTES = 3_000_000
+_AROUND = 600  # at most this much markup either side of a PDF link is its entry
+_ANCHOR_RE = re.compile(r"(?is)<a\b([^>]*)>(.*?)</a\s*>")
+_HREF_RE = re.compile(r"""(?is)\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))""")
+_PDF_WORDS_RE = re.compile(r"(?i)\b(?:pdf|full[ -]?text|download)\b")
+_META_PDF_RE = (
+    re.compile(r'(?is)<meta[^>]*?name=["\']citation_pdf_url["\'][^>]*?content=["\']([^"\']+)'),
+    re.compile(r'(?is)<meta[^>]*?content=["\']([^"\']+)["\'][^>]*?name=["\']citation_pdf_url["\']'),
+)
+_PAGE_TITLE_RES = (
+    re.compile(r"(?is)<title[^>]*>(.*?)</title>"),
+    re.compile(r'(?is)<meta[^>]*?(?:name|property)=["\'](?:citation_title|og:title|dc\.title)["\'][^>]*?content=["\']([^"\']+)'),
+    re.compile(r"(?is)<h1[^>]*>(.*?)</h1>"),
+)
+_BASE_RES = (
+    re.compile(r'(?is)<base[^>]*?href=["\']([^"\']+)'),
+    re.compile(r'(?is)<link[^>]*?rel=["\']canonical["\'][^>]*?href=["\']([^"\']+)'),
+    re.compile(r'(?is)<meta[^>]*?property=["\']og:url["\'][^>]*?content=["\']([^"\']+)'),
+)
+
+
+def _pdf_links_for(page: str, page_url: str, title: str) -> list[str]:
+    """Links on a web page that may lead to the work's PDF, most likely first (see
+    :func:`_pdf_link_candidates`)."""
+    return [link for link, _preview in _pdf_link_candidates(page, page_url, title)]
+
+
+def _pdf_link_candidates(page: str, page_url: str, title: str) -> list[tuple[str, bool]]:
+    """``(link, is_preview)`` for links on a web page that may lead to the work's PDF.
+
+    In order: the page's ``citation_pdf_url`` (a landing page declares its work's PDF); a
+    link whose text is the title (a list of reports links each title to its file); on the
+    work's own page — its title is the page's — any link to a PDF; elsewhere, a PDF link
+    with the title beside it. A link to a preview comes after every other: a paywalled
+    work's page offers the first pages when the whole is out of reach. The caller checks
+    the fetched PDF for the title, so a neighbour's link that slips in costs a fetch, not
+    a wrong answer.
+    """
+    base = _page_base(page, page_url)
+    own_page = _text_matches_paper(_page_title(page), title)
+    ranked: list[tuple[int, int, str, bool]] = []
+    for rx in _META_PDF_RE:
+        ranked += [(0, m.start(), m.group(1), _is_preview(m.group(1))) for m in rx.finditer(page)]
+    for m in _ANCHOR_RE.finditer(page):
+        href = _href(m.group(1))
+        if not href or href.startswith(("#", "mailto:", "javascript:")):
+            continue
+        label = _plain(m.group(2))
+        preview = _is_preview(href, label)
+        rank = None
+        if _text_matches_paper(label, title):
+            rank = 1
+        elif _looks_like_pdf_link(href, label):
+            if own_page:
+                rank = 2
+            elif _text_matches_paper(_plain(_entry_around(page, m.start(), m.end())), title):
+                rank = 3
+        if rank is not None:
+            ranked.append((rank, m.start(), href, preview))
+    out: list[tuple[str, bool]] = []
+    seen: set[str] = set()
+    here = page_url.split("#", 1)[0]
+    for _rank, _pos, href, preview in sorted(ranked, key=lambda r: (r[3], r[0], r[1])):
+        link = urllib.parse.urljoin(base, _html.unescape(href).strip()).split("#", 1)[0]
+        if link.startswith(("http://", "https://")) and link != here and link not in seen:
+            seen.add(link)
+            out.append((link, preview))
+    return out[:_MAX_LINKS]
+
+
+# The entry a link sits in — a table row, a list item, a definition — so a PDF link is
+# matched with the title in its own entry, not with the next one's: in a list where
+# some entries have no file, the title of one sits a few hundred characters from the
+# link of another.
+_ROW_START_RE = re.compile(r"(?is)<(?:tr|li|dt|article)\b")
+_ROW_END_RE = re.compile(r"(?is)</(?:tr|li|dd|article)\s*>")
+_PARA_START_RE = re.compile(r"(?is)<p\b")
+_PARA_END_RE = re.compile(r"(?is)</p\s*>")
+
+
+def _entry_around(page: str, start: int, end: int) -> str:
+    """The markup of the entry holding ``page[start:end]``, at most :data:`_AROUND`
+    characters either side."""
+    lo, hi = max(0, start - _AROUND), min(len(page), end + _AROUND)
+    a, b = lo, hi
+    for rx in (_ROW_START_RE, _PARA_START_RE):
+        opens = list(rx.finditer(page, lo, start))
+        if opens:
+            a = opens[-1].start()
+            break
+    for rx in (_ROW_END_RE, _PARA_END_RE):
+        close = rx.search(page, end, hi)
+        if close:
+            b = close.end()
+            break
+    return page[a:b]
+
+
+def _looks_like_pdf_link(href: str, label: str) -> bool:
+    path = urllib.parse.urlparse(_html.unescape(href)).path.lower()
+    return path.endswith(".pdf") or "/pdf/" in path or bool(_PDF_WORDS_RE.search(label))
+
+
+def _href(attrs: str) -> str:
+    m = _HREF_RE.search(attrs or "")
+    return (m.group(1) or m.group(2) or m.group(3) or "").strip() if m else ""
+
+
+def _plain(fragment: str) -> str:
+    """Markup to plain text: tags dropped, entities decoded, whitespace collapsed."""
+    text = re.sub(r"(?s)<[^>]+>", " ", fragment or "")
+    return re.sub(r"\s+", " ", _html.unescape(text)).strip()
+
+
+def _page_title(page: str) -> str:
+    """What the page says it is: its <title>, title metadata and first heading."""
+    return " ".join(_plain(m.group(1)) for rx in _PAGE_TITLE_RES for m in [rx.search(page)] if m)
+
+
+def _page_base(page: str, page_url: str) -> str:
+    """The address relative links resolve against: the page's own, when it states it (a
+    ``doi.org`` link lands on the publisher's page, whose links are relative to it)."""
+    for rx in _BASE_RES:
+        m = rx.search(page)
+        if m and m.group(1).strip().startswith(("http://", "https://")):
+            return _html.unescape(m.group(1).strip())
+    return page_url
+
+
+def _linked_key(url: str, title: str | None) -> str:
+    """Cache key for the PDF a page links for one work: a list page links many."""
+    return f"url:{url}|title:{' '.join(sorted(_tokens(title or '')))}"
+
+
+def _host(url: str) -> str:
+    host = urllib.parse.urlparse(url or "").netloc.lower()
+    return host[4:] if host.startswith("www.") else (host or (url or "")[:60])
+
+
+# ── Scanned PDFs ────────────────────────────────────────────────────
+# A PDF whose pages are images has no text layer. Runs that use a model install a reader
+# for it (backends/scan_reader.py); without one, a scan stays unread and says so.
+SCAN_LABEL = " (scan, read by a model)"
+_SCAN_CHARS_PER_PAGE = 100  # less extractable text than this per page: the pages are images
+_SCAN_READER: Any = None
+
+
+@contextmanager
+def reading_scans(reader: Any):
+    """Within the block, a PDF with no text layer is read by ``reader(data, title=…)``.
+
+    ``reader`` returns the text it read off the pages (``""`` when it could not). With
+    ``reader=None`` the block changes nothing.
+    """
+    global _SCAN_READER
+    if reader is None:
+        yield
+        return
+    before, _SCAN_READER = _SCAN_READER, reader
+    try:
+        yield
+    finally:
+        _SCAN_READER = before
+
+
+def _pdf_text(data: bytes, title: str = "") -> tuple[str, str, str]:
+    """``(text, how, why)`` for PDF bytes: ``how`` is ``"scan"`` when a model read the
+    pages; ``why`` says, when there is no text, what stood in the way."""
+    text = _pdf_bytes_to_text(data)
+    if not _looks_scanned(data, text):
+        return text, "", ""
+    reader = _SCAN_READER
+    if reader is None:
+        return "", "", "the PDF is a scan with no text layer, and no model in this run reads scans"
+    try:
+        read = (reader(data, title=title) or "").strip()
+    except Exception as exc:  # noqa: BLE001 — fail soft: an unread scan is still an answer
+        return "", "", f"the PDF is a scan; reading it failed ({' '.join(str(exc).split())[:120]})"
+    if not read:
+        return "", "", "the PDF is a scan, and nothing could be read from it"
+    return read, "scan", ""
+
+
+def _looks_scanned(data: bytes, text: str) -> bool:
+    """True when a PDF's pages are images: no text at all, or (almost) none while most
+    pages carry an image. A PDF that does not open is judged by its text alone."""
+    chars = len((text or "").strip())
+    if not chars:
+        return True
+    pages, with_images = _page_stats(data)
+    if not pages:
+        return False
+    return chars < _SCAN_CHARS_PER_PAGE * pages and with_images * 2 >= pages
+
+
+def _page_stats(data: bytes) -> tuple[int, int]:
+    """``(pages, pages_with_an_image)`` of a PDF; ``(0, 0)`` when it does not open."""
+    try:
+        import fitz  # noqa: PLC0415 — PyMuPDF, optional
+
+        with fitz.open(stream=data, filetype="pdf") as doc:
+            return doc.page_count, sum(1 for page in doc if page.get_images())
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from pypdf import PdfReader  # noqa: PLC0415
+
+        pages = PdfReader(io.BytesIO(data)).pages
+        return len(pages), sum(1 for page in pages if len(page.images))
+    except Exception:  # noqa: BLE001
+        return 0, 0
 
 
 # Title-token overlap required between the cited title and a fetched PDF before we
@@ -408,133 +817,16 @@ def _search_query(title: str, year: int | None) -> str:
     return f"{q} {year}" if year else q
 
 
-def _google_cse_search(query: str, *, max_results: int = 5, timeout: int = 20) -> list[str]:
-    """Google Programmable Search (Custom Search JSON API) -> result URLs.
-
-    OPTIONAL + fail-soft + key-gated, mirroring the S2/OpenAlex convention: returns
-    ``[]`` unless BOTH ``GOOGLE_API_KEY`` and ``GOOGLE_CSE_ID`` are set, and on any
-    error. This is the only ToS-clean way to query google.com from code; absent a
-    key the web-search tier is simply a no-op.
-    """
-    import json
-    import os
-    import urllib.parse
-    import urllib.request
-
-    key = os.environ.get("GOOGLE_API_KEY", "")
-    cx = os.environ.get("GOOGLE_CSE_ID", "")
-    if not (key and cx):
-        return []
-    params = urllib.parse.urlencode(
-        {"key": key, "cx": cx, "q": query, "num": min(max(max_results, 1), 10)}
-    )
-    req = urllib.request.Request(
-        f"https://www.googleapis.com/customsearch/v1?{params}",
-        headers={"User-Agent": "citation-verifier/0.1"},
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 — googleapis https
-            data = json.loads(resp.read())
-    except Exception:  # noqa: BLE001 — fail soft (offline / quota / bad key)
-        return []
-    return [it["link"] for it in (data.get("items") or []) if it.get("link")]
-
-
-# A browser-ish UA: DuckDuckGo's HTML endpoint serves empty/blocked pages to the
-# default library UA. Used ONLY for the search request, not the PDF fetch.
-_BROWSER_UA = (
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-)
-
-
-def _parse_ddg_results(html: str, max_results: int) -> list[str]:
-    """Pure: extract de-duplicated result URLs from a DuckDuckGo HTML page.
-
-    Robust to both DDG link shapes: the redirect wrapper
-    ``…/l/?uddg=<percent-encoded-url>`` and a direct ``href`` on the
-    ``result__a`` anchor. Order-preserving, http(s)-only, DDG-internal links
-    dropped, capped at ``max_results``.
-    """
-    import urllib.parse
-
-    def _add(url: str) -> None:
-        if url.startswith("//"):
-            url = "https:" + url
-        if "uddg=" in url:  # redirect wrapper -> decode the real target
-            m = re.search(r"uddg=([^\"'&]+)", url)
-            url = urllib.parse.unquote(m.group(1)) if m else ""
-        if url.startswith("http") and "duckduckgo.com" not in url and url not in seen:
-            seen.add(url)
-            out.append(url)
-
-    out: list[str] = []
-    seen: set[str] = set()
-    # 1) hrefs on result anchors (current format may be a direct external link).
-    for tag in re.findall(r"<a\b[^>]*class=\"[^\"]*result__a[^\"]*\"[^>]*>", html or ""):
-        m = re.search(r'href="([^"]+)"', tag)
-        if m:
-            _add(m.group(1))
-        if len(out) >= max_results:
-            return out
-    # 2) fallback: any uddg= wrapper anywhere (older/lite format).
-    for enc in re.findall(r"uddg=([^\"'&]+)", html or ""):
-        _add("uddg=" + enc)
-        if len(out) >= max_results:
-            break
-    return out
-
-
-def _ddg_search(query: str, *, max_results: int = 5, timeout: int = 20) -> list[str]:
-    """DuckDuckGo HTML search -> result URLs. Keyless, fail-soft.
-
-    The no-key fallback backend: it scrapes ``html.duckduckgo.com`` (no official
-    API), so it is best-effort and ToS-gray — fine for local runs, but a deployer
-    should set ``GOOGLE_API_KEY``/``GOOGLE_CSE_ID`` for the reliable path. ``[]`` on
-    any error / block.
-    """
-    import urllib.parse
-    import urllib.request
-
-    req = urllib.request.Request(
-        "https://html.duckduckgo.com/html/",
-        data=urllib.parse.urlencode({"q": query}).encode(),
-        headers={
-            "User-Agent": _BROWSER_UA,
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 — ddg https
-            html = resp.read().decode("utf-8", "replace")
-    except Exception:  # noqa: BLE001 — fail soft (offline / blocked / 429)
-        return []
-    return _parse_ddg_results(html, max_results)
-
-
-def _web_search_enabled() -> bool:
-    """Is the last-resort open-web search turned on? Off by default.
-
-    Gated on ``ENABLE_WEB_SEARCH`` (read env-direct, like ``GOOGLE_API_KEY`` here)
-    so the uncontrolled search-engine fallback never fires unless explicitly
-    opted in — arXiv / OpenAlex / Unpaywall / DOI-landing lookups are deterministic
-    id/DOI fetches and are NOT affected by this gate.
-    """
-    import os
-
-    return os.environ.get("ENABLE_WEB_SEARCH", "").strip().lower() in ("1", "true", "yes", "on")
-
-
 def _default_web_search(query: str, *, max_results: int = 5) -> list[str]:
-    """Default backend: Google Custom Search when keyed, else DuckDuckGo (keyless).
+    """No search engine is wired for full text: ``[]``.
 
-    Returns ``[]`` (no search) unless :func:`_web_search_enabled`. An explicitly
-    injected ``search=`` callback bypasses this gate (tests / alternate backends)."""
-    if not _web_search_enabled():
-        return []
-    return _google_cse_search(query, max_results=max_results) or _ddg_search(
-        query, max_results=max_results
-    )
+    The two this used to call are gone — Google's Custom Search JSON API takes no new
+    customers and shuts down on 2027-01-01, and DuckDuckGo's HTML endpoint blocks scripted
+    queries — so the tier returned nothing anyway. Finding a REFERENCE on the web is done
+    by a model with web search (:mod:`citation_verifier.backends.web_search`); pass
+    ``search=`` here to use a search backend for full text.
+    """
+    return []
 
 
 def fetch_full_text_via_search_with_source(
@@ -552,9 +844,9 @@ def fetch_full_text_via_search_with_source(
     For off-arXiv papers with no fetchable ``openAccessPdf`` (e.g. CEUR / OpenAI
     tech reports), search the web for a downloadable PDF, fetch each hit, and return
     the first whose text passes :func:`_text_matches_paper` — the title-namesake
-    gate. ``search`` is injectable (default: :func:`_default_web_search`, i.e.
-    Google Custom Search when keyed, else DuckDuckGo keyless) for tests and alternate
-    backends. Network + fail-soft: empty for a too-short title, no hit, or ANY error.
+    gate. ``search`` is injectable (default: :func:`_default_web_search`, which has no
+    engine and returns nothing) for tests and alternate backends. Network + fail-soft:
+    empty for a too-short title, no hit, or ANY error.
     """
     title = (title or "").strip()
     if len(title) < 6:

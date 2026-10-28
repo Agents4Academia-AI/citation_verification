@@ -25,10 +25,11 @@ from .paper_lookup import (
     search_semantic_scholar,
     validate_url,
 )
-from .resolver import MultiSourceResolver
+from .resolver import MultiSourceResolver, clean_title
 
 __all__ = [
     "MultiSourceResolver",
+    "clean_title",
     "lookup_paper",
     "validate_url",
     "search_crossref",

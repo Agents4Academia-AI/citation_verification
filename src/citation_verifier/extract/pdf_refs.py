@@ -9,9 +9,13 @@ a flat text stream:
      and lines are read in column order (``page -> column -> y -> x``) so a
      two-column journal and a single-column conference paper both come out in
      reading order.
-  2. **Locate the section** — the *last* ``References`` / ``Bibliography`` heading
-     (a "References" column header inside a comparison table appears first and
-     must be skipped), stopping at the Appendix / publisher boilerplate.
+  2. **Locate the sections** — EVERY ``References`` / ``Bibliography`` heading opens a
+     candidate, read up to the Appendix / publisher boilerplate or the next such
+     heading, and a candidate is kept when what follows it parses as a reference list.
+     A paper with supplementary material often carries two lists, each numbered from 1:
+     taking only the last one bound every ``[n]`` of the main text to the supplement's
+     entries. A "References" column header inside a comparison table is a heading with
+     no list after it, and drops out on that test.
   3. **Segment, style-aware** — a NUMBERED bibliography (``[12]`` / ``12.`` markers
      forming a dense ``1..N`` run) is split on its markers; an UNNUMBERED
      author-year bibliography is split on the **hanging indent** (a new entry
@@ -30,7 +34,7 @@ import re
 import unicodedata
 from dataclasses import dataclass
 
-__all__ = ["extract_reference_entries", "extract_reference_strings"]
+__all__ = ["extract_reference_sections", "extract_reference_entries", "extract_reference_strings"]
 
 
 @dataclass
@@ -126,15 +130,27 @@ def _line_text(line: dict) -> str:
     return re.sub(r"(?<=\d[.,])\s+(?=\d)", "", text)
 
 
-def extract_reference_entries(pdf_path) -> list[tuple[str, str]]:
-    """Return ``[(cite_key, reference_text)]``, one pair per bibliography entry.
+def extract_reference_sections(pdf_path) -> list[list[tuple[str, str]]]:
+    """Every reference list in the document, in document order.
 
-    A dense numbered list yields ``ref-<n>`` keys aligned to the in-text ``[n]``
-    markers; an author-year list yields sequential ``ref-1``, ``ref-2`` … keys.
-    Returns ``[]`` when no reference section is found or PyMuPDF is unavailable,
-    so the caller can fall back to the flat-text path.
+    Each list is ``[(cite_key, reference_text)]`` with keys LOCAL to that list: a dense
+    numbered list yields ``ref-<n>`` aligned to its own ``[n]`` markers, an author-year
+    list sequential ``ref-1``, ``ref-2`` …. The first list is the paper's own; a later
+    one belongs to an appendix or supplement, and the citations it answers are the ones
+    in the text that precedes it. Returns ``[]`` when no reference section is found or
+    PyMuPDF is unavailable, so the caller can fall back to the flat-text path.
     """
-    ref_lines = _reference_section(_layout_lines(pdf_path))
+    return _select_sections(_candidate_blocks(_layout_lines(pdf_path)))
+
+
+def extract_reference_entries(pdf_path) -> list[tuple[str, str]]:
+    """The paper's own reference list — the first of :func:`extract_reference_sections`."""
+    sections = extract_reference_sections(pdf_path)
+    return sections[0] if sections else []
+
+
+def _entries(ref_lines: list[_Line]) -> list[tuple[str, str]]:
+    """Segment one block of reference-section lines into ``(cite_key, text)`` entries."""
     if not ref_lines:
         return []
     if _is_numbered(ref_lines):
@@ -146,7 +162,66 @@ def extract_reference_entries(pdf_path) -> list[tuple[str, str]]:
         pairs = [(f"ref-{i}", body) for i, body in enumerate(bodies, start=1)]
     else:
         pairs = [(f"ref-{i}", body) for i, body in enumerate(_split_by_indent(ref_lines), start=1)]
-    return [(key, body) for key, body in pairs if len(body) >= 10]
+    return [(key, body) for key, body in pairs if len(body) >= 10 and _has_words(body)]
+
+
+# A reference names people and a work; a row of a table that follows the bibliography on
+# the next page ("0.961 0", "k = 5 k = 10 k = 20") names nothing.
+_WORD_RE = re.compile(r"[^\W\d_]{3,}")
+
+
+def _has_words(text: str) -> bool:
+    return len(_WORD_RE.findall(text)) >= 2
+
+
+_ENTRY_YEAR_RE = re.compile(r"(?<!\d)(?:19|20)\d{2}(?!\d)")
+
+
+def _is_reference_list(entries: list[tuple[str, str]]) -> bool:
+    """True when a block of entries reads as a bibliography rather than as prose.
+
+    The one property every reference style shares is a year in (almost) every entry;
+    body text segmented the same way — which is what follows a "References" heading that
+    is really a table's column header — carries a year in a small minority of its
+    pieces. Three entries are the least that can show the pattern.
+    """
+    if len(entries) < 3:
+        return False
+    dated = sum(1 for _key, text in entries if _ENTRY_YEAR_RE.search(text))
+    return dated / len(entries) >= 0.6
+
+
+def _candidate_blocks(lines: list[_Line]) -> list[list[_Line]]:
+    """The lines that follow each ``References``-style heading, one block per heading.
+
+    A block ends at the Appendix / boilerplate stop or at the next such heading,
+    whichever comes first.
+    """
+    heads = [i for i, ln in enumerate(lines) if _REF_HEAD_RE.fullmatch(ln.text.strip())]
+    blocks: list[list[_Line]] = []
+    for n, head in enumerate(heads):
+        limit = heads[n + 1] if n + 1 < len(heads) else len(lines)
+        block: list[_Line] = []
+        for ln in lines[head + 1 : limit]:
+            if _is_stop(ln):
+                break
+            block.append(ln)
+        blocks.append(block)
+    return blocks
+
+
+def _select_sections(blocks: list[list[_Line]]) -> list[list[tuple[str, str]]]:
+    """Keep the candidate blocks that are reference lists, in document order.
+
+    When none passes the test, the block after the LAST heading is returned as it always
+    was: the test exists to tell several candidates apart, never to discard the only
+    bibliography a document has.
+    """
+    parsed = [_entries(block) for block in blocks]
+    real = [entries for entries in parsed if _is_reference_list(entries)]
+    if real:
+        return real
+    return [parsed[-1]] if parsed and parsed[-1] else []
 
 
 def extract_reference_strings(pdf_path) -> list[str]:
@@ -169,7 +244,10 @@ def _layout_lines(pdf_path) -> list[_Line]:
                 # inter-word spaces as kerning gaps with NO space glyph, which makes
                 # dict/words span text glue ("Bird JJ" -> "BirdJJ"); _line_text
                 # re-inserts spaces from the glyph gaps.
-                for block in page.get_text("rawdict").get("blocks", []):
+                from .pdf_margin import content_clip
+
+                # Without a review template's line numbers (see pdf_margin).
+                for block in page.get_text("rawdict", clip=content_clip(page)).get("blocks", []):
                     if block.get("type") != 0:
                         continue
                     raw = []
@@ -236,22 +314,7 @@ def _merge_baselines(raw, y_tol: float = 1.5, gap_tol: float = 24.0):
     return merged
 
 
-# ── locate the references section ─────────────────────────────────────────
-def _reference_section(lines: list[_Line]) -> list[_Line]:
-    start = None
-    for i, ln in enumerate(lines):
-        if _REF_HEAD_RE.fullmatch(ln.text.strip()):
-            start = i + 1  # LAST heading wins (skip a table's "References" column header)
-    if start is None:
-        return []
-    out = []
-    for ln in lines[start:]:
-        if _is_stop(ln):
-            break
-        out.append(ln)
-    return out
-
-
+# ── section boundaries ────────────────────────────────────────────────────
 def _is_stop(ln: _Line) -> bool:
     t = ln.text.strip()
     if _STOP_RE.match(t):

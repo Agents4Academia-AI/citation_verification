@@ -124,10 +124,13 @@ def test_judge_batch_groups_evidence_by_citation(monkeypatch):
 
     monkeypatch.setattr(judge, "_judge_citation_chunk", fake_chunk)
 
+    # Abstract-length evidence: a line or two is a placeholder and is not sent at all.
+    EV1 = "EV1 " + "the first cited paper's abstract " * 8
+    EV2 = "EV2 " + "the second cited paper's abstract " * 8
     items = [  # k1 cited twice (same evidence), k2 once
-        {"cite_key": "k1", "claim_id": "c1", "claim": "A", "abstract": "EV1", "resolved": None},
-        {"cite_key": "k1", "claim_id": "c2", "claim": "B", "abstract": "EV1", "resolved": None},
-        {"cite_key": "k2", "claim_id": "c3", "claim": "C", "abstract": "EV2", "resolved": None},
+        {"cite_key": "k1", "claim_id": "c1", "claim": "A", "abstract": EV1, "resolved": None},
+        {"cite_key": "k1", "claim_id": "c2", "claim": "B", "abstract": EV1, "resolved": None},
+        {"cite_key": "k2", "claim_id": "c3", "claim": "C", "abstract": EV2, "resolved": None},
     ]
     out = judge.judge_batch(items)
 
@@ -136,7 +139,7 @@ def test_judge_batch_groups_evidence_by_citation(monkeypatch):
     # 2 unique citations sent (not 3 pairs); k1's evidence appears once for 2 claims
     grouped = dict(seen_chunks[0])
     assert set(grouped) == {"k1", "k2"}
-    assert grouped["k1"]["evidence"] == "EV1" and len(grouped["k1"]["members"]) == 2
+    assert grouped["k1"]["evidence"] == EV1.strip() and len(grouped["k1"]["members"]) == 2
 
 
 def test_gate_corroborates_messy_reference_authors():
@@ -192,3 +195,40 @@ def test_usage_from_message_maps_and_prices():
     assert (u.input_tokens, u.output_tokens, u.cache_read_tokens) == (100, 20, 80)
     assert u.num_turns == 1
     assert u.cost_usd > 0  # priced via the pricing table
+
+
+# ── a malformed reply is read, and what it left out is asked again ───────────
+def test_a_reply_without_its_outer_brackets_is_still_read():
+    text = ('{"cite_key":"a","claims":[{"claim_id":"c1","supports_claim":"supports"}]},'
+            '{"cite_key":"b","claims":[{"claim_id":"c2","supports_claim":"partial"}]}]')
+    out = rj._parse_group_verdicts(text)
+    assert set(out) == {"a", "b"}
+    assert SupportsClaim(out["b"]["c2"].supports_claim) is SupportsClaim.PARTIAL
+    wrapped = 'Here: {"results": [{"cite_key": "a", "claims": [{"claim_id": "c1", "supports_claim": "supports"}]}]}'
+    assert set(rj._parse_group_verdicts(wrapped)) == {"a"}
+
+
+def test_citations_a_reply_left_out_are_asked_once_more(monkeypatch):
+    judge = rj.LLMRelevanceJudge(settings=None, mode="query")
+    judge.escalate_full_text = False
+    calls = []
+
+    def chunk(rows):
+        calls.append([ck for ck, _g in rows])
+        # The first reply answers k1 only; the second answers whatever it is asked.
+        keep = rows[:1] if len(calls) == 1 else rows
+        return {ck: {cid: RelevanceVerdict(supports_claim="supports") for _i, cid, _c in g["members"]}
+                for ck, g in keep}
+
+    monkeypatch.setattr(judge, "_judge_citation_chunk", chunk)
+    ev = "the cited paper's abstract " * 10
+    items = [{"cite_key": k, "claim_id": f"c{k}", "claim": "x", "abstract": ev, "resolved": None} for k in ("k1", "k2")]
+    out = judge.judge_batch(items)
+    assert calls == [["k1", "k2"], ["k2"]]
+    assert all(SupportsClaim(v.supports_claim) is SupportsClaim.SUPPORTS for v in out)
+
+    # A citation never answered is asked twice in all, then abstains.
+    calls.clear()
+    monkeypatch.setattr(judge, "_judge_citation_chunk", lambda rows: calls.append(1) or {})
+    out = judge.judge_batch(items[:1])
+    assert len(calls) == 2 and "no verdict" in (out[0].justification or "")

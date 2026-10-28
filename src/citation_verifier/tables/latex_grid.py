@@ -31,8 +31,10 @@ Pure stdlib and offline: this module only parses text.
 from __future__ import annotations
 
 import re
-from pathlib import Path
 
+# The include-graph walker lives with the rest of the LaTeX source handling; it is
+# re-exported here because table extraction is where it was first needed.
+from ..extract.latex import included_sources
 from .model import CellMark, ComparisonTable, Dimension, DimensionKind, TableCell, TableRow
 
 __all__ = [
@@ -561,57 +563,6 @@ _NEWCOMMAND_RE = re.compile(
 )
 
 
-_INPUT_RE = re.compile(r"\\(?:input|include|subfile)\s*\{\s*([^{}]+?)\s*\}")
-_DOCUMENTCLASS_RE = re.compile(r"\\documentclass\b")
-
-
-def included_sources(paths: list[Path]) -> list[Path]:
-    r"""The subset of a paper's ``.tex`` files the document actually pulls in.
-
-    An arXiv source tree routinely ships drafts, a previous submission's version and
-    author backups alongside the live files. Parsing all of them means parsing tables the
-    paper does not contain: one tree held a five-column draft of a table under the same
-    ``\label`` as the published six-column one, and the draft is what got verified.
-
-    Walks ``\input`` / ``\include`` / ``\subfile`` from the file carrying
-    ``\documentclass``. Returns every path unchanged when there is no single root or the
-    closure would drop files that are plainly in use — following the graph must never
-    lose a table, only stale duplicates.
-    """
-    texts: dict[Path, str] = {}
-    for p in paths:
-        try:
-            texts[p] = p.read_text(encoding="utf-8", errors="ignore")
-        except OSError:
-            continue
-    roots = [p for p, t in texts.items() if _DOCUMENTCLASS_RE.search(t)]
-    if not roots:
-        return paths
-    by_stem: dict[str, list[Path]] = {}
-    for p in texts:
-        by_stem.setdefault(p.stem, []).append(p)
-
-    def closure(root: Path) -> set[Path]:
-        seen: set[Path] = set()
-        queue = [root]
-        while queue:
-            cur = queue.pop()
-            if cur in seen:
-                continue
-            seen.add(cur)
-            for raw in _INPUT_RE.findall(texts.get(cur, "")):
-                for cand in by_stem.get(Path(raw).stem, []):
-                    if cand not in seen:
-                        queue.append(cand)
-        return seen
-
-    # A tree can hold several files with `\documentclass` — a standalone snippet compiled
-    # on its own is one, and so is a leftover from a previous submission. The real document
-    # is the one that pulls in the most, so take the largest closure rather than giving up.
-    best = max((closure(r) for r in roots), key=len)
-    return [p for p in paths if p in best] or paths
-
-
 def collect_macro_names(text: str) -> dict[str, str]:
     """``\\newcommand`` aliases that expand to plain text.
 
@@ -622,7 +573,10 @@ def collect_macro_names(text: str) -> dict[str, str]:
     out: dict[str, str] = {}
     for m in _NEWCOMMAND_RE.finditer(text or ""):
         value = strip_tex(_balanced(text, m.end() - 1)[0])
-        if value and len(value) <= 40 and "\\" not in value:
+        # A macro that takes arguments (`\\newcommand{\\revision}[1]{#1}`) is not an alias:
+        # expanding it to its template turned every `\\revision{…}` in one paper into
+        # `#1{…}`, and that junk led the sentences handed to the model.
+        if value and len(value) <= 40 and "\\" not in value and "#" not in value:
             out.setdefault(m.group(1), value)
     return out
 

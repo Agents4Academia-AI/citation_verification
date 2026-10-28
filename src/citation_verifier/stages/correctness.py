@@ -29,7 +29,10 @@ from __future__ import annotations
 import os
 import re
 import unicodedata
+from collections import Counter
+from typing import Any
 
+from .. import venues
 from ..interfaces import Resolver
 from ..schema import CitationRecord, CitedAs, Evidence, Exists, MatchMethod, Resolved
 
@@ -37,19 +40,38 @@ from ..schema import CitationRecord, CitedAs, Evidence, Exists, MatchMethod, Res
 _SAME_THRESHOLD = 88.0
 
 
-def fill_correctness(record: CitationRecord, *, resolver: Resolver) -> CitationRecord:
+def fill_correctness(record: CitationRecord, *, resolver: Resolver, web: Any = None) -> CitationRecord:
     """Fill ``exists`` / ``resolved`` / ``metadata_issues`` / ``evidence``.
+
+    Defects of the citation itself — an author listed twice, no year, a title that
+    repeats itself — are reported whatever the lookup found: they need no record to be
+    seen, and a citation too broken to resolve is where they matter most.
 
     Args:
         record: a record stub (key + ``claim`` + ``cited_as`` populated).
         resolver: any object satisfying the :class:`Resolver` Protocol
             (typically :class:`MultiSourceResolver`).
+        web: an optional :class:`~citation_verifier.grounding.web_lookup.WebLocator`, the
+            last resort for a reference no index placed (and for one whose only candidate
+            was rejected as a different work).
 
     Returns:
         The same record, mutated in place (and also returned for chaining).
         On resolver failure the record is returned with ``error`` set and
         ``exists`` left at ``unresolved``.
     """
+    _resolve_and_compare(record, resolver, web)
+    canonical = list(record.resolved.authors) if record.resolved else None
+    defects = [
+        d for d in _citation_defects(record.cited_as, canonical) if d not in record.metadata_issues
+    ]
+    if defects:
+        record.metadata_issues = list(record.metadata_issues) + defects
+    return record
+
+
+def _resolve_and_compare(record: CitationRecord, resolver: Resolver, web: Any = None) -> CitationRecord:
+    """:func:`fill_correctness` without the citation's own defects."""
     reference = _reference_string(record)
     if not reference.strip():
         record.exists = Exists.UNRESOLVED
@@ -63,17 +85,21 @@ def fill_correctness(record: CitationRecord, *, resolver: Resolver) -> CitationR
         record.exists = Exists.UNRESOLVED
         return record
 
+    via_web = None
     if resolved is None or resolved.match_method is MatchMethod.NONE:
         # No structured match — but a citation can still be a verifiable web/software/
         # system-card object (GitHub repo, model system card). Try the cited URL
-        # directly before abstaining.
+        # directly before abstaining, then the web.
         if _try_direct_url(record):
             return record
-        # Absence is a red flag, not proof of fabrication: abstain.
-        record.exists = Exists.UNRESOLVED
-        record.resolved = resolved
-        record.metadata_issues = [_unresolved_note(resolver)]
-        return record
+        via_web = _web_lookup(web, reference, record)
+        if via_web is None or via_web.resolved is None:
+            # Absence is a red flag, not proof of fabrication: abstain.
+            record.exists = Exists.UNRESOLVED
+            record.resolved = resolved
+            record.metadata_issues = [_unresolved_note(resolver) + _web_note(via_web, resolver)]
+            return record
+        resolved = via_web.resolved
 
     issues = _diff_metadata(record, resolved)
 
@@ -89,19 +115,148 @@ def fill_correctness(record: CitationRecord, *, resolver: Resolver) -> CitationR
         reject = _reject_bad_fuzzy_match(record.cited_as, resolved)
         if reject:
             # The scholarly candidate was wrong, but the cited URL may still be a
-            # live web/software object (e.g. LangChain's GitHub repo) — try it.
+            # live web/software object (e.g. LangChain's GitHub repo) — try it, then
+            # the web, unless the candidate came from the web already.
             if _try_direct_url(record):
                 return record
-            record.exists = Exists.UNRESOLVED
-            record.resolved = None
-            record.metadata_issues = [f"abstained from a weak fuzzy-title match — {reject}"]
-            return record
+            if via_web is None:
+                via_web = _web_lookup(web, reference, record)
+                alt = via_web.resolved if via_web is not None else None
+                if alt is not None and not (
+                    alt.match_method == MatchMethod.FUZZY_TITLE and _reject_bad_fuzzy_match(record.cited_as, alt)
+                ):
+                    resolved, reject = alt, None
+                    issues = _diff_metadata(record, resolved)
+            if reject:
+                record.exists = Exists.UNRESOLVED
+                record.resolved = None
+                record.metadata_issues = [
+                    f"abstained from a weak fuzzy-title match — {reject}" + _web_note(via_web, None)
+                ]
+                return record
+
+    # A record with the cited title whose authors share no name with the citation is kept
+    # as "a real paper credited to the wrong people" — but it is as likely a namesake whose
+    # namesake was simply not among the records the indexes returned (a book's title found
+    # as another group's paper, while the index holding the book was down). The web gets a
+    # second look; a record it finds that the cited authors did write replaces this one.
+    if via_web is None and web is not None and _authors_disjoint(record.cited_as, resolved):
+        second = _web_lookup(web, reference, record)
+        alt = second.resolved if second is not None else None
+        if alt is not None and _authors_agree(record.cited_as, alt) and not (
+            alt.match_method == MatchMethod.FUZZY_TITLE and _reject_bad_fuzzy_match(record.cited_as, alt)
+        ):
+            resolved, via_web = alt, second
+            issues = _diff_metadata(record, resolved)
 
     record.resolved = resolved
     record.exists = Exists.YES
     record.metadata_issues = issues
-    record.evidence = _dedupe_evidence(record.evidence + [_metadata_evidence(resolved)])
+    found = [_metadata_evidence(resolved)]
+    if via_web is not None and via_web.resolved is resolved:
+        found.append(
+            Evidence(
+                kind="web",
+                source="web search",
+                quote=(
+                    "found by web search; the record was then fetched from its index"
+                    if via_web.status == "record"
+                    else (via_web.detail if (via_web.detail or "").startswith("found by web search")
+                          else "found by web search: the work's own page")
+                ),
+                url=resolved.url or (via_web.urls[0] if via_web.urls else None),
+            )
+        )
+    record.evidence = _dedupe_evidence(record.evidence + found)
     return record
+
+
+def _authors_disjoint(cited: CitedAs, resolved: Resolved) -> bool:
+    """The record's first author is not the cited one and no cited author is on its list."""
+    names = _clean_cited_authors(cited.authors or [])
+    authors = [a for a in (resolved.authors or []) if (a or "").strip()]
+    if not names or not authors:
+        return False
+    if _first_author_agrees(cited, authors[0]):
+        return False
+    return not any(_on_author_list(n, authors) for n in names)
+
+
+def _authors_agree(cited: CitedAs, resolved: Resolved) -> bool:
+    """The record's first author is the cited one — for a web page too: its authors are
+    what the page states, not a copy of the citation."""
+    authors = [a for a in (resolved.authors or []) if (a or "").strip()]
+    return bool(authors) and _first_author_agrees(cited, authors[0])
+
+
+def _web_lookup(web: Any, reference: str, record: CitationRecord) -> Any:
+    """The web locator's outcome for this reference, or ``None`` when there is none."""
+    if web is None:
+        return None
+    try:
+        return web.locate(reference, record.cited_as)
+    except Exception:  # noqa: BLE001 — degrade-not-crash
+        return None
+
+
+def _web_note(outcome: Any, resolver: Resolver | None) -> str:
+    """What the web search added to a not-found note ("" when it did not run)."""
+    if outcome is None:
+        return ""
+    if outcome.status == "none":
+        failed_fn = getattr(resolver, "failed_sources", None)
+        complete = not (callable(failed_fn) and list(failed_fn()))
+        return (
+            "; not found on the web either — likely fabricated, check by hand"
+            if complete
+            else "; not found on the web either"
+        )
+    if outcome.status in ("failed", "skipped"):
+        return f"; web search not done — {outcome.detail}" if outcome.detail else ""
+    return ""
+
+
+def _citation_defects(cited: CitedAs, canonical: list[str] | None = None) -> list[str]:
+    """What is wrong with a citation on its face.
+
+    Generated bibliographies carry these: one batch of ten machine-written papers listed
+    "Ian Goodfellow, Yoshua Bengio, Aaron Courville, and Yoshua Bengio" in four of them,
+    and cited a report by authors alone, with no year and a title that says its own
+    second half twice.
+
+    Two people can share a name: one paper is by two "Chen, D."s (Dong and Dongdong),
+    another by two Kun Xus listed side by side. So a repeated name counts only when it
+    is written in full, the two are not neighbours, and the record (``canonical``) does
+    not repeat it too.
+    """
+    out: list[str] = []
+    seen: dict[str, int] = {}
+    canon = Counter(_letters(a) for a in (canonical or []))
+    for pos, name in enumerate(_clean_cited_authors(cited.authors)):
+        given = name.split(",")[1] if "," in name else " ".join(name.split()[:-1])
+        if len(re.sub(r"[^A-Za-z]", "", given)) < 2 or re.fullmatch(r"(?:\s*[A-Z]\.?)+\s*", given):
+            continue  # initials only: "Chen, D." twice may be Dong and Dongdong
+        key = _letters(name)
+        if key in seen and pos - seen[key] > 1 and canon[key] < 2:
+            out.append(f"author listed twice: '{name}'")
+        seen.setdefault(key, pos)
+    raw = (cited.raw or "").strip()
+    # A reference cut off mid-phrase ("… In Proceedings of the 62nd Annual Meeting of")
+    # lost its year to extraction, not to its author.
+    truncated = bool(re.search(r"(?i)\b(?:of|the|and|in|for|on|at|to|by|with)$|,$", raw))
+    if (
+        (cited.title or cited.authors) and not cited.year and not truncated
+        and not re.search(r"(?<!\d)(?:1[89]|20)\d{2}(?!\d)", raw)
+    ):
+        out.append("the citation gives no year")
+    words = _norm(cited.title or "").split()
+    for n in range(min(12, len(words) // 2), 4, -1):  # a run of 5+ words said twice
+        grams = [" ".join(words[i : i + n]) for i in range(len(words) - n + 1)]
+        repeated = next((g for i, g in enumerate(grams) if g in grams[i + n :]), None)
+        if repeated:
+            out.append(f"the title repeats itself ('{_short(repeated, 50)}')")
+            break
+    return out
 
 
 _MONTHS = frozenset(
@@ -132,6 +287,44 @@ def _titles_diverge(a: str | None, b: str | None) -> bool:
     return max(inter / len(at), inter / len(bt)) < 0.85
 
 
+def _same_title(a: str | None, b: str | None) -> bool:
+    """True when two titles are one title: equal once normalised, or one a clean
+    extension of the other (a subtitle the other source drops). Content words that
+    differ — in either direction — make them two titles, however similar the rest."""
+    na, nb = _norm(a or ""), _norm(b or "")
+    if not na or not nb:
+        return True  # nothing to tell apart
+    if na == nb or na.replace(" ", "") == nb.replace(" ", ""):
+        return True
+    short, long_ = (na, nb) if len(na) <= len(nb) else (nb, na)
+    if long_.startswith(short) or long_.endswith(short):
+        return True  # "Llemma" vs "Llemma: An open language model for mathematics"
+    return _content_tokens(a) == _content_tokens(b)
+
+
+def _first_author_agrees(cited: CitedAs, canonical_first: str) -> bool:
+    """Is the canonical first author the one the citation names first?
+
+    Besides the name-to-name comparison this accepts a hyphenated surname written with a
+    space and, as a last resort, the canonical surname appearing in the reference AS
+    PRINTED: the parsed author list is the least reliable field a PDF yields, and a
+    mis-split name must not turn a correct match into a rejection. An organisation is NOT
+    waved through here as it is for the mismatch warning — "OpenAI" matched to a paper by
+    an unrelated individual is exactly the wrong-paper case this guards.
+    """
+    first = cited.authors[0] if cited.authors else ""
+    if not first:
+        return True  # the citation names nobody to disagree with
+    if not (canonical_first or "").strip():
+        return False  # a record with a blank author corroborates nothing
+    if _same_author(first, canonical_first):
+        return True
+    if _same_author(first.replace("-", " "), canonical_first.replace("-", " ")):
+        return True
+    surname = _name_key(canonical_first)[0]
+    return len(surname) >= 4 and surname in _fold(cited.raw or "")
+
+
 def _reject_bad_fuzzy_match(cited: CitedAs, candidate: Resolved) -> str | None:
     """Reason to REJECT a FUZZY_TITLE candidate as the wrong work, or ``None`` to accept.
 
@@ -146,18 +339,20 @@ def _reject_bad_fuzzy_match(cited: CitedAs, candidate: Resolved) -> str | None:
     if _is_nontitle(ctitle):
         return f"closest candidate is not a real title ('{_short(ctitle)}')"
     # 2) No author corroboration at all on a fuzzy match — the minimum bar isn't met.
-    if not candidate.authors:
+    #    Blank entries are not authors: an index returned ["", "A Isakov", ""] for a
+    #    report that shared three title words with the citation, the blank first author
+    #    "agreed" with anyone, and the wrong work was accepted.
+    authors = [a for a in (candidate.authors or []) if (a or "").strip()]
+    if not authors:
         return f"closest candidate has no authors to corroborate ('{_short(ctitle)}')"
-    author_ok = bool(
-        cited.authors and candidate.authors and _same_author(cited.authors[0], candidate.authors[0])
-    )
+    author_ok = bool(cited.authors and _first_author_agrees(cited, authors[0]))
     year_gap = abs(cited.year - candidate.year) if (cited.year and candidate.year) else 0
 
     # 3) A WRONG first author is the strongest single "different work" signal for a
     #    title-only match. Pair it with any corroborating signal and reject — a
     #    confident wrong match (which then mis-feeds the relevance judge) is worse
     #    than abstaining.
-    if cited.authors and candidate.authors and not author_ok:
+    if cited.authors and not author_ok:
         # (a) the citation carries a URL (a release/blog/repo/system card, e.g. Genie 2
         #     → deepmind.google): a fuzzy SCHOLARLY match by a different author is almost
         #     always the wrong paper — prefer the URL path / unresolved.
@@ -165,12 +360,25 @@ def _reject_bad_fuzzy_match(cited: CitedAs, candidate: Resolved) -> str | None:
             return f"different author + the citation is a URL/release, not this paper ('{_short(ctitle)}')"
         # (b) a SHORT cited title (≤2 distinctive tokens — "OpenAI o3-mini", "Genie 2")
         #     matches longer unrelated titles as a coincidental substring (o3-mini was
-        #     matched to a pneumonia paper that merely mentions it).
-        if len(_content_tokens(cited.title)) <= 2:
+        #     matched to a pneumonia paper that merely mentions it), and a generic one
+        #     has namesakes: a book's "Deep learning, volume 1" is two words once its
+        #     volume is dropped, and four "Deep Learning" papers by other authors exist.
+        from ..grounding import clean_title  # noqa: PLC0415 — keeps the stage's import light
+
+        if len(_content_tokens(clean_title(cited.title))) <= 2:
             return f"different author on a short cited title (coincidental match) ('{_short(ctitle)}')"
         # (c) a second failing axis: year off >1, OR the titles genuinely diverge.
         if year_gap > 1 or _title_poorly_covered(cited.title, ctitle) or _titles_diverge(cited.title, ctitle):
             return f"closest candidate's author and title/year contradict ('{_short(ctitle)}')"
+        # (d) the titles are not the SAME title. A wrong first author on the exact title
+        #     is a finding about the citation (a real paper credited to the wrong people —
+        #     kept, and reported as an author mismatch). A wrong first author on a title
+        #     that is merely close is a different paper: cited "Deep Residual Learning for
+        #     Image Recognition" was accepted as "Deep Learning for Image Recognition" by
+        #     other authors, one content word apart and inside every looser threshold
+        #     above, and the relevance judge was then handed the wrong paper.
+        if not _same_title(cited.title, ctitle):
+            return f"different first author and a different title ('{_short(ctitle)}')"
 
     # 4) Even with a matching/unknown author: a large year gap + diverging titles is a
     #    different work (a 1998 textbook vs a 1992 chapter sharing only generic words).
@@ -216,9 +424,29 @@ _SOURCE_NAMES = {
 
 
 def _unresolved_note(resolver: Resolver) -> str:
-    """Explain an unresolved citation: which sources were searched without a match."""
-    sources = getattr(resolver, "sources", ()) or ()
-    where = ", ".join(_SOURCE_NAMES.get(str(s), str(s)) for s in sources)
+    """Explain an unresolved citation: which sources were searched without a match.
+
+    Says so when the search was INCOMPLETE. "Searched five sources, found nothing" is the
+    strongest hint a reference was invented; the same wording over a run in which two of
+    the five were rate-limiting is a hint the run cannot back, and it read identically.
+    """
+    # The sources actually asked — not the configured list: a source the routing skipped,
+    # or one switched off for want of a key, was reported as searched.
+    searched_fn = getattr(resolver, "searched_sources", None)
+    searched = list(searched_fn()) if callable(searched_fn) else []
+    if searched:
+        where = ", ".join(searched)
+    else:
+        sources = getattr(resolver, "sources", ()) or ()
+        where = ", ".join(_SOURCE_NAMES.get(str(s), str(s)) for s in sources)
+    failed_fn = getattr(resolver, "failed_sources", None)
+    failed = list(failed_fn()) if callable(failed_fn) else []
+    if failed:
+        return (
+            f"lookup incomplete — {', '.join(failed)} did not respond (rate limit / "
+            f"network), so this reference was NOT fully searched; re-run before reading "
+            f"anything into it"
+        )
     return (
         f"could not retrieve a confident match — searched {where}"
         if where
@@ -300,8 +528,9 @@ def _diff_metadata(record: CitationRecord, resolved: Resolved) -> list[str]:
         issues.append(f"year mismatch: cited {cited.year} vs {resolved.year}")
 
     # Venue
-    if cited.venue and resolved.venue and not _strings_match(cited.venue, resolved.venue):
-        issues.append(f"venue mismatch: cited '{_short(cited.venue)}' vs '{_short(resolved.venue)}'")
+    venue_issue = _venue_issue(cited.venue or "", resolved.venue or "")
+    if venue_issue:
+        issues.append(venue_issue)
 
     # Authors (first-author + overlap heuristic).
     author_issue = _author_issue(cited.authors, resolved.authors)
@@ -313,6 +542,95 @@ def _diff_metadata(record: CitationRecord, resolved: Resolved) -> list[str]:
         issues.append(f"cited/resolved URL did not validate: {resolved.url}")
 
     return issues
+
+
+# Words that do not count towards a venue's initials ("Conference ON Computer Vision AND …").
+_VENUE_STOP = frozenset("of on in the and for a an to at de la le du des et".split())
+
+
+def _venue_acronyms(venue: str) -> set[str]:
+    """Acronym-shaped tokens of a venue, as lowercase letter runs.
+
+    "NeurIPS" -> "nips" (its capitals), "ICML 2021" -> "icml", "NAACL-HLT" -> "naacl",
+    "hlt". A token counts when it carries at least two capitals and is short.
+    """
+    out: set[str] = set()
+    for tok in re.findall(r"[A-Za-z][A-Za-z&]*", venue or ""):
+        caps = "".join(ch for ch in tok if ch.isupper())
+        if len(caps) >= 2 and len(tok) <= 10:
+            out.add(caps.lower())
+    return out
+
+
+def _venue_initials(venue: str) -> str:
+    """First letters of a venue name's content words, in order — "icml" for
+    "International Conference on Machine Learning"."""
+    words = [w for w in _norm(venue).split() if w not in _VENUE_STOP and not w.isdigit()]
+    return "".join(w[0] for w in words)
+
+
+def _is_subsequence(needle: str, haystack: str) -> bool:
+    it = iter(haystack)
+    return all(ch in it for ch in needle)
+
+
+def _unlisted_venues_match(cited: str, canonical: str) -> bool:
+    """The general tests, for a venue the alias table does not list.
+
+    Without the table there is only the shape of the two strings to go on: they are close
+    as strings; one is the other abbreviated word by word ("Comput. Educ. Artif. Intell." /
+    "Computers and Education: Artificial Intelligence"); or one is an acronym whose
+    letters are, in order, among the initials of the other's words. Permissive on purpose —
+    with nothing known about either venue, a miss costs one unreported detail and a false
+    report is an accusation.
+    """
+    if _strings_match(cited, canonical) or venues.is_abbreviation_of(cited, canonical):
+        return True
+    for acronyms, other in ((_venue_acronyms(cited), canonical), (_venue_acronyms(canonical), cited)):
+        other_tokens = set(_norm(other).split()) | _venue_acronyms(other)
+        initials = _venue_initials(other)
+        for acr in acronyms:
+            if acr in other_tokens or (len(acr) >= 3 and _is_subsequence(acr, initials)):
+                return True
+    return False
+
+
+def _venue_issue(cited: str, canonical: str) -> str | None:
+    """The finding for a cited venue against the venue of the record, or ``None``.
+
+    A venue is written a dozen ways — "NeurIPS", "NIPS", "Advances in Neural Information
+    Processing Systems 35", "Adv. Neural Inf. Process. Syst." — and compared as strings the
+    spellings share almost nothing, so the commonest correct citation there is was reported
+    as a mismatch. The alias table (:mod:`citation_verifier.venues`) decides whenever it
+    knows both venues; the string tests above decide the rest.
+
+    Two things a record cannot contradict, however different the strings look:
+
+    * a **preprint** record. It says where a copy lives, not that the work was never
+      published, so "cited as ICLR, record from arXiv" is not a finding. (The reverse is:
+      cited as a preprint while the record gives a venue.)
+    * a **proceedings series** ("PMLR", "Lecture Notes in Computer Science"), which names
+      the volume and not the conference.
+    """
+    if not cited or not canonical:
+        return None
+    verdict = venues.compare_venues(cited, canonical)
+    if verdict in (venues.SAME, venues.UNCOMPARABLE):
+        return None
+    if verdict == venues.UNKNOWN and _unlisted_venues_match(cited, canonical):
+        return None
+    if venues.is_preprint(cited):
+        return f"cited as a preprint, but the record gives a venue: '{_short(canonical)}'"
+    note = ""
+    if venues.is_workshop(canonical) and not venues.is_workshop(cited):
+        if venues.venue_ids(cited) & venues.venue_ids(canonical):
+            note = " (a workshop at that conference, not the conference itself)"
+    return f"venue mismatch: cited '{_short(cited)}' vs '{_short(canonical)}'{note}"
+
+
+def _venues_match(cited: str, canonical: str) -> bool:
+    """True unless the two strings name DIFFERENT venues (see :func:`_venue_issue`)."""
+    return _venue_issue(cited, canonical) is None
 
 
 # Organization "authors": a paper credited to an org / "* Team" against a citation
@@ -344,6 +662,8 @@ def _author_issue(claimed: list[str], canonical: list[str]) -> str | None:
     org-vs-individual first author (``OpenAI`` / ``Qwen Team`` against a listed
     person) is suppressed: it always "mismatches" by surname but is not an error.
     """
+    claimed = _clean_cited_authors(claimed)
+    canonical = [a for a in (canonical or []) if (a or "").strip()]
     if not claimed or not canonical:
         return None
     if not _same_author(claimed[0], canonical[0]):
@@ -355,10 +675,97 @@ def _author_issue(claimed: list[str], canonical: list[str]) -> str | None:
         if _same_author(claimed[0].replace("-", " "), canonical[0].replace("-", " ")):
             return None
         return f"first-author mismatch: cited '{claimed[0]}' vs '{canonical[0]}'"
-    matched = sum(1 for c in claimed if any(_same_author(c, k) for k in canonical))
+    # Exact surname matching is not fit to say a person is missing from a paper: the two
+    # lists spell one author as "Krompaß" / "Krompass", "Köpken" / "Koepken", "Mrkšić" /
+    # "Mrkvsi'c" (an accent command a source failed to decode), "Brooks, T." /
+    # "†. TimBrooks". Replayed over 744 published references, eight of the nine
+    # "invented co-authors" this check named were that. Only a name with no near spelling
+    # anywhere on the canonical list counts.
+    unmatched = [
+        c for c in claimed
+        if not _is_org_author(c) and _name_key(c)[0]
+        and not any(_same_author(c, k) for k in canonical)
+        and not _on_author_list(c, canonical)
+    ]
+    matched = len(claimed) - len(unmatched)
     if matched / len(claimed) < 0.5:
         return "author list differs substantially from the canonical record"
+    # Right first author, invented co-authors: the shape a fabricated or half-remembered
+    # reference most often has, and the one a first-author check plus a 50% overlap bar
+    # lets through (two real names followed by two that are not on the paper pass both).
+    # Reported only when the canonical list is at least as long as the cited one — a
+    # record that carries fewer authors than the citation is truncated, and every name
+    # past its end would "not be on the paper" — and only from two names up, since a
+    # single one is as often a transliteration or a changed surname as an error.
+    if len(unmatched) >= 2 and len(canonical) >= len(claimed):
+        names = ", ".join(f"'{n}'" for n in unmatched[:3]) + (" …" if len(unmatched) > 3 else "")
+        return f"{len(unmatched)} cited authors are not on the canonical author list: {names}"
     return None
+
+
+# What an author field carries besides the name when a reference was read from a PDF:
+# the "and" before the last author, the year that follows the list ("and Jeff Dean. 2017"),
+# footnote marks ("*Azalia Mirhoseini"), and the "et al." that closes a shortened list.
+_ET_AL_RE = re.compile(r"(?i)^(?:and\s+)?(?:et\.?\s*al\.?|others|and\s+others)$")
+_AUTHOR_LEAD_RE = re.compile(r"(?i)^(?:and|&)\s+")
+_AUTHOR_YEAR_TAIL_RE = re.compile(r"[\s.,;:(\[]*\b(?:19|20)\d{2}[a-z]?\b.*$")
+_AUTHOR_MARK_RE = re.compile(r"[*†‡§¶∗⋆#\d]+")
+
+
+def _clean_cited_authors(names: list[str]) -> list[str]:
+    """The cited author list with everything that is not a name taken out."""
+    out: list[str] = []
+    for raw in names or []:
+        name = _AUTHOR_YEAR_TAIL_RE.sub("", str(raw or ""))
+        name = _AUTHOR_MARK_RE.sub("", name).strip(" .,;:")
+        name = _AUTHOR_LEAD_RE.sub("", name)
+        name = re.sub(r"-\s+", "-", name)                  # "Pérez- Cruz": a line break
+        # "Ł ukasz": a capital the PDF set apart from the rest of its word
+        name = re.sub(r"^([^\W\d_]) (?=[a-z])", lambda m: m.group(1) if m.group(1).isupper() else m.group(0), name)
+        name = re.sub(r"\s+", " ", name).strip(" .,;:")
+        if name and not _ET_AL_RE.match(name) and sum(ch.isalpha() for ch in name) >= 2:
+            out.append(name)
+    return out
+
+
+def _letters(name: str) -> str:
+    return re.sub(r"[^a-z]", "", _fold(name))
+
+
+def _on_author_list(cited: str, canonical: list[str]) -> bool:
+    """True when ``cited`` has a near spelling somewhere on the canonical list.
+
+    Loose about SPELLING, because it only ever withdraws the claim that a named person is
+    not an author: a surname within a letter or two of one on the list (a transliterated
+    umlaut, an undecoded accent), or found at the end of a name the record ran together
+    ("†. TimBrooks", "JoyceLee").
+
+    Not loose about WHO: where the record gives the name properly, a contradicting
+    given-name initial is another person. "Li Y" is not "John Li" — and with "Sorelle A",
+    "Zettlemoyer L" and "Weld DS" beside it on a five-author paper, that is exactly the
+    half-invented author list this check exists for.
+    """
+    from rapidfuzz import fuzz  # a core dependency; imported here to keep import cheap
+
+    surname, initial = _name_key(cited)
+    surname = _letters(surname)
+    if not surname:
+        return True  # nothing to tell two people apart by
+    for record in canonical:
+        record_surname, record_initial = _name_key(record)
+        record_surname = _letters(record_surname)
+        if not (record_initial.isascii() and record_initial.isalpha()):
+            record_initial = ""  # "†. TimBrooks": a footnote mark, not an initial
+        if surname == record_surname or (
+            len(surname) >= 4 and fuzz.ratio(surname, record_surname) >= 80
+        ):
+            if not (initial and record_initial and initial != record_initial):
+                return True
+            continue  # this surname, another person
+        whole = _letters(record)
+        if (len(surname) >= 3 and whole.endswith(surname)) or (len(surname) >= 4 and surname in whole):
+            return True
+    return False
 
 
 # ───────────────────────────────────────────────────────────────
@@ -441,9 +848,17 @@ def _strings_match(a: str, b: str, thresh: float = _SAME_THRESHOLD) -> bool:
 _INITIALS_TOKEN_RE = re.compile(r"^[A-Z](?:[.\-]?[A-Z]){0,3}\.?$")
 
 
+# Letters that are not a base letter plus an accent, so NFKD leaves them as they are —
+# and a record that writes "Lukasz" / "Krompass" for "Łukasz" / "Krompaß" never matches.
+_LETTER_FOLD = str.maketrans({
+    "ß": "ss", "ł": "l", "Ł": "L", "ø": "o", "Ø": "O", "æ": "ae", "Æ": "AE", "œ": "oe",
+    "Œ": "OE", "đ": "d", "Đ": "D", "ı": "i", "þ": "th", "Þ": "Th", "ð": "d",
+})
+
+
 def _fold(s: str) -> str:
     """Lowercase + strip diacritics, for robust surname/initial comparison."""
-    s = unicodedata.normalize("NFKD", s or "")
+    s = unicodedata.normalize("NFKD", (s or "").translate(_LETTER_FOLD))
     return "".join(c for c in s if not unicodedata.combining(c)).lower()
 
 
@@ -484,19 +899,38 @@ def _surname_close(a: str, b: str) -> bool:
     return a == b or (min(len(a), len(b)) >= 4 and (a.startswith(b) or b.startswith(a)))
 
 
+_NAME_SUFFIX_RE = re.compile(r"[\s,]+(?:jr|sr|ii|iii|iv)\.?$", re.IGNORECASE)
+
+
+def _name_tokens(author: str) -> frozenset[str]:
+    """The words of a name, folded — for comparing two full names regardless of order."""
+    return frozenset(t for t in re.findall(r"[^\W\d_]{2,}", _fold(author or "")))
+
+
 def _same_author(cited: str, canonical: str) -> bool:
-    """Same person: surnames match and any given-name initials agree."""
+    """Same person: surnames match and any given-name initials agree.
+
+    Two full names made of the same words in a different order are also one person:
+    sources disagree on whether a family name leads ("Zhang Wei" / "Wei Zhang"), and
+    reading that as a different surname reported a correct citation as a wrong author.
+    """
+    cited = _NAME_SUFFIX_RE.sub("", (cited or "").strip())
+    canonical = _NAME_SUFFIX_RE.sub("", (canonical or "").strip())
     cs, ci = _name_key(cited)
     ks, ki = _name_key(canonical)
-    if not _surname_close(cs, ks):
-        return False
-    return ci == ki if (ci and ki) else True
+    if _surname_close(cs, ks):
+        return ci == ki if (ci and ki) else True
+    ct, kt = _name_tokens(cited), _name_tokens(canonical)
+    return len(ct) >= 2 and ct == kt
 
 
 def _norm(s: str) -> str:
-    import re
+    """Lowercase, diacritics folded, punctuation to spaces — for comparing titles/venues.
 
-    return re.sub(r"\s+", " ", re.sub(r"[^\w\s]", " ", (s or "").lower())).strip()
+    Folding matters: bibliographies write "Schrodinger" or "Schr\\"odinger" for a title
+    the record spells "Schrödinger", and unfolded those are different strings.
+    """
+    return re.sub(r"\s+", " ", re.sub(r"[^\w\s]", " ", _fold(s or ""))).strip()
 
 
 def _join(authors: list[str]) -> str:

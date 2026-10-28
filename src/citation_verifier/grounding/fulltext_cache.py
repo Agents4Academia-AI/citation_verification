@@ -24,7 +24,7 @@ from ..diskcache import key_for, namespace_dir, read_json, write_json
 
 __all__ = ["cache_dir", "clear", "read", "write"]
 
-_VERSION = "v1"  # bump when the parsing that produces the text changes materially
+_VERSION = "v2"  # bump when the parsing that produces the text changes materially
 
 
 def cache_dir() -> Path | None:
