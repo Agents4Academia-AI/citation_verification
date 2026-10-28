@@ -24,20 +24,19 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from collections import Counter
 
 from .pdf_refs import _clean as _normalize  # NFKC + diacritic heal (shared with refs)
+from .sentences import heading_title, is_heading_line, section_at, sentence_span
 
 __all__ = ["extract_link_citations", "extract_text_citations"]
 
-# Sentence boundary: ./!/? then whitespace then a capital or an opening paren
-# (author-year citations often open the next clause with "(Surname …"), BUT not
-# after a single-capital initial ("Kingma D. P.") or the abbreviations "et al.",
-# "e.g.", "i.e." — those otherwise chop a claim down to "(2022)" / "Hindle et al.".
-_SENT_SPLIT = re.compile(
-    r"(?<=[.!?])(?<![A-Z]\.)(?<!et\sal\.)(?<!e\.g\.)(?<!i\.e\.)\s+(?=[A-Z(])"
-)
-_MAX_CLAIM_CHARS = 360
 _CITE_PREFIX = "cite."
+# A block that is not part of the running text: a caption, or a footnote (small type low on
+# the page). Read where it stands, it lands in the middle of the sentence that runs past it
+# into the next column; it is set apart as a paragraph of its own instead.
+_CAPTION_RE = re.compile(r"^(?:Figure|Fig\.|Table|Tab\.|Algorithm|Listing)\s*[A-Z]?\d+(?:\.\d+)?\s*[:.|]")
+_HYPHEN_BREAK_RE = re.compile(r"(?<=[A-Za-z])-\s+(?=[a-z])")  # "knowl- edge" -> "knowledge"
 
 # A parenthetical citation block — any "(...)" carrying a year. Split internally on ";"
 # into individual citations; each may list several years for one author
@@ -59,11 +58,14 @@ def _fold(s: str) -> str:
 
 
 def extract_link_citations(pdf_path) -> list[dict]:
-    """Tier 1: ``[{cite_key, claim, span}]`` from ``cite.*`` hyperlink anchors.
+    """Tier 1: ``[{cite_key, claim, span, anchor, section}]`` from ``cite.*`` hyperlink anchors.
 
-    ``span`` is a stable, page-offset char range usable as a claim-id seed. The
-    author-name and year halves of one citation each carry a link, so sites that
-    share a ``(cite_key, claim)`` are de-duplicated.
+    The claim is the sentence the link sits in, read from the whole document as one flow of
+    text (see :func:`_document_flow`): a sentence that runs past a column or a page is read
+    to its end, and a section heading is a boundary no sentence crosses. ``span`` is the
+    sentence's char range in that flow, usable as a claim-id seed. The author-name and year
+    halves of one citation each carry a link, so sites that share a ``(cite_key, claim)``
+    are de-duplicated.
     """
     try:
         import fitz  # PyMuPDF — optional
@@ -72,37 +74,230 @@ def extract_link_citations(pdf_path) -> list[dict]:
     try:
         sites: list[dict] = []
         with fitz.open(str(pdf_path)) as doc:
+            flow = _document_flow(doc)
+            text = flow.text
             for pno, page in enumerate(doc):
                 anchors = [
                     (lnk["from"], (lnk.get("nameddest") or "")[len(_CITE_PREFIX) :])
                     for lnk in page.get_links()
                     if (lnk.get("nameddest") or "").startswith(_CITE_PREFIX)
                 ]
-                if not anchors:
-                    continue
-                from .pdf_margin import content_clip
-
-                # Without a review template's line numbers: read with the text, they
-                # land inside sentences ("ques- 068 tion") and shift sentence
-                # boundaries, so a citation was paired with the sentence before it.
-                words = page.get_text("words", clip=content_clip(page))
-                width = page.rect.width
+                words = flow.page_words.get(pno, [])
                 for rect, cite_key in anchors:
                     if not cite_key:
                         continue
-                    claim, (cs, ce) = _sentence_at_rect(words, rect, width)
+                    best = _covered_word(words, rect)
+                    if best is None or (pno, best) not in flow.offsets:
+                        continue
+                    pos = flow.offsets[(pno, best)]
+                    claim, span = _claim_at(text, pos)
                     if claim:
-                        base = pno * 1_000_000
                         sites.append(
-                            {"cite_key": cite_key, "claim": claim, "span": (base + cs, base + ce),
-                             "anchor": _text_under(words, rect)}
+                            {"cite_key": cite_key, "claim": claim, "span": span,
+                             "anchor": _text_under(words, rect),
+                             "section": section_at(flow.headings, pos)}
                         )
         return _dedupe(sites)
     except Exception:  # noqa: BLE001 — fail soft on any PyMuPDF error
         return []
 
 
-def extract_text_citations(text: str) -> list[dict]:
+class _Flow:
+    """A document's running text, with where each word of each page landed in it."""
+
+    def __init__(self) -> None:
+        self.parts: list[str] = []
+        self.length = 0
+        self.offsets: dict[tuple[int, int], int] = {}
+        self.page_words: dict[int, list] = {}
+        self.headings: list[tuple[int, str]] = []
+
+    def add(self, piece: str) -> int:
+        at = self.length
+        self.parts.append(piece)
+        self.length += len(piece)
+        return at
+
+    def paragraph_break(self) -> None:
+        if self.parts and not self.parts[-1].endswith("\n\n"):
+            self.add("\n\n")
+
+    @property
+    def text(self) -> str:
+        return "".join(self.parts)
+
+
+def _document_flow(doc) -> _Flow:
+    """The running text of a PDF, in reading order, as one string.
+
+    Per page the blocks are put in reading order — on a two-column page, the full-width
+    blocks at the top, the left column, the right column, then the remaining full-width
+    blocks; on a one-column page, top to bottom — and each block's words in line order.
+    Running text is joined with single spaces, across lines, blocks, columns and pages, so
+    a sentence is read to its end wherever it continues. A heading is a paragraph of its own
+    (and recorded with its offset, for the claim's section). Captions, footnotes and other
+    small type are taken out of the flow and set, each as its own paragraph, after the last
+    page.
+    """
+    from .pdf_margin import content_clip
+
+    flow = _Flow()
+    pages = []
+    sizes: Counter = Counter()
+    for page in doc:
+        clip = content_clip(page)
+        # Without a review template's line numbers: read with the text, they land inside
+        # sentences ("ques- 068 tion") and shift sentence boundaries.
+        words = page.get_text("words", clip=clip)
+        blocks = _text_blocks(page, clip, sizes)
+        pages.append((page, words, blocks))
+    body = sizes.most_common(1)[0][0] if sizes else 10.0
+
+    asides: list[tuple[int, list[tuple[int, object]]]] = []
+    for pno, (page, words, blocks) in enumerate(pages):
+        flow.page_words[pno] = words
+        members: dict[int, list[int]] = {i: [] for i in range(len(blocks))}
+        loose: list[int] = []
+        for wi, w in enumerate(words):
+            bi = _block_of(blocks, w)
+            (members[bi] if bi is not None else loose).append(wi)
+        order = _block_order(blocks, words, page.rect.width)
+        for bi in order:
+            kind = _block_kind(blocks[bi], body)
+            idx = members[bi]
+            if not idx:
+                continue
+            if kind == "aside":
+                asides.append((pno, [(wi, words[wi]) for wi in idx]))
+                continue
+            ordered = _order_reading([words[wi] + (wi,) for wi in idx])
+            if kind == "heading":
+                flow.paragraph_break()
+                at = flow.length
+                _emit(flow, pno, ordered)
+                flow.headings.append((at, heading_title(" ".join(w[4] for w in ordered))))
+                flow.paragraph_break()
+            else:
+                _emit(flow, pno, ordered)
+        if loose:
+            _emit(flow, pno, _order_reading([words[wi] + (wi,) for wi in loose]))
+    for pno, members in asides:
+        flow.paragraph_break()
+        _emit(flow, pno, _order_reading([w + (wi,) for wi, w in members]))
+    return flow
+
+
+def _emit(flow: _Flow, pno: int, ordered: list) -> None:
+    """Append words (each carrying its page index last) to the flow, space-separated."""
+    for w in ordered:
+        if flow.parts and not flow.parts[-1].endswith((" ", "\n")):
+            flow.add(" ")
+        flow.offsets[(pno, w[-1])] = flow.add(w[4])
+
+
+def _text_blocks(page, clip, sizes: Counter) -> list[dict]:
+    """A page's text blocks: bounding box, text, mean font size, and share of bold type.
+
+    Each span's character count is added to ``sizes`` (rounded to half points), whose most
+    common value is the body type size.
+    """
+    out = []
+    for b in page.get_text("dict", clip=clip).get("blocks", []):
+        if b.get("type") != 0:
+            continue
+        lines, chars, bold, weighted = [], 0, 0, 0.0
+        for ln in b.get("lines", []):
+            text = "".join(sp.get("text", "") for sp in ln.get("spans", []))
+            if text.strip():
+                lines.append(text)
+            for sp in ln.get("spans", []):
+                n = len(sp.get("text", "").strip())
+                chars += n
+                weighted += (sp.get("size") or 0.0) * n
+                bold += n if (sp.get("flags", 0) & 16) else 0
+                sizes[round((sp.get("size") or 0.0) * 2) / 2] += n
+        if lines:
+            out.append({"bbox": tuple(b["bbox"]), "lines": lines,
+                        "size": weighted / max(chars, 1), "bold": bold / max(chars, 1)})
+    return out
+
+
+def _block_kind(block: dict, body: float) -> str:
+    """``heading``, ``aside`` (caption, footnote, small type) or ``flow`` (running text)."""
+    text = " ".join(" ".join(block["lines"]).split())
+    if _CAPTION_RE.match(text):
+        return "aside"
+    short = len(block["lines"]) <= 2 and len(text) <= 120
+    if short and is_heading_line(text):
+        return "heading"
+    if (
+        short
+        and text[:1].isupper()
+        and text[-1:] not in ".,;:"
+        and len(text.split()) <= 12
+        and (block["bold"] >= 0.6 or block["size"] >= body + 0.9)
+    ):
+        return "heading"  # set apart by its type, not its wording
+    if block["size"] <= body - 0.8:
+        # Smaller type than the running text: a footnote, a figure's labels, a table set
+        # small. Left in place, "CONCAT, and" from a figure opened the sentence below it.
+        return "aside"
+    return "flow"
+
+
+def _block_of(blocks: list[dict], w) -> int | None:
+    """The block whose box holds the centre of word ``w``."""
+    cx, cy = (w[0] + w[2]) / 2, (w[1] + w[3]) / 2
+    for i, b in enumerate(blocks):
+        x0, y0, x1, y1 = b["bbox"]
+        if x0 - 1 <= cx <= x1 + 1 and y0 - 1 <= cy <= y1 + 1:
+            return i
+    return None
+
+
+def _block_order(blocks: list[dict], words: list, page_width: float) -> list[int]:
+    """Block indices in reading order (see :func:`_document_flow`)."""
+    idx = list(range(len(blocks)))
+    if not _is_two_column(words, page_width):
+        return sorted(idx, key=lambda i: (round(blocks[i]["bbox"][1]), blocks[i]["bbox"][0]))
+    mid = page_width / 2
+    width = lambda i: blocks[i]["bbox"][2] - blocks[i]["bbox"][0]  # noqa: E731
+    full = [i for i in idx if width(i) >= 0.72 * page_width]
+    cols = [i for i in idx if width(i) < 0.72 * page_width]
+    by_y = lambda i: (round(blocks[i]["bbox"][1]), blocks[i]["bbox"][0])  # noqa: E731
+    left = sorted([i for i in cols if (blocks[i]["bbox"][0] + blocks[i]["bbox"][2]) / 2 < mid], key=by_y)
+    right = sorted([i for i in cols if (blocks[i]["bbox"][0] + blocks[i]["bbox"][2]) / 2 >= mid], key=by_y)
+    first_col = min((blocks[i]["bbox"][1] for i in cols), default=0.0)
+    top = sorted([i for i in full if blocks[i]["bbox"][3] <= first_col + 1], key=by_y)
+    rest = sorted([i for i in full if i not in top], key=by_y)
+    return top + left + right + rest
+
+
+def _covered_word(words: list, rect) -> int | None:
+    """Index of the word a link box covers MOST — not the first it touches: a link box is
+    a point or two taller than its line and grazes the bottom of the line above, and the
+    citation was then paired with the sentence before it."""
+    x0, y0, x1, y1 = rect.x0, rect.y0, rect.x1, rect.y1
+
+    def overlap(w) -> float:
+        return max(0.0, min(w[2], x1) - max(w[0], x0)) * max(0.0, min(w[3], y1) - max(w[1], y0))
+
+    if not words:
+        return None
+    best = max(range(len(words)), key=lambda i: overlap(words[i]))
+    return best if overlap(words[best]) > 0 else None
+
+
+def _claim_at(text: str, pos: int, breaks: list[int] | None = None) -> tuple[str, tuple[int, int]]:
+    """The sentence of ``text`` at ``pos``, normalized, with its span."""
+    start, end = sentence_span(text, pos, breaks=breaks)
+    raw = _HYPHEN_BREAK_RE.sub("", text[start:end])  # join line-break hyphenation
+    return _normalize(raw), (start, end)
+
+
+def extract_text_citations(
+    text: str, breaks: list[int] | None = None, headings: list[tuple[int, str]] | None = None
+) -> list[dict]:
     """Tier 2: ``[{cite_key, claim, span}]`` from author-year text patterns.
 
     A conservative fallback for PDFs with no hyperlinks. Group-aware: a grouped
@@ -117,9 +312,10 @@ def extract_text_citations(text: str) -> list[dict]:
         s = _fold(re.sub(r"[^A-Za-z'’\-]", "", surname))
         if len(s) < 2:
             return
-        claim, span = _sentence_around(text, pos)
+        claim, span = _claim_at(text, pos, breaks)
         if claim:
-            sites.append({"cite_key": f"{s}{year}", "claim": claim, "span": span})
+            sites.append({"cite_key": f"{s}{year}", "claim": claim, "span": span,
+                          "section": section_at(headings or [], pos)})
 
     # Parenthetical groups: ";"-separated citations, each possibly multi-year.
     for mb in _PAREN_BLOCK_RE.finditer(text):
@@ -176,70 +372,33 @@ def _is_two_column(words: list, page_width: float) -> bool:
 
 
 def _sentence_at_rect(words, rect, page_width: float) -> tuple[str, tuple[int, int]]:
-    """Sentence (claim) containing the citation at ``rect``; ``""`` when not found.
+    """Sentence (claim) containing the citation at ``rect`` on one page; ``""`` when not found.
 
     Words are read in the rect's column (only when the page is genuinely two-column),
-    ordered by line (clustered), then the sentence covering the word the rect overlaps
-    is returned (capped + normalized).
+    ordered by line, and the sentence covering the word the rect overlaps most is
+    returned. :func:`extract_link_citations` reads the whole document instead, so a
+    sentence that continues on the next column or page is not cut; this is the one-page
+    form of the same reading.
     """
-    x0, y0, x1, y1 = rect.x0, rect.y0, rect.x1, rect.y1
     if _is_two_column(words, page_width):
         mid = page_width / 2
-        col = 0 if (x0 + x1) / 2 < mid else 1
+        col = 0 if (rect.x0 + rect.x1) / 2 < mid else 1
         cw = _order_reading([w for w in words if (0 if (w[0] + w[2]) / 2 < mid else 1) == col])
     else:
         cw = _order_reading(words)  # single column: read full width, never split mid-line
-    if not cw:
+    best = _covered_word(cw, rect)
+    if best is None:
         return "", (0, 0)
-    offsets: list[int] = []
-    pos = 0
+    offsets, pos = [], 0
     for w in cw:
         offsets.append(pos)
         pos += len(w[4]) + 1
-    text = " ".join(w[4] for w in cw)
-    # The word the link sits on is the one it covers MOST. "The first word it touches"
-    # was wrong: a link box is a point or two taller than its line, grazes the bottom of
-    # the line above, and the citation was paired with the sentence before it — and
-    # then judged "does not support" a claim it was never attached to.
-    def overlap(w) -> float:
-        return max(0.0, min(w[2], x1) - max(w[0], x0)) * max(0.0, min(w[3], y1) - max(w[1], y0))
-
-    best = max(range(len(cw)), key=lambda i: overlap(cw[i]))
-    if overlap(cw[best]) <= 0:
-        return "", (0, 0)
-    ti = best
-    return _sentence_around(text, offsets[ti])
+    return _claim_at(" ".join(w[4] for w in cw), offsets[best])
 
 
-def _sentence_around(text: str, pos: int, window: int = 460) -> tuple[str, tuple[int, int]]:
-    """The sentence containing offset ``pos``, normalized + capped at word boundaries."""
-    lo = max(0, pos - window)
-    hi = min(len(text), pos + window)
-    chunk = text[lo:hi]
-    rel = pos - lo
-    starts = [0] + [m.end() for m in _SENT_SPLIT.finditer(chunk)]
-    ends = [m.start() for m in _SENT_SPLIT.finditer(chunk)] + [len(chunk)]
-    s0, s1 = 0, len(chunk)
-    for st, en in zip(starts, ends, strict=False):
-        if st <= rel <= en:
-            s0, s1 = st, en
-            break
-    raw = chunk[s0:s1]
-    start_off = s0
-    if len(raw) > _MAX_CLAIM_CHARS:
-        half = _MAX_CLAIM_CHARS // 2
-        a = max(0, (rel - s0) - half)
-        b = min(len(raw), a + _MAX_CLAIM_CHARS)
-        if a > 0:  # snap the start forward to a word boundary (never mid-word)
-            sp = raw.find(" ", a)
-            a = sp + 1 if 0 <= sp < b else a
-        if b < len(raw):  # snap the end back to a word boundary
-            sp = raw.rfind(" ", a, b)
-            b = sp if sp > a else b
-        start_off = s0 + a
-        raw = raw[a:b]
-    raw = re.sub(r"(?<=[A-Za-z])-\s+(?=[a-z])", "", raw)  # join line-break hyphenation
-    return _normalize(raw), (lo + start_off, lo + start_off + len(raw))
+def _sentence_around(text: str, pos: int) -> tuple[str, tuple[int, int]]:
+    """The sentence containing offset ``pos``, normalized (see :mod:`.sentences`)."""
+    return _claim_at(text, pos)
 
 
 def _text_under(words: list, rect) -> str:

@@ -84,10 +84,22 @@ class Settings(BaseModel):
         default=None, description="Email for Crossref's polite pool (no key needed; just higher rate limits)."
     )
     s2_api_key: str | None = Field(default=None, description="Semantic Scholar key; absent => S2 source skipped.")
-    openalex_api_key: str | None = Field(default=None, description="OpenAlex key; absent => OpenAlex source skipped.")
+    openalex_api_key: str | None = Field(default=None, description="OpenAlex key (its own daily budget); absent => the keyless budget, shared by every client on the IP.")
     enable_web_search: bool = Field(
-        default=False, description="Gate for last-resort web search/fetch grounding. False => never touch the web."
+        default=True,
+        description="Last-resort web search (a model with web search) for references no index "
+        "placed. Runs only in runs that use a model (the relevance judge on). False => never.",
     )
+    web_search_max_lookups: int = Field(
+        default=50, description="Web lookups allowed per paper (each is one model call)."
+    )
+    web_search_max_uses: int = Field(default=8, description="Searches the model may run in one lookup.")
+    read_scans: bool = Field(
+        default=True,
+        description="Have the model transcribe a cited work's PDF when it is a scan with no text layer "
+        "(only in runs that use a model).",
+    )
+    scan_max_pages: int = Field(default=20, description="Pages of one scanned PDF the model reads.")
 
     # ── Paths ──
     papers_dir: Path = Field(default=Path("papers"), description="Per-paper artifact dir (source, refs, report.json, run.json).")
@@ -189,7 +201,11 @@ def load_settings(env_file: str | Path | None = ".env") -> Settings:
         crossref_mailto=_opt(get("CROSSREF_MAILTO")),
         s2_api_key=_opt(get("S2_API_KEY")),
         openalex_api_key=_opt(get("OPENALEX_API_KEY")),
-        enable_web_search=_as_bool(get("ENABLE_WEB_SEARCH"), False),
+        enable_web_search=_as_bool(get("ENABLE_WEB_SEARCH"), True),
+        web_search_max_lookups=int(get("WEB_SEARCH_MAX_LOOKUPS") or 50),
+        web_search_max_uses=int(get("WEB_SEARCH_MAX_USES") or 8),
+        read_scans=_as_bool(get("READ_SCANS"), True),
+        scan_max_pages=int(get("SCAN_MAX_PAGES") or 20),
         papers_dir=Path(papers),
         chbench_data_dir=Path(chbench),
     )

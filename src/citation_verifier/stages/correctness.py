@@ -30,6 +30,7 @@ import os
 import re
 import unicodedata
 from collections import Counter
+from typing import Any
 
 from .. import venues
 from ..interfaces import Resolver
@@ -39,7 +40,7 @@ from ..schema import CitationRecord, CitedAs, Evidence, Exists, MatchMethod, Res
 _SAME_THRESHOLD = 88.0
 
 
-def fill_correctness(record: CitationRecord, *, resolver: Resolver) -> CitationRecord:
+def fill_correctness(record: CitationRecord, *, resolver: Resolver, web: Any = None) -> CitationRecord:
     """Fill ``exists`` / ``resolved`` / ``metadata_issues`` / ``evidence``.
 
     Defects of the citation itself — an author listed twice, no year, a title that
@@ -50,13 +51,16 @@ def fill_correctness(record: CitationRecord, *, resolver: Resolver) -> CitationR
         record: a record stub (key + ``claim`` + ``cited_as`` populated).
         resolver: any object satisfying the :class:`Resolver` Protocol
             (typically :class:`MultiSourceResolver`).
+        web: an optional :class:`~citation_verifier.grounding.web_lookup.WebLocator`, the
+            last resort for a reference no index placed (and for one whose only candidate
+            was rejected as a different work).
 
     Returns:
         The same record, mutated in place (and also returned for chaining).
         On resolver failure the record is returned with ``error`` set and
         ``exists`` left at ``unresolved``.
     """
-    _resolve_and_compare(record, resolver)
+    _resolve_and_compare(record, resolver, web)
     canonical = list(record.resolved.authors) if record.resolved else None
     defects = [
         d for d in _citation_defects(record.cited_as, canonical) if d not in record.metadata_issues
@@ -66,7 +70,7 @@ def fill_correctness(record: CitationRecord, *, resolver: Resolver) -> CitationR
     return record
 
 
-def _resolve_and_compare(record: CitationRecord, resolver: Resolver) -> CitationRecord:
+def _resolve_and_compare(record: CitationRecord, resolver: Resolver, web: Any = None) -> CitationRecord:
     """:func:`fill_correctness` without the citation's own defects."""
     reference = _reference_string(record)
     if not reference.strip():
@@ -81,17 +85,21 @@ def _resolve_and_compare(record: CitationRecord, resolver: Resolver) -> Citation
         record.exists = Exists.UNRESOLVED
         return record
 
+    via_web = None
     if resolved is None or resolved.match_method is MatchMethod.NONE:
         # No structured match — but a citation can still be a verifiable web/software/
         # system-card object (GitHub repo, model system card). Try the cited URL
-        # directly before abstaining.
+        # directly before abstaining, then the web.
         if _try_direct_url(record):
             return record
-        # Absence is a red flag, not proof of fabrication: abstain.
-        record.exists = Exists.UNRESOLVED
-        record.resolved = resolved
-        record.metadata_issues = [_unresolved_note(resolver)]
-        return record
+        via_web = _web_lookup(web, reference, record)
+        if via_web is None or via_web.resolved is None:
+            # Absence is a red flag, not proof of fabrication: abstain.
+            record.exists = Exists.UNRESOLVED
+            record.resolved = resolved
+            record.metadata_issues = [_unresolved_note(resolver) + _web_note(via_web, resolver)]
+            return record
+        resolved = via_web.resolved
 
     issues = _diff_metadata(record, resolved)
 
@@ -107,19 +115,105 @@ def _resolve_and_compare(record: CitationRecord, resolver: Resolver) -> Citation
         reject = _reject_bad_fuzzy_match(record.cited_as, resolved)
         if reject:
             # The scholarly candidate was wrong, but the cited URL may still be a
-            # live web/software object (e.g. LangChain's GitHub repo) — try it.
+            # live web/software object (e.g. LangChain's GitHub repo) — try it, then
+            # the web, unless the candidate came from the web already.
             if _try_direct_url(record):
                 return record
-            record.exists = Exists.UNRESOLVED
-            record.resolved = None
-            record.metadata_issues = [f"abstained from a weak fuzzy-title match — {reject}"]
-            return record
+            if via_web is None:
+                via_web = _web_lookup(web, reference, record)
+                alt = via_web.resolved if via_web is not None else None
+                if alt is not None and not (
+                    alt.match_method == MatchMethod.FUZZY_TITLE and _reject_bad_fuzzy_match(record.cited_as, alt)
+                ):
+                    resolved, reject = alt, None
+                    issues = _diff_metadata(record, resolved)
+            if reject:
+                record.exists = Exists.UNRESOLVED
+                record.resolved = None
+                record.metadata_issues = [
+                    f"abstained from a weak fuzzy-title match — {reject}" + _web_note(via_web, None)
+                ]
+                return record
+
+    # A record with the cited title whose authors share no name with the citation is kept
+    # as "a real paper credited to the wrong people" — but it is as likely a namesake whose
+    # namesake was simply not among the records the indexes returned (a book's title found
+    # as another group's paper, while the index holding the book was down). The web gets a
+    # second look; a record it finds that the cited authors did write replaces this one.
+    if via_web is None and web is not None and _authors_disjoint(record.cited_as, resolved):
+        second = _web_lookup(web, reference, record)
+        alt = second.resolved if second is not None else None
+        if alt is not None and _authors_agree(record.cited_as, alt) and not (
+            alt.match_method == MatchMethod.FUZZY_TITLE and _reject_bad_fuzzy_match(record.cited_as, alt)
+        ):
+            resolved, via_web = alt, second
+            issues = _diff_metadata(record, resolved)
 
     record.resolved = resolved
     record.exists = Exists.YES
     record.metadata_issues = issues
-    record.evidence = _dedupe_evidence(record.evidence + [_metadata_evidence(resolved)])
+    found = [_metadata_evidence(resolved)]
+    if via_web is not None and via_web.resolved is resolved:
+        found.append(
+            Evidence(
+                kind="web",
+                source="web search",
+                quote=(
+                    "found by web search; the record was then fetched from its index"
+                    if via_web.status == "record"
+                    else (via_web.detail if (via_web.detail or "").startswith("found by web search")
+                          else "found by web search: the work's own page")
+                ),
+                url=resolved.url or (via_web.urls[0] if via_web.urls else None),
+            )
+        )
+    record.evidence = _dedupe_evidence(record.evidence + found)
     return record
+
+
+def _authors_disjoint(cited: CitedAs, resolved: Resolved) -> bool:
+    """The record's first author is not the cited one and no cited author is on its list."""
+    names = _clean_cited_authors(cited.authors or [])
+    authors = [a for a in (resolved.authors or []) if (a or "").strip()]
+    if not names or not authors:
+        return False
+    if _first_author_agrees(cited, authors[0]):
+        return False
+    return not any(_on_author_list(n, authors) for n in names)
+
+
+def _authors_agree(cited: CitedAs, resolved: Resolved) -> bool:
+    """The record's first author is the cited one — for a web page too: its authors are
+    what the page states, not a copy of the citation."""
+    authors = [a for a in (resolved.authors or []) if (a or "").strip()]
+    return bool(authors) and _first_author_agrees(cited, authors[0])
+
+
+def _web_lookup(web: Any, reference: str, record: CitationRecord) -> Any:
+    """The web locator's outcome for this reference, or ``None`` when there is none."""
+    if web is None:
+        return None
+    try:
+        return web.locate(reference, record.cited_as)
+    except Exception:  # noqa: BLE001 — degrade-not-crash
+        return None
+
+
+def _web_note(outcome: Any, resolver: Resolver | None) -> str:
+    """What the web search added to a not-found note ("" when it did not run)."""
+    if outcome is None:
+        return ""
+    if outcome.status == "none":
+        failed_fn = getattr(resolver, "failed_sources", None)
+        complete = not (callable(failed_fn) and list(failed_fn()))
+        return (
+            "; not found on the web either — likely fabricated, check by hand"
+            if complete
+            else "; not found on the web either"
+        )
+    if outcome.status in ("failed", "skipped"):
+        return f"; web search not done — {outcome.detail}" if outcome.detail else ""
+    return ""
 
 
 def _citation_defects(cited: CitedAs, canonical: list[str] | None = None) -> list[str]:
@@ -266,8 +360,12 @@ def _reject_bad_fuzzy_match(cited: CitedAs, candidate: Resolved) -> str | None:
             return f"different author + the citation is a URL/release, not this paper ('{_short(ctitle)}')"
         # (b) a SHORT cited title (≤2 distinctive tokens — "OpenAI o3-mini", "Genie 2")
         #     matches longer unrelated titles as a coincidental substring (o3-mini was
-        #     matched to a pneumonia paper that merely mentions it).
-        if len(_content_tokens(cited.title)) <= 2:
+        #     matched to a pneumonia paper that merely mentions it), and a generic one
+        #     has namesakes: a book's "Deep learning, volume 1" is two words once its
+        #     volume is dropped, and four "Deep Learning" papers by other authors exist.
+        from ..grounding import clean_title  # noqa: PLC0415 — keeps the stage's import light
+
+        if len(_content_tokens(clean_title(cited.title))) <= 2:
             return f"different author on a short cited title (coincidental match) ('{_short(ctitle)}')"
         # (c) a second failing axis: year off >1, OR the titles genuinely diverge.
         if year_gap > 1 or _title_poorly_covered(cited.title, ctitle) or _titles_diverge(cited.title, ctitle):
@@ -332,8 +430,15 @@ def _unresolved_note(resolver: Resolver) -> str:
     strongest hint a reference was invented; the same wording over a run in which two of
     the five were rate-limiting is a hint the run cannot back, and it read identically.
     """
-    sources = getattr(resolver, "sources", ()) or ()
-    where = ", ".join(_SOURCE_NAMES.get(str(s), str(s)) for s in sources)
+    # The sources actually asked — not the configured list: a source the routing skipped,
+    # or one switched off for want of a key, was reported as searched.
+    searched_fn = getattr(resolver, "searched_sources", None)
+    searched = list(searched_fn()) if callable(searched_fn) else []
+    if searched:
+        where = ", ".join(searched)
+    else:
+        sources = getattr(resolver, "sources", ()) or ()
+        where = ", ".join(_SOURCE_NAMES.get(str(s), str(s)) for s in sources)
     failed_fn = getattr(resolver, "failed_sources", None)
     failed = list(failed_fn()) if callable(failed_fn) else []
     if failed:

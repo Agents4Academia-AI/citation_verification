@@ -355,7 +355,10 @@ def test_title_tier_stops_at_the_first_match_whose_author_agrees(monkeypatch):
     calls: list[str] = []
     hit = {"source": "s2", "title": "Attention is all you need",
            "authors": ["Ashish Vaswani", "Noam Shazeer"], "year": 2017,
-           "abstract": "We propose a new simple network architecture, the Transformer."}
+           "abstract": "We propose a new simple network architecture, the Transformer, based "
+                       "solely on attention mechanisms, dispensing with recurrence and convolutions "
+                       "entirely. Experiments on two machine translation tasks show these models to "
+                       "be superior in quality while being more parallelizable."}
 
     def s2_match(title, api_key=None):
         calls.append("s2")
@@ -614,7 +617,9 @@ def _cand(title, authors, year, source="crossref", doi=""):
     from citation_verifier.interfaces import Candidate
 
     return Candidate(source=source, title=title, authors=authors, year=year, doi=doi,
-                     abstract="An abstract, so nothing is fetched to top it up.")
+                     abstract="An abstract long enough to be one, so nothing is fetched to top it "
+                              "up: it states the problem, the method, the data it was tried on and "
+                              "what was found, as an abstract does, in a few sentences of prose.")
 
 
 def test_among_records_of_one_work_the_one_dated_as_cited_wins():
@@ -656,6 +661,7 @@ def test_a_copy_dated_away_from_the_citation_does_not_end_the_search(monkeypatch
             return list(arxiv)
 
         monkeypatch.setattr(paper_lookup, "search_arxiv_by_title", arxiv_by_title)
+        monkeypatch.setattr(paper_lookup, "fetch_semantic_scholar_by_doi", lambda *a, **k: [])
         monkeypatch.setattr(r, "_id_query_steps", lambda reference: [])
         monkeypatch.setattr(r, "_title_query_steps", lambda reference, n=4: [(lambda: [repost], ())])
         monkeypatch.setattr(r, "_fetch", lambda fn, *args: fn(*args))
@@ -694,9 +700,15 @@ def test_an_abbreviated_conference_name_still_routes_to_arxiv():
 # ── the right work, with nothing to read ─────────────────────────────────────────────
 _LEANDOJO = "LeanDojo: Theorem Proving with Retrieval-Augmented Language Models"
 _LEANDOJO_REF = f'Yang, K., Swope, A., Gu, A. "{_LEANDOJO}" NeurIPS 2023'
+# Abstract-length: a line is a placeholder, and is neither read nor borrowed.
+_LEANDOJO_ABSTRACT = (
+    "Large language models have shown promise in proving formal theorems using proof assistants "
+    "such as Lean. However, existing methods are difficult to reproduce or build on, due to private "
+    "code, data, and large compute requirements."
+)
 
 
-def _title_tier(monkeypatch, *, s2=(), crossref=(), arxiv=()):
+def _title_tier(monkeypatch, *, s2=(), crossref=(), arxiv=(), openalex=()):
     """A resolver whose title tier answers from the given rows; returns (resolver, calls)."""
     from citation_verifier.grounding import paper_lookup
     from citation_verifier.grounding.resolver import MultiSourceResolver
@@ -713,6 +725,9 @@ def _title_tier(monkeypatch, *, s2=(), crossref=(), arxiv=()):
     monkeypatch.setattr(paper_lookup, "search_semantic_scholar_match", source("s2", s2))
     monkeypatch.setattr(paper_lookup, "search_crossref_by_fields", source("crossref", crossref))
     monkeypatch.setattr(paper_lookup, "search_arxiv_by_title", source("arxiv", arxiv))
+    monkeypatch.setattr(paper_lookup, "search_openalex_by_title", source("openalex", openalex))
+    for name in ("search_openlibrary", "search_openreview"):
+        monkeypatch.setattr(paper_lookup, name, source(name.removeprefix("search_"), ()))
     for name in ("search_crossref", "search_arxiv", "search_dblp", "search_semantic_scholar",
                  "search_openalex"):
         monkeypatch.setattr(paper_lookup, name, source("broad", ()))
@@ -729,7 +744,7 @@ def test_a_record_with_nothing_to_read_does_not_end_the_search(monkeypatch):
     proceedings = {"source": "crossref", "title": _LEANDOJO, "authors": authors, "year": 2023,
                    "doi": "10.52202/075280-0944"}
     preprint = {"source": "arxiv", "title": _LEANDOJO, "authors": authors, "year": 2023,
-                "arxiv_id": "2306.15626", "abstract": "Large language models have shown promise…"}
+                "arxiv_id": "2306.15626", "abstract": _LEANDOJO_ABSTRACT}
 
     r, calls = _title_tier(monkeypatch, crossref=[proceedings], arxiv=[preprint])
     got = r._resolve_uncached(_LEANDOJO_REF)
@@ -765,7 +780,7 @@ def test_a_publisher_record_borrows_the_preprint_beside_it(monkeypatch):
     proceedings = {"source": "crossref", "title": _LEANDOJO, "authors": authors, "year": 2023,
                    "doi": "10.52202/075280-0944"}
     early = {"source": "arxiv", "title": _LEANDOJO, "authors": authors, "year": 2019,
-             "arxiv_id": "2306.15626", "abstract": "Large language models have shown promise…"}
+             "arxiv_id": "2306.15626", "abstract": _LEANDOJO_ABSTRACT}
     r, _ = _title_tier(monkeypatch, crossref=[proceedings], arxiv=[early])
     got = r._resolve_uncached(_LEANDOJO_REF)
     assert got.source == "crossref" and got.year == 2023

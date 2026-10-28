@@ -200,11 +200,12 @@ export ANTHROPIC_API_KEY=…     # only to use the API instead of the Claude Cod
 |---|---|
 | `ANTHROPIC_API_KEY` | LLM backends via the API instead of your Claude Code subscription. |
 | `S2_API_KEY` | The Semantic Scholar grounding source. |
-| `OPENALEX_API_KEY` | OpenAlex grounding **and** open-access full-text PDF lookup. Keyless works (rate-limited); a key adds the polite pool. |
+| `OPENALEX_API_KEY` | OpenAlex grounding **and** open-access full-text PDF lookup. Keyless works, but draws on a small daily budget shared by every client on the same IP — on a shared server it runs out and OpenAlex answers nothing until midnight UTC. A key has its own budget. |
 | `UNPAYWALL_EMAIL` | Unpaywall as an open-access full-text source (needs a contact email, no key). |
 | `CONTACT_EMAIL` | Polite `User-Agent` / OpenAlex `mailto` for full-text lookups. |
 | `CROSSREF_MAILTO` | Crossref's polite pool (higher rate limits, no key). |
-| `GOOGLE_API_KEY` + `GOOGLE_CSE_ID` | Keys the last-resort open-web search fallback (Google CSE; else keyless DuckDuckGo). The fallback itself is **off** unless `ENABLE_WEB_SEARCH=true` — arXiv/OpenAlex/Unpaywall/DOI lookups run regardless. |
+| `ENABLE_WEB_SEARCH` / `WEB_SEARCH_MAX_LOOKUPS` / `WEB_SEARCH_MAX_USES` | Last-resort web search for references no index found (on by default; only in runs that use a model; at most 50 lookups per paper, each up to 8 searches, roughly $0.05–0.40 a lookup). The model only finds pages; the code checks them. `false` turns it off. |
+| `READ_SCANS` / `SCAN_MAX_PAGES` | When a cited work's PDF is a scan (pages are images, no text layer), the bulk model transcribes it so the relevance judge can read it (on by default; only in runs that use a model; at most 20 pages per scan, about half a cent a page with the default bulk model; read once, then cached). `false` turns it off. |
 | `DISCORD_BOT_TOKEN` | Running the Discord bot (`cverify-bot` → `/check`). |
 
 The full template — incl. model routing (`MODEL_BULK`/`MODEL_JUDGE`), the cost

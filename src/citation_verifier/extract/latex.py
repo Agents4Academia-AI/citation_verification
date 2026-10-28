@@ -45,6 +45,7 @@ from typing import Any
 
 from ..interfaces import PaperSource
 from ..schema import CitationRecord, CitedAs, Claim, Paper
+from .sentences import sentence_span
 
 __all__ = [
     "LatexExtractor", "make_claim_id", "load_references", "compiled_cite_keys",
@@ -120,6 +121,14 @@ def parse_bib(bib_path: str | Path) -> dict[str, CitedAs]:
     if not path.is_file():
         return {}
     try:
+        return parse_bib_text(path.read_text(encoding="utf-8", errors="replace"))
+    except Exception:
+        return {}
+
+
+def parse_bib_text(text: str) -> dict[str, CitedAs]:
+    """:func:`parse_bib` over BibTeX source held in a string. Fails soft to ``{}``."""
+    try:
         import bibtexparser  # lazy: only needed on the .bib path
         from bibtexparser.bparser import BibTexParser
     except Exception:
@@ -127,7 +136,7 @@ def parse_bib(bib_path: str | Path) -> dict[str, CitedAs]:
     try:
         parser = BibTexParser(common_strings=True)
         parser.ignore_nonstandard_types = False
-        db = bibtexparser.loads(path.read_text(encoding="utf-8", errors="replace"), parser=parser)
+        db = bibtexparser.loads(text, parser=parser)
     except Exception:
         return {}
 
@@ -297,25 +306,28 @@ def decode_tex_accents(text: str) -> str:
     return _TEX_LETTER_RE.sub(lambda m: _TEX_LETTERS.get(m.group(1), m.group(1)), text)
 
 
-def _strip_tex(text: str) -> str:
+def _strip_tex(text: str, *, keep_stop: bool = False) -> str:
     """Crudely de-TeX a reference body / claim sentence into readable prose.
 
     Drops cite-commands and section-headings (argument included), unwraps common
     text-formatting commands keeping their content, then removes any remaining
-    bare commands and brace/format noise.
+    bare commands and brace/format noise. ``keep_stop`` keeps a sentence's closing
+    punctuation (a reference body loses its trailing period; a claim should not).
     """
     # Before any command-dropping: an accent is a command whose argument is part of a
     # word, and removing it silently corrupts the name it belongs to.
     text = decode_tex_accents(text)
     text = _CITE_CMD_RE.sub(" ", text)
     text = _SECTION_CMD_RE.sub(" ", text)
+    text = re.sub(r"\\(?:label|begin|end)\s*\{[^}]*\}", " ", text)  # no "sec:intro" residue
     text = re.sub(r"\\newblock", " ", text)
     text = re.sub(r"\\(emph|textit|textbf|texttt|url|href)\s*\{([^}]*)\}", r"\2", text)
     text = re.sub(r"\\&", "&", text)
     text = re.sub(r"\\[a-zA-Z]+\*?", " ", text)  # drop remaining commands
     text = text.replace("~", " ")  # LaTeX tie ~ is a non-breaking space, NOT a deletion
     text = re.sub(r"[{}]", "", text)
-    return re.sub(r"\s+", " ", text).strip(" .,")
+    text = re.sub(r"\s+", " ", text)
+    return text.strip(" ,").lstrip(".") if keep_stop else text.strip(" .,")
 
 
 def _is_initials_only(segment: str) -> bool:
@@ -551,10 +563,33 @@ def load_references(source: PaperSource) -> dict[str, CitedAs]:
     parsed_bbls = sorted((parse_bbl(b) for b in bbls), key=len)
     for entries in parsed_bbls:
         refs.update(entries)
+    refs.update(parse_embedded_bib(source.tex_dir))
     for bib in bibs:
         # .bib is richer (structured authors/venue); let it override .bbl/inline.
         refs.update(parse_bib(bib))
     return refs
+
+
+# A .bib file written out by the document itself: ``\begin{filecontents}{refs.bib} … \end``.
+_FILECONTENTS_BIB_RE = re.compile(
+    r"\\begin\{filecontents\*?\}(?:\[[^\]]*\])?\{[^}]*\.bib\}(.*?)\\end\{filecontents\*?\}", re.DOTALL
+)
+
+
+def parse_embedded_bib(tex_dir: str | Path | None) -> dict[str, CitedAs]:
+    """References from ``.bib`` files a ``.tex`` writes itself with ``filecontents``.
+
+    A single-file paper — every one an AI-scientist pipeline produces — carries its
+    bibliography that way and ships no ``.bib`` or ``.bbl``; without this its references
+    are invisible, every citation has an empty ``cited_as``, and nothing can be resolved.
+    """
+    out: dict[str, CitedAs] = {}
+    if not tex_dir:
+        return out
+    for _path, text in _read_tex_files(tex_dir):
+        for body in _FILECONTENTS_BIB_RE.findall(text):
+            out.update(parse_bib_text(body))
+    return out
 
 
 def compiled_cite_keys(source: PaperSource) -> set[str]:
@@ -647,21 +682,6 @@ _TABLE_ENV_RE = re.compile(
 # Set on a record (extraction) when its \cite sits inside a table; the relevance
 # stage / backend leaves such records inconclusive and surfaces this note.
 TABLE_NOTE = "cited inside a table — relevance not assessed"
-# Sentence boundary: a period/!/? followed by whitespace + capital/backslash, applied to
-# lightly-cleaned text — but never after an abbreviation. The backslash in the lookahead
-# is what lets a sentence open with a command, and it is also what follows "et al." in
-# the most common citing construction there is: ``Smith et al. \\cite{smith} propose …``
-# was cut at "al.", so the claim attached to the citation read "propose …" with its
-# subject — the very thing being attributed — left in the previous sentence.
-_SENT_SPLIT = re.compile(
-    r"(?<=[.!?])"
-    r"(?<!\bal\.)(?<!e\.g\.)(?<!i\.e\.)(?<!\bcf\.)(?<!\bvs\.)(?<!etc\.)(?<!\bresp\.)"
-    r"(?<!\bFig\.)(?<!\bfig\.)(?<!Figs\.)(?<!\bEq\.)(?<!\bEqs\.)(?<!\bSec\.)(?<!\bTab\.)"
-    r"(?<!\bRef\.)(?<!Refs\.)(?<!\bAlg\.)(?<!\bApp\.)(?<!\bapprox\.)"
-    r"\s+(?=[A-Z\\])"
-)
-
-
 def _table_spans(text: str) -> list[tuple[int, int]]:
     """Char spans of table-float environments (a ``\\cite`` inside one is a table cell)."""
     return [(m.start(), m.end()) for m in _TABLE_ENV_RE.finditer(text)]
@@ -804,26 +824,120 @@ def _section_at(text: str, pos: int) -> str | None:
     return None
 
 
-def _sentence_around(text: str, pos: int, window: int = 600) -> tuple[str, tuple[int, int]]:
+def _sentence_around(
+    text: str, pos: int, render: Any = None
+) -> tuple[str, tuple[int, int]]:
     """Extract the sentence containing offset ``pos`` and its char span.
+
+    The sentence is found by the shared rules (:mod:`.sentences`) inside the stretch of
+    source between the structural commands around ``pos``: a ``\\section``, an ``\\item``
+    or the start or end of an environment is a boundary no sentence crosses — read across,
+    "\\end{abstract} \\section{Introduction}\\label{sec:intro} Temperature scaling …" was
+    one claim. Display maths is not a boundary: a sentence runs on through its equation.
+
+    ``render`` rewrites the sentence's source before it is de-TeX'd — the extractor passes
+    :func:`render_citations`, so a citation reads as it does in the compiled paper instead of
+    being deleted along with the subject of the sentence it is in.
 
     Returns a lightly de-TeX'd sentence string and the ``(start, end)`` span in
     the ORIGINAL ``text`` (so spans are stable and comparable).
     """
-    lo = max(0, pos - window)
-    hi = min(len(text), pos + window)
-    chunk = text[lo:hi]
-    rel = pos - lo
-    # Find sentence boundaries within the chunk around the relative position.
-    starts = [0] + [m.end() for m in _SENT_SPLIT.finditer(chunk)]
-    ends = [m.start() for m in _SENT_SPLIT.finditer(chunk)] + [len(chunk)]
-    s_start, s_end = 0, len(chunk)
-    for st, en in zip(starts, ends, strict=False):
-        if st <= rel <= en:
-            s_start, s_end = st, en
+    lo, hi = 0, len(text)
+    for m in _STRUCTURE_RE.finditer(text, max(0, pos - 4000), min(len(text), pos + 4000)):
+        if _MATH_ENV_RE.match(m.group(0)):
+            continue
+        if m.end() <= pos:
+            lo = m.end()
+        elif m.start() >= pos:
+            hi = m.start()
             break
-    sentence = _strip_tex(chunk[s_start:s_end])
-    return sentence, (lo + s_start, lo + s_end)
+    start, end = sentence_span(text[lo:hi], pos - lo)
+    raw = text[lo + start : lo + end]
+    if render is not None:
+        raw = render(raw)
+    return _strip_tex(raw, keep_stop=True), (lo + start, lo + end)
+
+
+# How each citation command prints, author-year: natbib's and biblatex's narrative forms,
+# their bare forms, the author or year alone; everything else is parenthetical.
+_NARRATIVE_CITES = frozenset({"citet", "textcite", "textcites", "citets"})
+_BARE_CITES = {"citealt": " ", "citealp": ", "}
+_AUTHOR_CITES = frozenset({"citeauthor"})
+_YEAR_CITES = {"citeyear": False, "citeyearpar": True}
+
+
+def render_citations(text: str, references: dict[str, CitedAs]) -> str:
+    r"""Write each citation command in ``text`` out as a reader sees it in the paper.
+
+    ``\citet{guo2017}`` becomes "Guo et al. (2017)" and ``\citep{a,b}`` "(A, 2019; B and C,
+    2020)", from the bibliography's authors and year. Deleted instead, they took the subject
+    of the sentence with them: "\citet{guo2017} observe that …" was judged as "observe that …".
+    A key with no bibliography entry is written as the key, in brackets.
+    """
+
+    def label(key: str) -> tuple[str, str]:
+        ref = references.get(key)
+        names = [n for n in (_surname(a) for a in (ref.authors if ref else [])) if n]
+        if not names:
+            who = f"[{key}]"
+        elif len(names) == 1:
+            who = names[0]
+        elif len(names) == 2:
+            who = f"{names[0]} and {names[1]}"
+        else:
+            who = f"{names[0]} et al."
+        return who, str(ref.year) if ref and ref.year else "n.d."
+
+    def one(cm: re.Match[str], keys: list[str]) -> str:
+        name = cm.group(1).lower()
+        items = [label(k) for k in keys]
+        if name in _NARRATIVE_CITES:
+            return "; ".join(f"{who} ({year})" for who, year in items)
+        if name in _BARE_CITES:
+            return "; ".join(f"{who}{_BARE_CITES[name]}{year}" for who, year in items)
+        if name in _AUTHOR_CITES:
+            return "; ".join(who for who, _ in items)
+        if name in _YEAR_CITES:
+            years = ", ".join(year for _, year in items)
+            return f"({years})" if _YEAR_CITES[name] else years
+        return "(" + "; ".join(f"{who}, {year}" for who, year in items) + ")"
+
+    out: list[str] = []
+    pos = 0
+    for cm in _CITE_RE.finditer(text):
+        if cm.start() < pos or cm.group(1).lower() in _NOT_A_CITATION:
+            continue
+        groups, end = [cm.group(2)], cm.end()
+        if cm.group(1).lower().endswith("s"):  # multicite
+            while (more := _MORE_CITE_GROUP_RE.match(text, end)) is not None:
+                groups.append(more.group(1))
+                end = more.end()
+        keys = [k.strip() for g in groups for k in g.split(",") if k.strip() and _CITE_KEY_RE.fullmatch(k.strip())]
+        if not keys:
+            continue
+        out.append(text[pos : cm.start()])
+        out.append(one(cm, keys))
+        pos = end
+    out.append(text[pos:])
+    return "".join(out)
+
+
+def _surname(author: str) -> str:
+    """'Guo, Chuan' / 'Chuan Guo' -> 'Guo'; '' for 'others' and the like."""
+    a = decode_tex_accents(re.sub(r"[{}]", "", author or "")).strip()
+    if not a or a.lower() in {"others", "et al.", "et al"}:
+        return ""
+    if "," in a:
+        return a.split(",", 1)[0].strip()
+    return a.split()[-1].strip(".")
+
+
+# Commands that delimit a stretch of prose, with their argument.
+_STRUCTURE_RE = re.compile(
+    r"\\(?:section|subsection|subsubsection|chapter|paragraph|subparagraph)\*?\s*(?:\[[^\]]*\])?\s*\{[^}]*\}"
+    r"|\\(?:begin|end)\s*\{[^}]*\}(?:\[[^\]]*\])?|\\item\b(?:\s*\[[^\]]*\])?|\\maketitle\b"
+)
+_MATH_ENV_RE = re.compile(r"\\(?:begin|end)\s*\{(?:equation|align|gather|multline|eqnarray|math|displaymath|split|cases)\*?\}")
 
 
 # ───────────────────────────────────────────────────────────────
@@ -970,7 +1084,7 @@ class LatexExtractor:
                 if not keys:
                     continue
                 section = _section_at(text, pos)
-                sentence, span = _sentence_around(text, pos)
+                sentence, span = _sentence_around(text, pos, render=lambda raw: render_citations(raw, references))
                 in_table = _in_table(table_spans, pos)
                 for cite_key in keys:
                     claim_id = make_claim_id(source.paper_id, section, span, cite_key)

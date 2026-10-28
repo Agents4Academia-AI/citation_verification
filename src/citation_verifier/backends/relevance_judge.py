@@ -7,12 +7,14 @@ cited paper supports the SPECIFIC claim it is attached to, judging ONLY from
 retrieved text — never model memory:
 
   - **L0** — the cited paper's abstract (always available from grounding).
-  - **L1** — abstract + the cited paper's Introduction, fetched best-effort when the
-    paper is on arXiv (degrades to L0 on any failure).
+  - **L1** — abstract + the cited paper's Introduction, read from its full text through
+    every channel the project has (arXiv, the record's link and the PDF it leads to, the
+    DOI's open-access copy; a scan is read by a model when the run installs a reader).
+    With no abstract and no Introduction, the opening of the text stands in.
 
-No L2 (deep full-text retrieval): locating a paraphrased passage needs semantic
-retrieval — out of scope. When the abstract(+intro) lacks the specific claimed
-evidence, the judge HONESTLY abstains (`partial`/`inconclusive`) instead of guessing.
+A verdict the first pass could not settle is re-judged on the full text by
+:func:`citation_verifier.stages.relevance.fill_relevance_batch` (the whole paper when it
+is short enough). With no text at all, the judge abstains and says what was tried.
 
 **Two transports (chosen by auth).** The judge needs an LLM but reaches it two
 ways:
@@ -52,6 +54,7 @@ from typing import Any
 
 from ..config import apply_auth
 from ..errors import ModelUnavailable
+from ..grounding.paper_lookup import substantive_abstract as _substantive_abstract
 from ..interfaces import RunUsage
 from ..schema import ModelTier, Priority, SupportsClaim
 from ..stages.relevance import RelevanceVerdict
@@ -66,6 +69,8 @@ _UNAVAILABLE_TEXT = re.compile(
     r"please run /login|credit balance is too low"
 )
 _INTRO_CAP = 2500
+# What a first-pass verdict rested on, by evidence level.
+_BASIS = {"L1": "abstract + introduction", "OPEN": "the opening of the cited work's text"}
 _BATCH_SIZE = 40  # citations judged per LLM call (amortizes per-call overhead)
 _CHUNK_CONCURRENCY = 4  # chunks judged in parallel (bounded to respect rate limits)
 _INTRO_CONCURRENCY = 8  # arXiv intro fetches in flight at once (pure HTTP)
@@ -128,8 +133,9 @@ class LLMRelevanceJudge:
         )
         self.calls = 0  # number of LLM invocations (= chunks)
         self.usage = RunUsage(backend="agentic", model=self.model)
-        # Detail claims (method/dataset/metric/result/config) that come back partial/
-        # inconclusive on abstract+intro are escalated to full-text and re-judged once.
+        # Single-record calls only (``__call__``): detail claims (method/dataset/metric/
+        # result/config) that come back partial/inconclusive on abstract+intro are re-judged
+        # once on full-text excerpts. The batched path leaves this to its caller.
         self.escalate_full_text = bool(_setting(settings, "escalate_full_text", True))
         # Cost cap: fetch full text for at most this many distinct citations per paper
         # (the highest-ROI ones — most pending detail claims first). <=0 = unlimited.
@@ -138,7 +144,7 @@ class LLMRelevanceJudge:
         # Guards usage/calls accumulation and the intro/full-text caches across threads.
         self._lock = threading.Lock()
         self._intro_cache: dict[str, str] = {}  # arXiv stem -> intro text ("" if none)
-        self._ft_cache: dict[str, str] = {}  # full-text key -> text ("" if none)
+        self._ft_cache: dict[str, Any] = {}  # full-text key -> FullTextResult
         self._client: Any = None  # lazily-built anthropic client (messages mode)
         # Why the model cannot be reached, once a call has said so (expired login,
         # rejected key, no credit). Set once; every later call then fails at once instead
@@ -164,7 +170,14 @@ class LLMRelevanceJudge:
         resolved_title: str = "",
         resolved: Any = None,
     ) -> RelevanceVerdict:
-        return self.judge_batch([{"claim": claim, "abstract": abstract, "resolved": resolved}])[0]
+        items = [{"claim": claim, "abstract": abstract, "resolved": resolved}]
+        out = self.judge_batch(items)
+        # This single-record seam has no stage-level full-text pass, so the judge runs its
+        # own, on excerpts. The batched path does not: fill_relevance_batch re-judges on
+        # the whole paper, and an excerpt verdict after it would overwrite that one.
+        if self.escalate_full_text and not self.unavailable:
+            self._escalate_full_text(items, out)
+        return out[0]
 
     # ── batched entry: GROUPED BY CITATION (evidence sent once per cite) ──
     def judge_batch(self, items: list[dict]) -> list[RelevanceVerdict]:
@@ -192,7 +205,10 @@ class LLMRelevanceJudge:
             grp = groups.get(ck)
             if grp is None:
                 evidence, level = self._assemble_evidence(it.get("abstract") or "", it.get("resolved"))
-                grp = groups[ck] = {"evidence": evidence, "members": [], "level": level}
+                grp = groups[ck] = {
+                    "evidence": evidence, "members": [], "level": level,
+                    "abstract": it.get("abstract") or "", "resolved": it.get("resolved"),
+                }
                 order.append(ck)
             grp["members"].append((idx, it.get("claim_id") or str(idx), it.get("claim") or ""))
 
@@ -204,45 +220,107 @@ class LLMRelevanceJudge:
             if groups[ck]["evidence"].strip():
                 todo.append(ck)
             else:
+                why = self._no_text_reason(groups[ck]["abstract"], groups[ck]["resolved"])
                 for idx, _cid, _c in groups[ck]["members"]:
-                    verdicts[idx] = _abstain("no abstract or introduction to judge from")
+                    verdicts[idx] = _abstain(why)
 
         # Chunk by CITATION; one LLM call per chunk, chunks judged concurrently.
         # Batched by count AND by size: a citation's evidence can now be its whole paper,
         # and forty of those are not one request.
-        chunk_lists = list(
-            _chunks_by_budget(todo, lambda ck: len(groups[ck]["evidence"]), self.batch_size, _BATCH_CHARS)
-        )
-        results = _parallel_map(
-            chunk_lists,
-            lambda cks: self._judge_citation_chunk([(ck, groups[ck]) for ck in cks]),
-            self.chunk_concurrency,
-        )
-        for cks, got in zip(chunk_lists, results, strict=False):
-            got = got or {}
-            for ck in cks:
-                per_claim = got.get(ck, {})
-                for idx, cid, _c in groups[ck]["members"]:
-                    verdicts[idx] = per_claim.get(cid) or _abstain(
-                        f"not judged — the model could not be reached ({self.unavailable})"
-                        if self.unavailable else "batch judge returned no verdict"
-                    )
-                    if groups[ck].get("level") == "L1" and verdicts[idx] is not None:
-                        verdicts[idx].basis = "abstract + introduction"
+        def judge(cks_wanted: list[str]) -> dict[str, dict[str, RelevanceVerdict]]:
+            chunk_lists = list(
+                _chunks_by_budget(cks_wanted, lambda ck: len(groups[ck]["evidence"]), self.batch_size, _BATCH_CHARS)
+            )
+            results = _parallel_map(
+                chunk_lists,
+                lambda cks: self._judge_citation_chunk([(ck, groups[ck]) for ck in cks]),
+                self.chunk_concurrency,
+            )
+            got: dict[str, dict[str, RelevanceVerdict]] = {}
+            for part in results:
+                for ck, per_claim in (part or {}).items():
+                    got.setdefault(ck, {}).update(per_claim)
+            return got
 
-        out = [v if v is not None else _abstain("no verdict") for v in verdicts]
-        # Second pass: detail claims still partial/inconclusive escalate to full text.
-        if self.escalate_full_text and not self.unavailable:
-            self._escalate_full_text(items, out)
-        return out
+        def unanswered(got: dict, cks: list[str]) -> list[str]:
+            return [
+                ck for ck in cks
+                if any(cid not in got.get(ck, {}) for _i, cid, _c in groups[ck]["members"])
+            ]
+
+        got = judge(todo)
+        # A chunk whose reply could not be read, or that left claims out, is asked once
+        # more for what is missing: a malformed reply to one call is not a finding about
+        # the citations in it.
+        missing = unanswered(got, todo)
+        if missing and not self.unavailable:
+            again = judge(missing)
+            for ck in missing:
+                got[ck] = {**again.get(ck, {}), **got.get(ck, {})}
+        for ck in todo:
+            per_claim = got.get(ck, {})
+            for idx, cid, _c in groups[ck]["members"]:
+                verdicts[idx] = per_claim.get(cid) or _abstain(
+                    f"not judged — the model could not be reached ({self.unavailable})"
+                    if self.unavailable else "batch judge returned no verdict"
+                )
+                basis = _BASIS.get(groups[ck].get("level") or "")
+                if basis and verdicts[idx] is not None:
+                    verdicts[idx].basis = basis + self._source_note(groups[ck]["resolved"])
+
+        # No full-text pass here: the caller (fill_relevance_batch) re-judges what this
+        # pass leaves uncertain on the whole paper. Running the excerpt pass here as well
+        # replaced that whole-paper verdict with one formed on three short excerpts.
+        return [v if v is not None else _abstain("no verdict") for v in verdicts]
 
     # ── evidence (L0 / L1) ───────────────────────────────────────────
     def _assemble_evidence(self, abstract: str, resolved: Any) -> tuple[str, str]:
         text = (abstract or "").strip()
+        if not _substantive_abstract(text, _title_of(resolved)):
+            # A series' boilerplate is a placeholder, not an abstract: "This paper presents
+            # research carried out at CIRANO and aims at encouraging discussion and comment."
+            # was all one record carried, and the judge, reading it as off-topic evidence,
+            # said the paper "does not support" three claims it had never seen. A short
+            # abstract that is about the work is kept.
+            text = ""
         intro = self._intro_for(resolved)
         if intro:
             return ((text + "\n\n[Introduction]\n" + intro).strip(), "L1")
+        if not text:
+            # No abstract and no section headed Introduction — a short report, a book
+            # chapter, a transcribed scan: its opening is what it says it is about.
+            opening = re.sub(r"\s+", " ", self._full_text_for(resolved) or "").strip()
+            if opening:
+                cut = opening[:_INTRO_CAP] + ("…" if len(opening) > _INTRO_CAP else "")
+                return ("[Opening of the text]\n" + cut, "OPEN")
         return (text, "L0")
+
+    def _no_text_reason(self, abstract: str, resolved: Any) -> str:
+        """Why a citation has nothing to judge from: the record's abstract, then each
+        full-text channel asked and what it gave (read from the per-run cache, so no
+        fetch is repeated)."""
+        has = bool((abstract or "").strip())
+        head = (
+            "the record's abstract is a placeholder, not about the work" if has
+            else "the record has no abstract"
+        )
+        if resolved is None:
+            return f"no text of the cited work to judge from: {head}, and nothing identifies the work to fetch it"
+        with self._lock:
+            got = self._ft_cache.get(_paper_key(resolved))
+        tried = "; ".join(getattr(got, "tried", ()) or ())
+        return f"no text of the cited work to judge from: {head}" + (
+            f"; full text not found — {tried}" if tried else ""
+        )
+
+    def _source_note(self, resolved: Any) -> str:
+        """What qualifies the full text the verdict rests on — a publisher's preview (the
+        first pages only), a model's transcription of a scan — or ``""``."""
+        from ..grounding.fulltext import source_notes  # noqa: PLC0415
+
+        with self._lock:
+            got = self._ft_cache.get(_paper_key(resolved)) if resolved is not None else None
+        return source_notes(getattr(got, "source", "") or "")
 
     def _intro_for(self, resolved: Any) -> str:
         """The cited paper's Introduction (L1 evidence), from its full text.
@@ -365,22 +443,26 @@ class LLMRelevanceJudge:
                         verdicts[idx] = nv
 
     def _full_text_for(self, resolved: Any) -> str:
-        """Cached full text for a resolved paper, through the project's whole cascade."""
-        from ..grounding.fulltext import full_text_of  # noqa: PLC0415
+        """Cached full text for a resolved paper, through the project's whole cascade.
+
+        The cache keeps the whole result — its provenance, or what was tried when there is
+        no text — for the abstain reason and the basis label.
+        """
+        from ..grounding.fulltext import FullTextResult, full_text_with_trail  # noqa: PLC0415
 
         key = _paper_key(resolved)
         if not key:
             return ""
         with self._lock:
             if key in self._ft_cache:
-                return self._ft_cache[key]
+                return self._ft_cache[key].text
         try:
-            text = full_text_of(resolved) or ""
-        except Exception:  # noqa: BLE001 — fail soft: the abstract still stands
-            text = ""
+            got = full_text_with_trail(resolved)
+        except Exception as exc:  # noqa: BLE001 — fail soft: the abstract still stands
+            got = FullTextResult("", tried=(f"fetching failed ({type(exc).__name__})",))
         with self._lock:
-            self._ft_cache[key] = text
-        return text
+            self._ft_cache[key] = got
+        return got.text
 
     # ── one chunk of CITATIONS -> {cite_key: {claim_id: verdict}} ─────
     def _judge_citation_chunk(
@@ -501,6 +583,8 @@ class LLMRelevanceJudge:
         return "".join(out)
 
 
+
+
 def _judgement_options(sdk: Any, system: str, model: str) -> Any:
     """Agent-SDK options for ONE answer from the prompt alone.
 
@@ -594,6 +678,15 @@ _GROUP_SYSTEM = (
 # ───────────────────────────────────────────────────────────────
 # Concurrency (I/O-bound fan-out; stdlib only)
 # ───────────────────────────────────────────────────────────────
+def _title_of(resolved: Any) -> str:
+    """The resolved record's title, whether it is a ``Resolved`` or its dict form."""
+    if resolved is None:
+        return ""
+    if isinstance(resolved, dict):
+        return str(resolved.get("title") or "")
+    return str(getattr(resolved, "title", "") or "")
+
+
 def _parallel_map(items: list, fn, max_workers: int) -> list:
     """Run ``fn`` over ``items`` concurrently (I/O-bound); failures map to ``None``.
 
@@ -794,26 +887,39 @@ def _parse_group_verdicts(text: str) -> dict[str, dict[str, RelevanceVerdict]]:
     echoing its ``cite_key`` and carrying one verdict per ``claim_id``. Fail-soft:
     a garbled chunk yields ``{}`` (callers then abstain); a citation/claim missing
     its id is skipped (that claim abstains).
+
+    The citation objects are read wherever they stand, not only inside a well-formed
+    array: a reply that dropped the opening ``[`` used to be read from the first bracket
+    it did contain — one citation's list of claims — and every citation of the chunk came
+    back "no verdict".
     """
-    blob = _first_json(text, "[", "]")
     out: dict[str, dict[str, RelevanceVerdict]] = {}
-    if not blob:
-        return out
-    try:
-        rows = json.loads(blob)
-    except json.JSONDecodeError:
-        return out
-    if not isinstance(rows, list):
-        return out
-    for row in rows:
-        if not isinstance(row, dict) or not isinstance(row.get("cite_key"), str):
-            continue
+    for row in _citation_objects(text):
         per_claim: dict[str, RelevanceVerdict] = {}
         for cl in row.get("claims") or []:
             if isinstance(cl, dict) and isinstance(cl.get("claim_id"), str):
                 per_claim[cl["claim_id"]] = _verdict_from_row(cl)
         out[row["cite_key"]] = per_claim
     return out
+
+
+def _citation_objects(text: str) -> list[dict]:
+    """Every JSON object in ``text`` that carries a ``cite_key``, outermost first."""
+    decoder = json.JSONDecoder()
+    rows: list[dict] = []
+    text = text or ""
+    pos = text.find("{")
+    while pos != -1:
+        try:
+            value, end = decoder.raw_decode(text, pos)
+        except json.JSONDecodeError:
+            value, end = None, pos + 1
+        if isinstance(value, dict) and isinstance(value.get("cite_key"), str):
+            rows.append(value)
+            pos = text.find("{", end)  # its claims are inside it; skip past them
+        else:
+            pos = text.find("{", pos + 1)
+    return rows
 
 
 def _coerce(enum_cls: Any, value: Any, default: Any) -> Any:

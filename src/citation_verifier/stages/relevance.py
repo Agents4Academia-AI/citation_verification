@@ -274,8 +274,11 @@ def fill_relevance_batch(
         rec.model_tier = verdict.model_tier
         if verdict.justification:
             if pos in escalated:
-                sec = escalated[pos]
-                basis = f"full text §{sec}" if sec else "full text"
+                from ..grounding.fulltext import PREVIEW_LABEL  # noqa: PLC0415
+
+                sec, notes = escalated[pos]
+                what = "the cited work's first pages" if PREVIEW_LABEL in notes else "full text"
+                basis = (f"{what} §{sec}" if sec else what) + notes
             else:
                 basis = getattr(verdict, "basis", None) or "abstract only"
             note = f"(based on {basis}) {verdict.justification}"
@@ -343,7 +346,7 @@ _WHOLE_PAPER_CHARS = 100_000
 
 def _escalate_to_full_text(
     records: list[CitationRecord], verdicts: list, judge_batch
-) -> tuple[list, dict[int, str]]:
+) -> tuple[list, dict[int, tuple[str, str]]]:
     """Stage 2: re-judge abstract-uncertain records against the cited paper's full text.
 
     Escalates the verdicts the abstract can't be trusted on — ``inconclusive``,
@@ -351,19 +354,18 @@ def _escalate_to_full_text(
     ``partial`` on a methods/data/results claim — by fetching the cited paper's full
     text, selecting the few claim-relevant chunks, and re-judging them in one batched
     call. A clear abstract-level ``supports`` is terminal and is not escalated.
-    Returns the (mutated) verdict list plus ``{pos: section_heading}`` for every record
-    re-judged on full text (for the basis label + provenance). Fail-soft: a record with
+    Returns the (mutated) verdict list plus ``{pos: (section_heading, source_notes)}`` for
+    every record re-judged on full text (for the basis label + provenance). Fail-soft: a record with
     no id / no fetchable text / a judge error keeps its Stage-1 verdict.
     """
     from ..grounding.fulltext import (
+        PREVIEW_LABEL,
         FullTextResult,
-        fetch_full_text_from_url,
-        fetch_full_text_via_search_with_source,
-        fetch_full_text_with_source,
+        full_text_with_trail,
         select_evidence_chunks,
+        source_notes,
         split_sections,
     )
-    from ..grounding.oa_fulltext import fulltext_by_doi_with_source
 
     # fetch each cited paper at most once per run; value carries text + provenance
     fulltext_cache: dict[str, FullTextResult] = {}
@@ -387,19 +389,19 @@ def _escalate_to_full_text(
         )
         if not escalate:
             continue
-        # Full-text source, by precision/cost (each cited paper fetched once):
+        # Full-text source, by precision/cost (each cited paper fetched once), through
+        # the same cascade the judge reads the introduction from:
         #   1. arXiv e-print/HTML/PDF by id;
-        #   2. an open-access PDF URL (S2's openAccessPdf, on resolved.url);
+        #   2. the record's link — a PDF, or a page that links the work's PDF;
         #   3. the open-access cascade by DOI (OpenAlex / Unpaywall / landing page);
-        #   4. a web search for a free, title-verified PDF (key-gated) — the
-        #      fallback for off-arXiv papers whose OA PDF (if any) wasn't fetchable.
+        #   4. a web search for a free, title-verified PDF (when a search is wired).
+        # A scan is read by a model when the run installed a reader.
         res = rec.resolved
         if not res:
             continue
-        arxiv = res.arxiv_id
         cited_title = res.title or rec.cited_as.title or ""
         key = (
-            arxiv
+            res.arxiv_id
             or res.url
             or (f"doi:{res.doi}" if res.doi else "")
             or (f"search:{cited_title}" if cited_title else "")
@@ -407,24 +409,25 @@ def _escalate_to_full_text(
         if not key:
             continue
         if key not in fulltext_cache:
-            if arxiv:
-                ftr = fetch_full_text_with_source(arxiv)
-            elif res.url:
-                ftr = FullTextResult(fetch_full_text_from_url(res.url), "resolved_url", res.url)
-            else:
-                ftr = FullTextResult("")
-            if not ftr and res.doi:
-                ftr = fulltext_by_doi_with_source(res.doi)
-            if not ftr and cited_title:
-                ftr = fetch_full_text_via_search_with_source(cited_title, year=res.year)
-            fulltext_cache[key] = ftr
+            try:
+                fulltext_cache[key] = full_text_with_trail(res)
+            except Exception:  # noqa: BLE001 — fail soft: the stage-1 verdict stands
+                fulltext_cache[key] = FullTextResult("")
         ftr = fulltext_cache[key]
         if not ftr:
             continue
         sections = split_sections(ftr.text)
         if len(ftr.text) <= _WHOLE_PAPER_CHARS:
             chunks = select_evidence_chunks(rec.claim.text, sections, k=1)  # for the label
-            evidence = f"[complete text of the cited paper]\n{ftr.text}"
+            # A publisher's preview is the first pages: called the complete text, what it
+            # does not say would read as what the work does not say.
+            head = (
+                "[the first pages of the cited work only — a publisher preview; the rest "
+                "of the work was not available]"
+                if PREVIEW_LABEL in (ftr.source or "")
+                else "[complete text of the cited paper]"
+            )
+            evidence = f"{head}\n{ftr.text}"
         else:
             chunks = select_evidence_chunks(rec.claim.text, sections, k=_FULLTEXT_CHUNKS)
             if not chunks:
@@ -448,14 +451,16 @@ def _escalate_to_full_text(
     except Exception:  # noqa: BLE001 — degrade-not-crash: keep the Stage-1 verdicts
         return verdicts, {}
 
-    escalated: dict[int, str] = {}  # pos -> top section heading the verdict rests on
+    escalated: dict[int, tuple[str, str]] = {}  # pos -> (top section heading, source notes)
     for (pos, chunks, source, url), v2 in zip(esc_meta, esc_verdicts, strict=False):
         # A claim the full-text answer left out keeps its first verdict: "the judge
         # returned no verdict" replaced a real one in an earlier run.
         if v2 is None or getattr(v2, "missing", False):
             continue
         verdicts[pos] = v2
-        escalated[pos] = (chunks[0][0] if chunks else "") or ""
+        # A preview is not the whole work and a transcription is not the printed text:
+        # the basis says so.
+        escalated[pos] = ((chunks[0][0] if chunks else "") or "", source_notes(source))
         records[pos].evidence = _add_evidence(
             records[pos].evidence, _fulltext_evidence(records[pos], chunks, source=source, url=url)
         )

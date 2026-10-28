@@ -178,3 +178,33 @@ def test_judge_batches_respect_a_size_budget():
     groups = list(_chunks_by_budget(list(sizes), sizes.get, max_items=10, max_chars=260))
     assert groups == [["a", "b"], ["c"], ["d"]]
     assert list(_chunks_by_budget(list("abcde"), lambda _: 1, max_items=2, max_chars=99)) == [["a", "b"], ["c", "d"], ["e"]]
+
+
+def test_the_whole_paper_verdict_is_final(monkeypatch):
+    """The judge's own excerpt pass used to run after the stage's whole-paper re-judge and
+    replace its verdict: "partial" on the whole paper became "inconclusive" on three short
+    excerpts, still labelled as based on the full text."""
+    from citation_verifier.backends.relevance_judge import LLMRelevanceJudge
+
+    paper = (r"\section{Introduction} Background. " + "Filler about other topics. " * 40
+             + r"\section{Results} Our method reaches 91 percent accuracy on the benchmark.")
+    monkeypatch.setattr(fulltext, "full_text_with_trail",
+                        lambda r: fulltext.FullTextResult(paper, "arxiv_eprint", "u"))
+    judge = LLMRelevanceJudge(settings={}, mode="messages")
+    seen = []
+
+    def chunk(rows):
+        out = {}
+        for ck, grp in rows:
+            whole = "complete text of the cited paper" in grp["evidence"]
+            seen.append("whole" if whole else "first")
+            verdict = SupportsClaim.PARTIAL if whole else SupportsClaim.INCONCLUSIVE
+            out[ck] = {cid: RelevanceVerdict(verdict, justification=seen[-1]) for _i, cid, _c in grp["members"]}
+        return out
+
+    monkeypatch.setattr(judge, "_judge_citation_chunk", chunk)
+    rec = _rec("the method reaches 91% accuracy on the benchmark")
+    rec.resolved.abstract = "An abstract about something else, long enough to count as an abstract. " * 4
+    fill_relevance_batch([rec], resolver=_NoResolver(), judge_batch=judge.judge_batch)
+    assert seen == ["first", "whole"]
+    assert rec.supports_claim == SupportsClaim.PARTIAL

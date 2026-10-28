@@ -344,10 +344,19 @@ def build_evidence_provider(
 
 
 def _full_text_of(resolved: Any) -> str:
-    """The cited paper's body: :func:`citation_verifier.grounding.fulltext.full_text_of`."""
-    from ..grounding.fulltext import full_text_of  # noqa: PLC0415 — lazy: keeps import network-free
+    """The cited paper's body (:func:`citation_verifier.grounding.fulltext.full_text_with_trail`).
 
-    return full_text_of(resolved)
+    Not a publisher's preview: the first pages are not the paper, and a cell judged on
+    them would read what they leave out as what the paper leaves out — the evidence block
+    tells the judge it holds the complete text, or every passage naming a property.
+    """
+    from ..grounding.fulltext import (  # noqa: PLC0415 — lazy: keeps import network-free
+        PREVIEW_LABEL,
+        full_text_with_trail,
+    )
+
+    got = full_text_with_trail(resolved)
+    return "" if PREVIEW_LABEL in (getattr(got, "source", "") or "") else (getattr(got, "text", "") or "")
 
 
 _NAMES_TAG = "names the property"

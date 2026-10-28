@@ -63,11 +63,22 @@ _ARXIV_RE = re.compile(
 # Small text-normalisation helpers
 # ───────────────────────────────────────────────────────────────
 def _norm_title(s: str | None) -> str:
-    """Lowercase, strip punctuation/whitespace for title comparison."""
+    """Lowercase, strip punctuation/whitespace for title comparison.
+
+    Maths markup is dropped rather than spaced ("$L_0$" -> "l0"), and a token whose
+    subscript was glued to the next word by the PDF ("l0regularization") is split, so both
+    spellings of "Learning sparse neural networks through L0 regularization" agree.
+    """
     if not s:
         return ""
-    s = re.sub(r"[^\w\s]", " ", s.lower())
+    s = re.sub(r"[_$\\{}]", "", s.lower())
+    s = _GLUED_SUBSCRIPT_RE.sub(r"\1 \2", s)
+    s = re.sub(r"[^\w\s]", " ", s)
     return re.sub(r"\s+", " ", s).strip()
+
+
+# A letter run and a digit glued to a following word: "l0regularization", "gpt4turbo".
+_GLUED_SUBSCRIPT_RE = re.compile(r"\b([A-Za-z]+\d+)([a-z]{4,})\b")
 
 
 def _last_name(author: str) -> str:
@@ -291,10 +302,61 @@ def _likely_title(reference: str) -> str:
 
 
 def _clean_title_variant(title: str) -> str:
-    """Normalize a title for fielded metadata queries without changing meaning."""
+    """Normalize a title for fielded metadata queries without changing meaning.
+
+    A volume or edition printed after a book's title ("Deep learning, volume 1",
+    "…, 2nd edition") is not part of it; searched with it, the indexes returned
+    proceedings volumes named "…, Volume 1".
+    """
     title = re.sub(r"\s+", " ", (title or "")).strip(" .")
     title = _SITE_SUFFIX_RE.sub("", title).strip(" .")
-    return title
+    while True:
+        cut = _TITLE_LOCATOR_RE.sub("", title).strip(" .,;")
+        if cut == title or len(cut) < 6:
+            return title
+        title = cut
+
+
+def clean_title(title: str | None) -> str:
+    """A cited title without its volume / edition locator ("Deep learning, volume 1" ->
+    "Deep learning"), as the indexes print it."""
+    return _clean_title_variant(title or "")
+
+
+# A volume / edition locator at the end of a title.
+_TITLE_LOCATOR_RE = re.compile(
+    r"[,;(]?\s*(?:vol(?:ume)?\.?\s*\d+|\d+(?:st|nd|rd|th)\s+ed(?:ition|\.)?|"
+    r"(?:second|third|fourth|fifth|revised)\s+edition|ed\.\s*\d+)\)?\s*$",
+    re.IGNORECASE,
+)
+
+
+def _repeated_title(title: str) -> str:
+    """The phrase a garbled title repeats, or ``""``: a title copied from a broken record
+    ("Série scientifique … no unbiased estimator of the variance of k-fold
+    cross-validation no unbiased estimator of the variance of k-fold cross-validation")
+    is searched as the work it names twice."""
+    # Words compared without their punctuation: the two copies need not be spelt alike
+    # ("cross-validation" in one, "crossvalidation" in the other).
+    words = title.split()
+    norm = [re.sub(r"[\W_]+", "", w.lower()) for w in words]
+    for size in range(len(words) // 2, 3, -1):
+        for i in range(len(words) - 2 * size + 1):
+            phrase = norm[i : i + size]
+            for j in range(i + size, len(words) - size + 1):
+                if norm[j : j + size] == phrase:
+                    return " ".join(words[i : i + size])
+    return ""
+
+
+def _repeated_title_reference(reference: str) -> str:
+    """``reference`` with its title replaced by the phrase the title repeats, or ``""``
+    when the title does not repeat one."""
+    title = _likely_title(reference)
+    phrase = _repeated_title(_clean_title_variant(title)) if title else ""
+    if not phrase or title not in reference:
+        return ""
+    return reference.replace(title, phrase, 1)
 
 
 def _likely_titles(reference: str) -> list[str]:
@@ -302,12 +364,15 @@ def _likely_titles(reference: str) -> list[str]:
     title = _likely_title(reference)
     if not title:
         return []
-    variants = [title, _clean_title_variant(title)]
+    cleaned = _clean_title_variant(title)
+    variants = [cleaned, title, _GLUED_SUBSCRIPT_RE.sub(r"\1 \2", cleaned), _repeated_title(cleaned)]
     out: list[str] = []
     seen: set[str] = set()
     for variant in variants:
         variant = variant.strip()
-        key = _norm_title(variant)
+        # Deduped on the words as an index reads them: "l0regularization" and
+        # "l0 regularization" compare equal once matched, but are different searches.
+        key = " ".join(re.sub(r"[^\w\s]", " ", variant.lower()).split())
         if len(variant) >= 6 and key and key not in seen:
             seen.add(key)
             out.append(variant)
@@ -389,6 +454,31 @@ _SPELLED_OUT_VENUE_RE = re.compile(
     r"intelligence|computational\s+linguistics|natural\s+language|neural\s+information|"
     r"learning\s+representations|robotics|automation|knowledge\s+discovery|data\s+mining|"
     r"information\s+retrieval|robot\s+learning|empirical\s+methods)\b",
+    re.IGNORECASE,
+)
+
+
+def _looks_like_book(reference: str) -> bool:
+    """A reference to a book: a publisher, an ISBN, an edition, a volume of a press."""
+    return bool(_BOOK_RE.search(reference or ""))
+
+
+_BOOK_RE = re.compile(
+    r"\b(?:[A-Z][\w&.-]*\s+)?(?:Press|Publishers?|Publishing)\b|\bISBN\b|\b\d+(?:st|nd|rd|th)\s+ed(?:ition|\.)|"
+    r"\bedition\b|\b(?:Springer|Wiley|Elsevier|O'Reilly|Addison[- ]Wesley|Prentice[- ]Hall|McGraw[- ]Hill|"
+    r"Pearson|Morgan\s+Kaufmann|CRC|Chapman\s+(?:and|&)\s+Hall)\b",
+    re.IGNORECASE,
+)
+
+
+def _should_search_openreview(reference: str) -> bool:
+    """A reference to a venue whose papers live on OpenReview (workshops above all)."""
+    return bool(_OPENREVIEW_RE.search(reference or ""))
+
+
+_OPENREVIEW_RE = re.compile(
+    r"\b(?:openreview|workshop|ICLR|TMLR|Transactions\s+on\s+Machine\s+Learning\s+Research|"
+    r"International\s+Conference\s+on\s+Learning\s+Representations|NeurIPS|COLM|CoRL)\b",
     re.IGNORECASE,
 )
 
@@ -532,9 +622,30 @@ def _fuzzy_title_score(reference: str, candidate_title: str) -> float:
 _HOST_NAMES = {
     "api.crossref.org": "Crossref",
     "export.arxiv.org": "arXiv",
+    "arxiv.org": "arXiv (paper pages)",
     "dblp.org": "DBLP",
     "api.semanticscholar.org": "Semantic Scholar",
     "api.openalex.org": "OpenAlex",
+    "openlibrary.org": "Open Library",
+    "api2.openreview.net": "OpenReview",
+}
+
+# Which source a lookup function asks, for the record of what a resolution searched.
+_FN_SOURCE = (
+    ("openalex", "OpenAlex"),
+    ("openlibrary", "Open Library"),
+    ("openreview", "OpenReview"),
+    ("semantic_scholar", "Semantic Scholar"),
+    ("crossref", "Crossref"),
+    ("arxiv", "arXiv"),
+    ("dblp", "DBLP"),
+)
+_SRC_NAMES = {
+    paper_lookup.SOURCE_CROSSREF: "Crossref",
+    paper_lookup.SOURCE_ARXIV: "arXiv",
+    paper_lookup.SOURCE_DBLP: "DBLP",
+    paper_lookup.SOURCE_S2: "Semantic Scholar",
+    paper_lookup.SOURCE_OPENALEX: "OpenAlex",
 }
 
 
@@ -572,20 +683,27 @@ def _abstract_from_siblings(winner: Candidate, siblings: list[Candidate] | None)
 
     Same gate as :func:`_arxiv_from_siblings`: the normalised titles are equal.
     """
-    if winner.abstract or not siblings:
+    if _readable(winner.abstract, winner.title) or not siblings:
         return ""
     want = _norm_title(winner.title)
     if not want:
         return ""
     for other in siblings:
-        if other is not winner and other.abstract and _norm_title(other.title) == want:
+        if other is not winner and _readable(other.abstract, other.title) and _norm_title(other.title) == want:
             return other.abstract
     return ""
 
 
 def _is_thin(m: Resolved) -> bool:
-    """A record with nothing to read: no abstract, and no arXiv id to fetch the text by."""
-    return not (m.abstract or m.arxiv_id)
+    """A record with nothing to read: no abstract (a placeholder line is none), and no arXiv
+    id to fetch the text by."""
+    return not (_readable(m.abstract, m.title) or m.arxiv_id)
+
+
+def _readable(abstract: str | None, title: str | None = None) -> bool:
+    """An abstract of the work, not a placeholder (see
+    :func:`paper_lookup.substantive_abstract`)."""
+    return paper_lookup.substantive_abstract(abstract, title)
 
 
 class MultiSourceResolver:
@@ -633,7 +751,9 @@ class MultiSourceResolver:
 
     def _fetch(self, fn: Any, *args: Any) -> list[Candidate]:
         """Fetch candidates once per resolver instance for identical source args."""
-        key = (getattr(fn, "__name__", repr(fn)), args)
+        name = getattr(fn, "__name__", repr(fn))
+        self._asked(next((src for tag, src in _FN_SOURCE if tag in name), ""))
+        key = (name, args)
         with self._fetch_cache_lock:
             cached = self._fetch_cache.get(key)
         if cached is not None:
@@ -652,17 +772,23 @@ class MultiSourceResolver:
         return rows
 
     def _id_query_steps(self, reference: str) -> list[tuple[Any, tuple[Any, ...]]]:
-        """Exact identifier lookups, ordered by abstract-bearing source first."""
+        """Exact identifier lookups: the identifier's own registry first (arXiv for an arXiv
+        id, Crossref for a DOI), then Semantic Scholar.
+
+        S2 used to be asked first, for its abstracts. It is the index most often rate-limited,
+        and the registries hold the record outright; a registry record without an abstract
+        has one filled in afterwards (:meth:`_abstract_top_up`), S2 among the sources.
+        """
         rows: list[tuple[Any, tuple[Any, ...]]] = []
         s2_key = getattr(self.settings, "s2_api_key", None)
         ref_arxiv = _extract_arxiv_id(reference)
         if ref_arxiv:
-            rows.append((paper_lookup.fetch_semantic_scholar_by_arxiv, (ref_arxiv, s2_key)))
             rows.append((paper_lookup.fetch_arxiv_by_id, (ref_arxiv,)))
+            rows.append((paper_lookup.fetch_semantic_scholar_by_arxiv, (ref_arxiv, s2_key)))
         ref_doi = _extract_doi(reference)
         if ref_doi:
-            rows.append((paper_lookup.fetch_semantic_scholar_by_doi, (ref_doi, s2_key)))
             rows.append((paper_lookup.fetch_crossref_by_doi, (ref_doi,)))
+            rows.append((paper_lookup.fetch_semantic_scholar_by_doi, (ref_doi, s2_key)))
         return rows
 
     def _title_candidates(self, reference: str, max_results: int = 4) -> list[Candidate]:
@@ -696,7 +822,9 @@ class MultiSourceResolver:
                 steps.append((fn, args))
 
         use_arxiv = _should_search_arxiv(reference)
-        for title in titles:
+        year = _extract_year(reference)
+        oa_key = getattr(self.settings, "openalex_api_key", None)
+        for i, title in enumerate(titles):
             add(paper_lookup.search_semantic_scholar_match, title)
             add(paper_lookup.search_crossref_by_fields, title, author, max_results)
             if use_arxiv:
@@ -705,12 +833,31 @@ class MultiSourceResolver:
                 add(paper_lookup.search_crossref_by_fields, title, None, max_results)
                 if use_arxiv:
                     add(paper_lookup.search_arxiv_by_title, title, max_results, None)
+            # Fielded OpenAlex (it holds books, working papers and journals the others
+            # miss) for every wording — the one a garbled title repeats is often the only
+            # one it can find — then the indexes for what is neither a paper nor a preprint.
+            add(paper_lookup.search_openalex_by_title, title, author, year, max_results, oa_key)
+            if i == 0:
+                if _looks_like_book(reference):
+                    add(paper_lookup.search_openlibrary, title, author, year, max_results)
+                if _should_search_openreview(reference):
+                    add(paper_lookup.search_openreview, title, max_results)
         return steps
+
+    def _asked(self, source: str) -> None:
+        asked = getattr(self._failed, "asked", None)
+        if asked is not None and source and source not in asked:
+            asked.append(source)
+
+    def searched_sources(self) -> list[str]:
+        """Sources this thread's most recent :meth:`resolve` asked (cache hits ask none)."""
+        return list(getattr(self._failed, "asked", []))
 
     def _broad_candidates(self, reference: str, max_results: int = 4) -> list[Candidate]:
         """Tier 3: broad full-reference search across every enabled source."""
         rows: list[Candidate] = []
         for src in self._broad_sources(reference):
+            self._asked(_SRC_NAMES.get(src, src))
             try:
                 raw = self._search_source(src, reference, max_results)
             except Exception:  # noqa: BLE001 — defense in depth; sources fail soft
@@ -768,6 +915,7 @@ class MultiSourceResolver:
         ``CITATION_VERIFIER_CACHE=""`` to disable.
         """
         self._failed.hosts = []
+        self._failed.asked = []
         cached = resolve_cache.read(reference, Resolved)
         if cached is not None:
             return cached
@@ -781,10 +929,19 @@ class MultiSourceResolver:
     @staticmethod
     def _second_best(reference: str, found: Resolved) -> bool:
         """A hit that the index which failed might well have bettered: nothing to read,
-        or dated away from the citation. Cached, it would outlive the outage that caused
-        it — every later run would be handed the same abstract-less record or the same
-        repost. A miss is not cached for that reason; neither is this."""
-        return _is_thin(found) or _year_rank(_extract_year(reference), found.year) == 0
+        dated away from the citation, or by another first author. Cached, it would outlive
+        the outage that caused it — every later run would be handed the same abstract-less
+        record, the same repost, or the same namesake (a book's title found as another
+        group's paper while the index holding the book was down). A miss is not cached for
+        that reason; neither is this. Nor is a record without the arXiv id the reference
+        prints: the arXiv record, which the failed source would have returned, carries the
+        full text."""
+        return (
+            _is_thin(found)
+            or _year_rank(_extract_year(reference), found.year) == 0
+            or _first_author_agrees(reference, found) is False
+            or (bool(_extract_arxiv_id(reference)) and not found.arxiv_id)
+        )
 
     def failed_sources(self) -> list[str]:
         """Sources that did not answer during this thread's most recent :meth:`resolve`.
@@ -797,6 +954,19 @@ class MultiSourceResolver:
 
     def _resolve_uncached(self, reference: str) -> Resolved | None:
         """:meth:`resolve` without the disk cache — the network cascade itself."""
+        # A title copied from a broken record says its subject twice, after a prefix
+        # that is no part of it. Matched as printed, the clean record of the work reads
+        # as a contradiction (it lacks the prefix's words); so the work the title names
+        # twice is looked for first, and the title as printed only if that finds nothing.
+        named = _repeated_title_reference(reference)
+        if named:
+            found = self._cascade(named)
+            if found is not None:
+                return found
+        return self._cascade(reference)
+
+    def _cascade(self, reference: str) -> Resolved | None:
+        """The identifier -> title -> broad -> fallback tiers for one reference string."""
         # 1) identifier, abstract-bearing first; stop at the first exact match.
         for fn, args in self._id_query_steps(reference):
             match = self._match(reference, self._fetch(fn, *args))
@@ -826,22 +996,22 @@ class MultiSourceResolver:
                 _year_rank(ref_year, m.year) > 0,
             )
 
-        #    And for what the record CARRIES: a publisher's record with no abstract and
-        #    no arXiv id is the right work with nothing to read. With the index that
-        #    usually answers first rate-limited, twenty of one paper's sixty citations
-        #    were resolved to such records and came back "no abstract or introduction to
-        #    judge from" — while the same papers sat on arXiv, one step further down this
-        #    list. Such a match is held while arXiv is asked — also when the routing had
-        #    left it out, since the routing reads the title's vocabulary and half of those
-        #    twenty titles carry none of its keywords — and the answer is then chosen
-        #    among everything the tier returned.
+        #    And for what the record CARRIES: a record with no abstract and no arXiv id
+        #    is the right work with nothing to read. With the index that usually answers
+        #    first rate-limited, twenty of one paper's sixty citations were resolved to
+        #    such records and came back "no abstract or introduction to judge from" —
+        #    while the same papers sat on arXiv, one step further down this list. Such a
+        #    match is held while the REST of the tier is asked — every source, not arXiv
+        #    alone: a 1960s journal article's abstract is in Crossref and OpenAlex, a
+        #    working paper's in OpenAlex, never on arXiv — and arXiv also when the routing
+        #    had left it out, since the routing reads the title's vocabulary and half of
+        #    those twenty titles carry none of its keywords. The first readable match
+        #    that stands wins; else the answer is chosen among everything returned.
         fallback = None
         thin: Resolved | None = None
         pool: list[Candidate] = []
         asked_arxiv = False
         for fn, args in self._title_query_steps(reference, 4):
-            if thin is not None and fn is not paper_lookup.search_arxiv_by_title:
-                continue  # the work is found; only a readable copy of it is still wanted
             cands = self._fetch(fn, *args)
             pool += cands
             asked_arxiv = asked_arxiv or fn is paper_lookup.search_arxiv_by_title
@@ -861,10 +1031,17 @@ class MultiSourceResolver:
                     pool += self._fetch(
                         paper_lookup.search_arxiv_by_title, title, 4, _first_author(reference) or None
                     )
-            # Over the whole pool the ranking prefers a record that carries an abstract,
-            # and a publisher record that still wins takes the arXiv id (and abstract) of
-            # a same-title record beside it.
-            best = self._match(reference, _dedupe_candidates(pool))
+            # Over the whole pool a record that can be read is preferred — one step's
+            # winner can be the unreadable twin of a readable record that step ranked
+            # second ("sum" as cited, "Sums" with the abstract). Else the ranking runs
+            # over everything, and a record that still wins takes the arXiv id (and
+            # abstract) of a same-title record beside it.
+            pool = _dedupe_candidates(pool)
+            readable = [c for c in pool if c.arxiv_id or _readable(c.abstract, c.title)]
+            best = self._match(reference, readable) if readable else None
+            if best is not None and all(standing(best)):
+                return best
+            best = self._match(reference, pool)
             return best if best is not None and all(standing(best)) else thin
         if fallback is not None:
             if standing(fallback)[1]:
@@ -898,6 +1075,14 @@ class MultiSourceResolver:
                 match = self._match(sub_ref, self._fetch(fn, *args))
                 if match is not None:
                     return match
+
+        # 5) OpenReview, when the routing had not asked it: a workshop paper is cited with
+        #    a venue as often as without one, and nothing else indexes it.
+        titles = _likely_titles(reference)
+        if titles and not _should_search_openreview(reference) and (ref_year is None or ref_year >= 2017):
+            match = self._match(reference, self._fetch(paper_lookup.search_openreview, titles[0], 4))
+            if match is not None:
+                return match
         return None
 
     def _match(self, reference: str, cands: list[Candidate]) -> Resolved | None:
@@ -948,7 +1133,7 @@ class MultiSourceResolver:
                     _fuzzy_title_score(reference, c.title),
                     _first_author_agrees(reference, c) is True,
                     _year_rank(ref_year, c.year),
-                    bool(c.abstract),
+                    _readable(c.abstract, c.title),
                     c,
                 )
                 for c in cands
@@ -1030,7 +1215,8 @@ class MultiSourceResolver:
         if self.validate_urls and url:
             url_valid = paper_lookup.validate_url(url)
         arxiv_id = c.arxiv_id or _arxiv_from_siblings(c, siblings)
-        abstract = c.abstract or _abstract_from_siblings(c, siblings) or self._abstract_top_up(c)
+        abstract = c.abstract if _readable(c.abstract, c.title) else ""
+        abstract = abstract or _abstract_from_siblings(c, siblings) or self._abstract_top_up(c) or c.abstract
         return Resolved(
             source=c.source,
             match_method=method,
@@ -1072,9 +1258,19 @@ class MultiSourceResolver:
         if c.doi:
             oa_key = getattr(self.settings, "openalex_api_key", None)
             for cand in self._fetch(paper_lookup.fetch_openalex_by_doi, c.doi, oa_key):
-                if cand.abstract and cand.doi.lower() == c.doi.lower():
+                if _readable(cand.abstract, cand.title) and cand.doi.lower() == c.doi.lower():
                     return cand.abstract
-        # 3) S2 tldr fallback — already fetched during resolution, so no extra call.
+        # 3) S2 by exact DOI — its abstract, else its one-line summary (a registry record,
+        #    now asked first, carries neither).
+        if c.doi and c.source != paper_lookup.SOURCE_S2:
+            s2_key = getattr(self.settings, "s2_api_key", None)
+            for cand in self._fetch(paper_lookup.fetch_semantic_scholar_by_doi, c.doi, s2_key):
+                if (cand.doi or "").lower() == c.doi.lower():
+                    if _readable(cand.abstract, cand.title):
+                        return cand.abstract
+                    if (cand.extra or {}).get("tldr"):
+                        return cand.extra["tldr"]
+        # 4) S2 tldr fallback — already fetched during resolution, so no extra call.
         return (c.extra or {}).get("tldr") or ""
 
 

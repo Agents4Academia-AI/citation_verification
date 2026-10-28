@@ -100,10 +100,12 @@ def test_likely_title_empty_when_nothing_titlelike():
 
 
 def test_likely_titles_adds_site_suffix_stripped_variant():
+    # The cleaned title is asked first: it is the work's title, and the first variant is
+    # the one the title-contradiction gate reads.
     ref = 'OpenAI. "OpenAI o3 and o4-mini System Card --- openai.com". 2025'
     assert _likely_titles(ref) == [
-        "OpenAI o3 and o4-mini System Card --- openai.com",
         "OpenAI o3 and o4-mini System Card",
+        "OpenAI o3 and o4-mini System Card --- openai.com",
     ]
 
 
@@ -118,41 +120,33 @@ def test_id_and_title_fetchers_guard_empty_input_without_network():
     assert paper_lookup.search_arxiv_by_title("ab") == []
 
 
-def test_identifier_tier_prefers_s2_exact_and_stops(monkeypatch):
+def test_identifier_tier_asks_the_registry_first_and_s2_fills_the_abstract(monkeypatch):
+    """A DOI is looked up at Crossref, which holds the record outright; Semantic Scholar —
+    the index most often rate-limited — is asked only for what Crossref lacks, the abstract."""
     calls: list[str] = []
 
     def fake_s2(doi, api_key=None):
         calls.append("s2")
-        return [{
-            "source": "s2",
-            "title": "Exact DOI Paper",
-            "authors": ["A. Author"],
-            "year": 2024,
-            "doi": doi,
-            "abstract": "S2 abstract",
-        }]
+        return [{"source": "s2", "title": "Exact DOI Paper", "authors": ["A. Author"], "year": 2024,
+                 "doi": doi, "abstract": REAL_ABSTRACT}]
 
     def fake_crossref(doi):
         calls.append("crossref")
-        return [{
-            "source": "crossref",
-            "title": "Exact DOI Paper",
-            "authors": ["A. Author"],
-            "year": 2024,
-            "doi": doi,
-        }]
+        return [{"source": "crossref", "title": "Exact DOI Paper", "authors": ["A. Author"],
+                 "year": 2024, "doi": doi}]
 
     monkeypatch.setattr(paper_lookup, "fetch_semantic_scholar_by_doi", fake_s2)
     monkeypatch.setattr(paper_lookup, "fetch_crossref_by_doi", fake_crossref)
+    monkeypatch.setattr(paper_lookup, "fetch_openalex_by_doi", lambda *a, **k: [])
 
     resolved = MultiSourceResolver(validate_urls=False).resolve(
         "k", "A. Author. Exact DOI Paper. 2024. doi:10.1234/example"
     )
 
     assert resolved is not None
-    assert resolved.source == "s2"
-    assert resolved.abstract == "S2 abstract"
-    assert calls == ["s2"]
+    assert resolved.source == "crossref"
+    assert resolved.abstract == REAL_ABSTRACT
+    assert calls == ["crossref", "s2"]
 
 
 def test_crossref_identifier_match_gets_openalex_abstract_top_up(monkeypatch):
@@ -176,7 +170,7 @@ def test_crossref_identifier_match_gets_openalex_abstract_top_up(monkeypatch):
             "authors": ["A. Author"],
             "year": 2024,
             "doi": doi,
-            "abstract": "OpenAlex abstract",
+            "abstract": "OpenAlex abstract: " + REAL_ABSTRACT,
         }]
 
     monkeypatch.setattr(paper_lookup, "fetch_semantic_scholar_by_doi", fake_s2)
@@ -189,7 +183,7 @@ def test_crossref_identifier_match_gets_openalex_abstract_top_up(monkeypatch):
 
     assert resolved is not None
     assert resolved.source == "crossref"
-    assert resolved.abstract == "OpenAlex abstract"
+    assert resolved.abstract.startswith("OpenAlex abstract")
 
 
 def test_exact_title_match_survives_noisy_author_and_year_metadata():
@@ -330,10 +324,17 @@ def test_present_abstract_short_circuits_all_top_up(monkeypatch):
     monkeypatch.setattr(paper_lookup, "fetch_openalex_by_doi", boom)
     c = Candidate(
         source="s2", title="t", arxiv_id="2207.12598", doi="10.1/x",
-        abstract="REAL ABSTRACT", extra={"tldr": "summary"},
+        abstract=REAL_ABSTRACT, extra={"tldr": "summary"},
     )
     res = MultiSourceResolver(validate_urls=False)._to_resolved(c, MatchMethod.FUZZY_TITLE, 0.9)
-    assert res.abstract == "REAL ABSTRACT"
+    assert res.abstract == REAL_ABSTRACT
+
+
+REAL_ABSTRACT = (
+    "REAL ABSTRACT: we study the problem, propose a method, evaluate it on three benchmarks and "
+    "find that it improves on the baselines, which an abstract of ordinary length goes on to say "
+    "in a few more sentences than a one-line placeholder would."
+)
 
 
 def test_likely_title_handles_apostrophe_in_double_quotes():
@@ -382,7 +383,8 @@ def test_match_rejects_exact_id_with_contradicting_title():
     from citation_verifier.grounding.resolver import MultiSourceResolver
 
     def cand(**kw):
-        d = dict(source="s2", title="", authors=[], year=None, venue="", doi="", arxiv_id="", url="", abstract="x", extra={})
+        d = dict(source="s2", title="", authors=[], year=None, venue="", doi="", arxiv_id="", url="",
+                 abstract=REAL_ABSTRACT, extra={})  # a readable abstract: nothing to top up
         d.update(kw)
         return types.SimpleNamespace(**d)
 

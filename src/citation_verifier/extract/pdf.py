@@ -30,6 +30,7 @@ from ..schema import CitationRecord, CitedAs, Claim, Paper
 from .latex import TABLE_NOTE, _split_authors, make_claim_id, publication_year
 from .pdf_links import extract_link_citations, extract_text_citations
 from .pdf_refs import extract_reference_sections
+from .sentences import heading_title, is_heading_line, section_at, sentence_span
 
 __all__ = [
     "PdfExtractor", "extract_pdf_text", "load_pdf_references", "load_pdf_reference_sections",
@@ -725,6 +726,24 @@ _AY_PERIOD_RE = re.compile(
 )
 
 
+# "Authors. 2024. Title" — the author part may hold initials ("Diederik P. Kingma") but no
+# other full stop.
+_AUTHORS_YEAR_TITLE_RE = re.compile(
+    r"^\s*(?P<auth>(?:[^.]|(?<=\b[A-Z])\.){3,800}?)\.\s+(?:19|20)\d{2}[a-z]?\.\s+(?P<rest>\S.+)$",
+    re.DOTALL,
+)
+
+
+# What stands for the authors a list leaves out: "and 1 others", "et al.".
+_NOT_A_NAME_RE = re.compile(r"^(?:\d+\s+)?others$|^et\s+al\.?$", re.IGNORECASE)
+
+
+def _reads_as_author_list(text: str) -> bool:
+    """Names separated by commas or "and", each a few words long — not a title."""
+    chunks = [c.strip() for c in re.split(r",|\band\b|&", text) if c.strip()]
+    return len(chunks) >= 2 and all(len(c.split()) <= 4 for c in chunks)
+
+
 def _split_author_title(body: str) -> tuple[list[str], str | None]:
     """Split a reference's leading ``Authors. Title`` into ``(authors, title)``.
 
@@ -775,6 +794,21 @@ def _split_author_title(body: str) -> tuple[list[str], str | None]:
         initials_authors = _split_initials_authors(m.group("authors"))
         if initials_authors:
             return initials_authors, _title_from(m.group("rest"))
+
+    # Tier 0c: the year as a sentence of its own between authors and title — the ACL /
+    # natbib layout ("First Last, …, and First Last. 2024. Title. Venue."). The year is the
+    # boundary whatever the names look like: the given-name-first tier below stopped at a
+    # name printed in lower case ("…, Yeyun Gong, yelong shen, Yujiu Yang, …") and returned
+    # the rest of the author list as the title.
+    m = _AUTHORS_YEAR_TITLE_RE.match(head)
+    if m and _reads_as_author_list(m.group("auth")):
+        names = re.sub(r",?\s+and\s+|\s*&\s*", ", ", m.group("auth"))
+        authors = [
+            a.strip(" .") for a in names.split(",")
+            if a.strip(" .") and not _NOT_A_NAME_RE.match(a.strip(" ."))
+        ]
+        if authors:
+            return authors, _title_from(m.group("rest"))
 
     # Tier 1: given-name-first run ("First Last, …, and First Last. Title"). Tried
     # before Vancouver because Vancouver would mis-read a given-name + middle-initial
@@ -877,7 +911,6 @@ def _parse_ref_entry(body: str) -> CitedAs:
 # tolerate whitespace after "[" and before "]" — otherwise every spaced marker is
 # silently dropped (it was missing ~half the citations on real two-column PDFs).
 _INTEXT_NUM_RE = re.compile(r"\[\s*(\d{1,3}(?:\s*[-–,]\s*\d{1,3})*)\s*\]")
-_SENT_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Z])")
 # A claim that opens with a table caption ("Table 3 Comparison of …") is a table
 # cell/caption, not a prose claim — its relevance is not assessed (in_table).
 _TABLE_CAPTION_RE = re.compile(r"^\s*(?:Table|TABLE|Tab\.)\s*\d+\b")
@@ -896,10 +929,15 @@ _TABLE_CELL_RE = re.compile(r"\b\d+(?:\.\d+)?[MBK]\b|\b\d+\.\d+[‡†⋆*]?\b")
 
 
 def _looks_like_table_dump(text: str) -> bool:
-    """True when a claim reads as a comparison/results-table row dump (skip relevance)."""
+    """True when a claim reads as a comparison/results-table row dump (skip relevance).
+
+    The cell test is a density, not a count: a whole sentence that lists models by size
+    ("Llama3.1-8B-Instruct, Llama3.3-70B-Instruct, Gemini 2.5 …") carries as many cells as
+    a short table row, and its citations were set aside as table cells.
+    """
     t = text or ""
-    return len(_TABLE_ROW_RE.findall(t)) >= 3 or len(_TABLE_CELL_RE.findall(t)) >= 5
-_MAX_CLAIM_CHARS = 360
+    cells = len(_TABLE_CELL_RE.findall(t))
+    return len(_TABLE_ROW_RE.findall(t)) >= 3 or (cells >= 5 and cells >= 0.12 * len(t.split()))
 _EMAIL_RE = re.compile(r"\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b")
 _AFFILIATION_START_RE = re.compile(
     r"^\s*\d+\s+(?:Department|School|Faculty|Institute|College|University|"
@@ -1022,23 +1060,64 @@ def _has_numbered_citations(claim_body: str, references: dict[str, CitedAs]) -> 
 
 
 def _claim_scan_body(text: str) -> str:
-    """Drop PDF header/footer/contact/affiliation lines before claim windowing."""
+    """Drop PDF header/footer/contact/affiliation lines before claim windowing.
+
+    A section heading is dropped, and a sentence never runs across where it stood —
+    read straight through, "…under gradual drift." and the next section's first sentence
+    were cut as one claim. A figure or table caption is moved after the text: set where
+    the PDF has it, between the two halves of a sentence it interrupts, it was read as
+    part of that sentence ("…improve training Figure 2. The 2.9B GigaTok achieves …").
+    """
+    return _scan_body(text)[0]
+
+
+def _scan_body(text: str) -> tuple[str, list[tuple[int, str]], list[int], list[tuple[int, int]]]:
+    """:func:`_claim_scan_body`, plus what it took apart: the headings as
+    ``[(offset, title)]``, the offsets no sentence may cross (where each heading stood,
+    where each relocated block starts), and the ``(start, end)`` of each table or figure
+    region it set after the text."""
     lines = text.splitlines()
+    grid = _grid_lines(lines)
     keep: list[str] = []
+    headings: list[tuple[int, str]] = []
+    breaks: list[int] = []
+    asides: list[tuple[str, list[str]]] = []  # ("caption" | "grid", lines)
+    length = 0  # chars kept so far, joined by "\n"
     in_affiliation = False
+    in_caption = False
+
+    def emit(line: str) -> None:
+        nonlocal length
+        keep.append(line)
+        length += len(line) + 1
+
     for i, line in enumerate(lines):
         stripped = line.strip()
+        if i in grid:
+            if not (asides and asides[-1][0] == "grid" and asides[-1][2] == i - 1):
+                asides.append(("grid", [], i))
+            asides[-1][1].append(line)
+            asides[-1] = (asides[-1][0], asides[-1][1], i)
+            continue
         if not stripped:
-            in_affiliation = False
-            keep.append(line)
+            in_affiliation = in_caption = False
+            emit(line)
+            continue
+        if in_caption:
+            asides[-1][1].append(line)
+            continue
+        block_start = i == 0 or not lines[i - 1].strip()
+        if block_start and _CAPTION_BLOCK_RE.match(stripped):
+            asides.append(("caption", [line], i))
+            in_caption = True
             continue
 
         next_line = lines[i + 1].strip() if i + 1 < len(lines) else ""
         if _EMAIL_RE.search(stripped) or _EMAIL_RE.search(next_line):
             continue
-        if _FOOTER_RE.match(stripped):
+        if _FOOTER_RE.match(stripped) or _NUMERIC_LINE_RE.match(stripped):
             continue
-        if _SECTION_HEADING_RE.match(stripped) or _FOOTNOTE_RE.match(stripped):
+        if _FOOTNOTE_RE.match(stripped):
             continue
         if _VENUE_HEADER_RE.match(stripped) or _is_cjk_boilerplate(stripped):
             continue
@@ -1051,40 +1130,74 @@ def _claim_scan_body(text: str) -> str:
             in_affiliation = False
         if _AFFILIATION_HINT_RE.search(stripped) and len(stripped) < 90:
             continue
-        keep.append(line)
-    return "\n".join(keep)
+        # After the affiliation rules: "1 Department of Computer Science" reads like a
+        # numbered heading.
+        if _SECTION_HEADING_RE.match(stripped) or is_heading_line(stripped):
+            headings.append((length, heading_title(stripped)))
+            breaks.append(length)
+            continue
+        emit(line)
+    regions: list[tuple[int, int]] = []
+    for kind, block, _last in asides:
+        emit("")
+        breaks.append(length)
+        start = length
+        for line in block:
+            emit(line)
+        if kind == "grid":
+            regions.append((start, length))
+    return "\n".join(keep), headings, breaks, regions
 
 
-def _sentence_around(text: str, pos: int, window: int = 500) -> tuple[str, tuple[int, int]]:
-    """Sentence containing offset ``pos`` plus its ``(start, end)`` span."""
-    lo = max(0, pos - window)
-    hi = min(len(text), pos + window)
-    chunk = text[lo:hi]
-    rel = pos - lo
-    starts = [0] + [m.end() for m in _SENT_SPLIT.finditer(chunk)]
-    ends = [m.start() for m in _SENT_SPLIT.finditer(chunk)] + [len(chunk)]
-    s_start, s_end = 0, len(chunk)
-    for st, en in zip(starts, ends, strict=False):
-        if st <= rel <= en:
-            s_start, s_end = st, en
-            break
-    raw = chunk[s_start:s_end]
-    rel_in_sentence = max(0, rel - s_start)
-    if len(raw) > _MAX_CLAIM_CHARS:
-        half = _MAX_CLAIM_CHARS // 2
-        cut_start = max(0, rel_in_sentence - half)
-        cut_end = min(len(raw), rel_in_sentence + half)
-        if cut_start:
-            ws = raw.find(" ", cut_start)
-            cut_start = ws + 1 if ws != -1 and ws < cut_end else cut_start
-        if cut_end < len(raw):
-            ws = raw.rfind(" ", cut_start, cut_end)
-            cut_end = ws if ws != -1 and ws > cut_start else cut_end
-        raw = raw[cut_start:cut_end]
-        s_start += cut_start
-        s_end = s_start + len(raw)
-    sentence = re.sub(r"\s+", " ", raw).strip()
-    return sentence, (lo + s_start, lo + s_end)
+def _grid_lines(lines: list[str]) -> set[int]:
+    """Indices of the lines that form a table or a figure's labels.
+
+    PyMuPDF gives a table, or the text inside a figure, as a run of short lines — one cell,
+    one label, one row of ticks each — where running text is lines the width of its column.
+    Four or more such lines in a row (blank lines between them do not count) are a grid.
+    Read as text, a grid's cells became a "sentence" of their own ("KL 70M LightningDiT
+    [58] 675M Diff. -") and were judged as a claim.
+    """
+    grid: set[int] = set()
+    run: list[int] = []
+
+    def close() -> None:
+        if len(run) >= 4:
+            grid.update(run)
+        run.clear()
+
+    for i, line in enumerate(lines):
+        s = line.strip()
+        if not s:
+            continue
+        if len(s) <= 30 or _NUMERIC_LINE_RE.match(s):
+            run.append(i)
+        else:
+            close()
+    close()
+    return grid
+
+
+def _in_regions(regions: list[tuple[int, int]], pos: int) -> bool:
+    return any(a <= pos < b for a, b in regions)
+
+
+# A caption opens its own block: "Figure 2." / "Fig. 1:" / "Table 3" / "TABLE II".
+_CAPTION_BLOCK_RE = re.compile(r"^(?:Figure|Fig\.|FIGURE|Table|TABLE|Tab\.)\s*(?:[A-Z]?\d+|[IVX]+)\b(?:\s*[:.|]|\s+[A-Z])")
+# A line of nothing but numbers: a page number, a figure's tick labels ("1 2 4 8 16 32"),
+# a table's values. Read as prose, a figure's numbers ran into the sentence that continues
+# after it, and the claim was then set aside as a table row. A number that ends with a full
+# stop may close a sentence ("… set to\n0.5.") and is kept.
+_NUMERIC_LINE_RE = re.compile(r"^(?:[-+−±]?\d+(?:[.,]\d+)*%?\s*)+$")
+
+
+def _sentence_around(text: str, pos: int, breaks: list[int] | None = None) -> tuple[str, tuple[int, int]]:
+    """Sentence containing offset ``pos`` plus its ``(start, end)`` span (see :mod:`.sentences`).
+
+    Without ``breaks``, a blank line is a paragraph break; with them, only they are.
+    """
+    start, end = sentence_span(text, pos, breaks=breaks)
+    return re.sub(r"\s+", " ", text[start:end]).strip(), (start, end)
 
 
 # ───────────────────────────────────────────────────────────────
@@ -1362,14 +1475,16 @@ class PdfExtractor:
         sections, bodies = load_pdf_reference_sections(source.pdf_path, text=text)
         main = sections[0] if sections else {}
         references = {section_key(i, k): v for i, refs in enumerate(sections) for k, v in refs.items()}
-        claim_body = _claim_scan_body(bodies[0]) if bodies else ""
+        claim_body, main_headings, main_breaks, main_grids = _scan_body(bodies[0]) if bodies else ("", [], [], [])
         paper = self._build_paper(source)
         records: list[CitationRecord] = []
         seen: set[tuple[str, str, str]] = set()
 
         for index, raw_body in enumerate(bodies):
             local = sections[index] if index < len(sections) else {}
-            scan = claim_body if index == 0 else _claim_scan_body(raw_body)
+            scan, headings, breaks, grids = (
+                (claim_body, main_headings, main_breaks, main_grids) if index == 0 else _scan_body(raw_body)
+            )
             # What a marker in THIS stretch of text can mean: its own list first, and —
             # for an appendix whose numbering continues the paper's — the main list.
             in_scope = {**main, **local}
@@ -1382,8 +1497,13 @@ class PdfExtractor:
                 markers = [k for k in _expand_num_marker(mm.group(1)) if _valid_marker_key(k, in_scope)]
                 if not markers:
                     continue
-                sentence, span = _sentence_around(scan, mm.start())
-                in_table = bool(_TABLE_CAPTION_RE.match(sentence)) or _looks_like_table_dump(sentence)
+                sentence, span = _sentence_around(scan, mm.start(), breaks)
+                section = section_at(headings, mm.start())
+                in_table = (
+                    bool(_TABLE_CAPTION_RE.match(sentence))
+                    or _looks_like_table_dump(sentence)
+                    or _in_regions(grids, mm.start())
+                )
                 for marker in markers:
                     cite_key = section_key(index, marker) if marker in local else marker
                     claim_id = make_claim_id(source.paper_id, None, span, cite_key)
@@ -1401,7 +1521,7 @@ class PdfExtractor:
                             claim_id=claim_id,
                             cite_key=cite_key,
                             paper=paper,
-                            claim=Claim(claim_id=claim_id, text=sentence, section=None, char_span=span),
+                            claim=Claim(claim_id=claim_id, text=sentence, section=section, char_span=span),
                             cited_as=cited_as,
                             in_table=in_table,
                             notes=notes,
@@ -1412,7 +1532,12 @@ class PdfExtractor:
         # anchors (hyperref PDFs), else from author-year text patterns, and pair
         # each with its surrounding sentence + the surname/year-matched reference.
         if not records:
-            sites = extract_link_citations(source.pdf_path) or extract_text_citations(claim_body)
+            sites = extract_link_citations(source.pdf_path)
+            if not sites:  # the author-year text tier reads the scan body; its spans index it
+                sites = [
+                    {**site, "in_grid": _in_regions(main_grids, site["span"][0])}
+                    for site in extract_text_citations(claim_body, main_breaks, main_headings)
+                ]
             for site in sites:
                 cite_key = site["cite_key"]
                 span = tuple(site["span"])
@@ -1431,7 +1556,11 @@ class PdfExtractor:
                 matched = bool(cited_as.title or cited_as.authors)
                 # The hyperlink path skipped table detection (only the [n] path ran it),
                 # so table-row citations were judged as prose. Apply the same gate here.
-                in_table = bool(_TABLE_CAPTION_RE.match(claim_text)) or _looks_like_table_dump(claim_text)
+                in_table = (
+                    bool(_TABLE_CAPTION_RE.match(claim_text))
+                    or _looks_like_table_dump(claim_text)
+                    or bool(site.get("in_grid"))
+                )
                 notes = None if matched else "citation not matched to a bibliography entry"
                 if in_table:
                     notes = f"{notes}; {TABLE_NOTE}" if notes else TABLE_NOTE
@@ -1442,7 +1571,7 @@ class PdfExtractor:
                         cite_key=cite_key,
                         paper=paper,
                         claim=Claim(
-                            claim_id=claim_id, text=claim_text, section=None, char_span=span
+                            claim_id=claim_id, text=claim_text, section=site.get("section"), char_span=span
                         ),
                         cited_as=cited_as,
                         in_table=in_table,

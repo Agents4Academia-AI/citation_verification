@@ -97,11 +97,13 @@ class _Grounder:
         resolved: dict[str, Resolved] | None,
         resolver: Any,
         errors: list[str],
+        web: Any = None,
     ) -> None:
         self.references = references
         self.resolved = dict(resolved or {})
         self.resolver = resolver
         self.errors = errors
+        self.web = web
         self._tried: set[str] = set()
 
     def key_for(self, marker: str | None) -> str | None:
@@ -136,7 +138,8 @@ class _Grounder:
         if key in self._tried or self.resolver is None:
             return None
         self._tried.add(key)
-        # Same stage, same veto, same reference string as a prose citation of this key.
+        # Same stage, same veto, same reference string — and the same last resort, the
+        # web — as a prose citation of this key.
         from ..stages import fill_correctness  # noqa: PLC0415 — keeps the import network-free
 
         stub = CitationRecord(
@@ -144,7 +147,10 @@ class _Grounder:
             claim=Claim(claim_id=f"table:{key}", text=""), cited_as=self.references[key],
         )
         try:
-            fill_correctness(stub, resolver=self.resolver)
+            if self.web is not None:
+                fill_correctness(stub, resolver=self.resolver, web=self.web)
+            else:
+                fill_correctness(stub, resolver=self.resolver)
         except Exception as exc:  # noqa: BLE001 — degrade-not-crash
             self.errors.append(f"table reference {key!r}: resolution failed: {exc!r}")
             return None
@@ -187,6 +193,7 @@ def verify_paper_tables(
     max_cells: int | None = None,
     budget_usd: float | None = None,
     progress: Callable[[str], None] | None = None,
+    web: Any | None = None,
 ) -> TableRun:
     """Verify every related-work comparison table of one paper.
 
@@ -211,6 +218,10 @@ def verify_paper_tables(
         budget_usd: what this pass may still spend. Checked before each table — a table
             is not started once the spend so far has reached it. ``None`` = no cap.
         progress: optional callback for one-line status updates.
+        web: a :class:`~citation_verifier.grounding.web_lookup.WebLocator`, the last resort
+            for a row's citation no index places. Built from ``settings`` when omitted —
+            only when the model is (a web search is a model call), and only if
+            ``enable_web_search`` is on.
 
     Returns:
         A :class:`TableRun`. Never raises: a failure is recorded in ``errors`` and the
@@ -271,70 +282,79 @@ def verify_paper_tables(
                 f"but no cell was judged"
             )
 
+    searcher = None
+    if web is None and llm is not None:
+        web, searcher = _build_web(settings, resolver)
+    # A cited work whose PDF is a scan is read by a model — in a run that built one.
+    reader = _build_scan_reader(settings) if llm is not None else None
+
     body = read_body_text(source)
-    grounder = _Grounder(references or {}, resolved, resolver, run.errors)
+    grounder = _Grounder(references or {}, resolved, resolver, run.errors, web)
     pdf_grounder: _Grounder | None = None
     budget = DEFAULT_MAX_CELLS if max_cells is None else max_cells
     spent = 0
 
-    for table in tables:
-        own = {n for r in table.rows if r.is_self for n in [_own_name(r.label)] if n}
-        try:
-            resolve_dimensions(
-                table.dimensions, body, caption=table.caption, legend=table.legend,
-                glosser=glosser, own_names=own, paper_id=table.paper_id,
-                table_id=table.table_id, table_label=table.label or "",
+    from ..grounding.fulltext import reading_scans  # noqa: PLC0415 — lazy, network-free
+
+    with reading_scans(reader):
+        for table in tables:
+            own = {n for r in table.rows if r.is_self for n in [_own_name(r.label)] if n}
+            try:
+                resolve_dimensions(
+                    table.dimensions, body, caption=table.caption, legend=table.legend,
+                    glosser=glosser, own_names=own, paper_id=table.paper_id,
+                    table_id=table.table_id, table_label=table.label or "",
+                )
+            except Exception as exc:  # noqa: BLE001
+                run.errors.append(f"{table.table_id}: column definitions failed: {exc!r}")
+
+            # A table read from the PDF cites by printed marker; when those do not map onto
+            # the LaTeX keys the bibliography was loaded under, bind them to the PDF's own
+            # reference list instead.
+            bound = grounder
+            if grounder.coverage(table) < 0.5 and source.pdf_path:
+                if pdf_grounder is None:
+                    try:
+                        from ..extract.pdf import load_pdf_references  # noqa: PLC0415
+
+                        pdf_grounder = _Grounder(
+                            load_pdf_references(source.pdf_path), None, resolver, run.errors, web
+                        )
+                    except Exception as exc:  # noqa: BLE001
+                        run.errors.append(f"could not read the PDF reference list: {exc!r}")
+                if pdf_grounder is not None and pdf_grounder.coverage(table) > grounder.coverage(table):
+                    bound = pdf_grounder
+
+            cells = _checkable_cells(table)
+            cost_so_far = float(getattr(getattr(llm, "usage", None), "cost_usd", 0.0) or 0.0)
+            over_cells = budget > 0 and spent + cells > budget
+            over_cost = budget_usd is not None and cost_so_far >= budget_usd
+            over_budget = bool(judge) and (over_cells or over_cost)
+            say(f"table {table.table_id}: {cells} cell(s) to check" + (" — over budget, skipped" if over_budget else ""))
+            evidence_for = build_evidence_provider(
+                lookup=bound.lookup, resolver=bound, dimensions=list(table.dimensions),
+                use_full_text=use_full_text,
             )
-        except Exception as exc:  # noqa: BLE001
-            run.errors.append(f"{table.table_id}: column definitions failed: {exc!r}")
-
-        # A table read from the PDF cites by printed marker; when those do not map onto
-        # the LaTeX keys the bibliography was loaded under, bind them to the PDF's own
-        # reference list instead.
-        bound = grounder
-        if grounder.coverage(table) < 0.5 and source.pdf_path:
-            if pdf_grounder is None:
-                try:
-                    from ..extract.pdf import load_pdf_references  # noqa: PLC0415
-
-                    pdf_grounder = _Grounder(
-                        load_pdf_references(source.pdf_path), None, resolver, run.errors
+            report = verify_table(table, evidence_for=evidence_for, judge=None if over_budget else judge)
+            if over_budget:
+                if over_cost and not over_cells:
+                    note = (
+                        "not checked — the run's cost ceiling was reached before this table "
+                        "(raise COST_CEILING_USD, or run the tables on their own)"
                     )
-                except Exception as exc:  # noqa: BLE001
-                    run.errors.append(f"could not read the PDF reference list: {exc!r}")
-            if pdf_grounder is not None and pdf_grounder.coverage(table) > grounder.coverage(table):
-                bound = pdf_grounder
-
-        cells = _checkable_cells(table)
-        cost_so_far = float(getattr(getattr(llm, "usage", None), "cost_usd", 0.0) or 0.0)
-        over_cells = budget > 0 and spent + cells > budget
-        over_cost = budget_usd is not None and cost_so_far >= budget_usd
-        over_budget = bool(judge) and (over_cells or over_cost)
-        say(f"table {table.table_id}: {cells} cell(s) to check" + (" — over budget, skipped" if over_budget else ""))
-        evidence_for = build_evidence_provider(
-            lookup=bound.lookup, resolver=bound, dimensions=list(table.dimensions),
-            use_full_text=use_full_text,
-        )
-        report = verify_table(table, evidence_for=evidence_for, judge=None if over_budget else judge)
-        if over_budget:
-            if over_cost and not over_cells:
-                note = (
-                    "not checked — the run's cost ceiling was reached before this table "
-                    "(raise COST_CEILING_USD, or run the tables on their own)"
-                )
-            else:
-                note = (
-                    f"not checked — this table's {cells} cells would take the run past "
-                    f"its budget of {budget} table cells (set TABLE_MAX_CELLS to raise it)"
-                )
-            for f in report.findings:
-                if f.verdict == CellVerdict.UNVERIFIABLE.value:
-                    f.justification = note
-            report.notes.append(note)
-            run.errors.append(f"{table.table_id}: {note}")
-        elif judge is not None:
-            spent += cells
-        run.reports.append(report)
+                else:
+                    note = (
+                        f"not checked — this table's {cells} cells would take the run past "
+                        f"its budget of {budget} table cells (set TABLE_MAX_CELLS to raise it)"
+                    )
+                for f in report.findings:
+                    if f.verdict == CellVerdict.UNVERIFIABLE.value:
+                        f.justification = note
+                report.notes.append(note)
+                run.errors.append(f"{table.table_id}: {note}")
+            elif judge is not None:
+                spent += cells
+            run.reports.append(report)
 
     down = getattr(llm, "unavailable", "") if llm is not None else ""
     if down:
@@ -344,7 +364,65 @@ def verify_paper_tables(
     if llm is not None and getattr(llm, "usage", None) is not None:
         run.usage.add(llm.usage)
         run.usage.model = getattr(llm, "model", "") or run.usage.model
+    for helper in (searcher, reader):
+        drain = getattr(helper, "drain_usage", None)
+        if callable(drain):
+            run.usage.add(drain())
+    if getattr(reader, "unavailable", ""):
+        run.errors.append(
+            f"scan reading unavailable ({reader.unavailable}); cited works whose PDF is a scan "
+            "were not read"
+        )
+    if getattr(web, "unavailable", ""):
+        run.errors.append(
+            f"web search unavailable ({web.unavailable}); table citations no index found were "
+            "not searched on the web"
+        )
     return run
+
+
+def _build_scan_reader(settings: Any | None) -> Any:
+    """The scan reader for the table pass, or ``None`` when scan reading is off or cannot
+    be built. ``settings["scan_reader"]`` injects one (tests)."""
+    def setting(name: str, default: Any) -> Any:
+        if isinstance(settings, dict):
+            return settings.get(name, default)
+        return getattr(settings, name, default) if settings is not None else default
+
+    if not setting("read_scans", True):
+        return None
+    reader = setting("scan_reader", None)
+    if reader is not None:
+        return reader
+    try:
+        from ..backends.scan_reader import ScanReader  # noqa: PLC0415
+
+        return ScanReader(settings)
+    except Exception:  # noqa: BLE001 — scan wiring never breaks the table pass
+        return None
+
+
+def _build_web(settings: Any | None, resolver: Any) -> tuple[Any, Any]:
+    """``(locator, searcher)`` for the table pass, or ``(None, None)`` when web search is
+    off or cannot be built. ``settings["web_searcher"]`` injects the finder (tests)."""
+    def setting(name: str, default: Any) -> Any:
+        if isinstance(settings, dict):
+            return settings.get(name, default)
+        return getattr(settings, name, default) if settings is not None else default
+
+    if resolver is None or not setting("enable_web_search", True):
+        return None, None
+    try:
+        from ..grounding.web_lookup import locator_for  # noqa: PLC0415
+
+        searcher = setting("web_searcher", None)
+        if searcher is None:
+            from ..backends.web_search import WebSearcher  # noqa: PLC0415
+
+            searcher = WebSearcher(settings)
+        return locator_for(searcher, resolver, settings), searcher
+    except Exception:  # noqa: BLE001 — search wiring never breaks the table pass
+        return None, None
 
 
 def _own_name(label: str) -> str:
