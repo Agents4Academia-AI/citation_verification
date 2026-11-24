@@ -79,7 +79,7 @@ class RelevanceVerdict:
     defaults so a partial judge response still degrades cleanly.
     """
 
-    __slots__ = ("supports_claim", "priority", "confidence", "justification", "model_tier", "basis", "missing")
+    __slots__ = ("supports_claim", "priority", "confidence", "justification", "model_tier", "basis", "missing", "evidence_quote")
 
     def __init__(
         self,
@@ -88,12 +88,14 @@ class RelevanceVerdict:
         confidence: float | None = None,
         justification: str = "",
         model_tier: ModelTier | str = ModelTier.JUDGE,
+        evidence_quote: str = "",
     ) -> None:
         self.supports_claim = SupportsClaim(supports_claim)
         self.priority = Priority(priority) if priority is not None else None
         self.confidence = confidence
         self.justification = justification
         self.model_tier = ModelTier(model_tier)
+        self.evidence_quote = evidence_quote
         # What the judge was shown, for the report's "(based on …)" label; None = abstract.
         self.basis: str | None = None
         # True when no judgement was made at all (the judge's answer left this claim out,
@@ -370,7 +372,7 @@ def _escalate_to_full_text(
     # fetch each cited paper at most once per run; value carries text + provenance
     fulltext_cache: dict[str, FullTextResult] = {}
     esc_items: list[dict] = []
-    esc_meta: list[tuple[int, list[tuple[str, str]], str, str]] = []
+    esc_meta: list[tuple[int, str, str, str, str]] = []
     for pos, (rec, verdict) in enumerate(zip(records, verdicts, strict=False)):
         if verdict is None:
             continue
@@ -418,7 +420,6 @@ def _escalate_to_full_text(
             continue
         sections = split_sections(ftr.text)
         if len(ftr.text) <= _WHOLE_PAPER_CHARS:
-            chunks = select_evidence_chunks(rec.claim.text, sections, k=1)  # for the label
             # A publisher's preview is the first pages: called the complete text, what it
             # does not say would read as what the work does not say.
             head = (
@@ -442,7 +443,7 @@ def _escalate_to_full_text(
                 "resolved": rec.resolved,
             }
         )
-        esc_meta.append((pos, chunks, ftr.source, ftr.url))
+        esc_meta.append((pos, evidence, ftr.text, ftr.source, ftr.url))
 
     if not esc_items:
         return verdicts, {}
@@ -452,7 +453,7 @@ def _escalate_to_full_text(
         return verdicts, {}
 
     escalated: dict[int, tuple[str, str]] = {}  # pos -> (top section heading, source notes)
-    for (pos, chunks, source, url), v2 in zip(esc_meta, esc_verdicts, strict=False):
+    for (pos, evidence, source_text, source, url), v2 in zip(esc_meta, esc_verdicts, strict=False):
         # A claim the full-text answer left out keeps its first verdict: "the judge
         # returned no verdict" replaced a real one in an earlier run.
         if v2 is None or getattr(v2, "missing", False):
@@ -460,32 +461,36 @@ def _escalate_to_full_text(
         verdicts[pos] = v2
         # A preview is not the whole work and a transcription is not the printed text:
         # the basis says so.
-        escalated[pos] = ((chunks[0][0] if chunks else "") or "", source_notes(source))
-        records[pos].evidence = _add_evidence(
-            records[pos].evidence, _fulltext_evidence(records[pos], chunks, source=source, url=url)
-        )
+        quote = _validated_quote(getattr(v2, "evidence_quote", ""), evidence)
+        quote = _validated_quote(quote, source_text)  # synthetic context headers are not source text
+        notes = source_notes(source)
+        if quote:
+            records[pos].evidence = _add_evidence(
+                records[pos].evidence,
+                Evidence(kind="full_text", source=f"{source or 'full text'} (judge-selected passage)",
+                         quote=quote, url=url or (records[pos].resolved.url if records[pos].resolved else None)),
+            )
+        else:
+            # A heuristic excerpt can be unrelated to a whole-paper verdict. Do not
+            # present one as the judge's evidence, or invent a section attribution.
+            notes += "; no validated judge-selected quotation available"
+        escalated[pos] = ("", notes)
     return verdicts, escalated
 
 
-def _fulltext_evidence(
-    record: CitationRecord, chunks: list[tuple[str, str]], *, source: str = "", url: str = ""
-) -> Evidence:
-    """Package retrieved full-text chunks as Evidence, tagged with channel + section.
+def _validated_quote(quote: str, evidence: str) -> str:
+    """Check occurrence, not entailment; only whitespace differences are ignored.
 
-    ``source`` is the full-text channel (``arxiv_html``/``unpaywall``/… ); falls
-    back to the resolved id/url when a caller didn't supply one. The section heading
-    comes from the top-ranked chunk, so provenance reads e.g. ``unpaywall §Introduction``.
+    Check the exact supplied context (including the long-paper excerpt path), not
+    unseen parts of a retrieved paper. Reject invented/ellipsis-spliced text and
+    overlong quotations instead of silently substituting or truncating them.
     """
-    heading = (chunks[0][0] if chunks else "") or "full text"
-    channel = source
-    if not channel and record.resolved:
-        channel = record.resolved.arxiv_id or record.resolved.url or ""
-    return Evidence(
-        kind="full_text",
-        source=f"{channel or 'arxiv'} §{heading}",
-        quote=_snippet("  ".join(c for _, c in chunks)),
-        url=url or (record.resolved.url if record.resolved else None),
-    )
+    if not isinstance(quote, str):
+        return ""
+    quote = " ".join(quote.split())
+    if not 20 <= len(quote) <= 2000:
+        return ""
+    return quote if quote in " ".join(evidence.split()) else ""
 
 
 def _add_evidence(items: list[Evidence], new: Evidence) -> list[Evidence]:

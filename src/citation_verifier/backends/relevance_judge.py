@@ -671,7 +671,12 @@ _GROUP_SYSTEM = (
     '[{"cite_key":"...","claims":[{"claim_id":"...",'
     '"supports_claim":"supports|partial|does_not|inconclusive",'
     '"priority":"obligatory|helpful","confidence":0.0-1.0,'
-    '"justification":"one short sentence"}]}]. Output JSON only, no prose.'
+    '"justification":"one short sentence","evidence_quote":"verbatim passage or empty string"}]}]. '
+    'For evidence_quote select a short contiguous passage (about 20–400 characters) from the '
+    'supplied evidence that explains YOUR verdict for this claim. Copy it verbatim; no ellipses, '
+    'paraphrase, or invented text. For absence/insufficient-evidence judgments, use an empty '
+    'string if no particular passage establishes the judgment; do not invent a quotation '
+    'to prove absence. A matching quotation is not itself proof of entailment. Output JSON only, no prose.'
 )
 
 
@@ -720,7 +725,7 @@ def _parallel_map(items: list, fn, max_workers: int) -> list:
 
 def _max_output_tokens(n_items: int) -> int:
     """Output-token cap for a chunk of ``n_items`` (one small JSON object each)."""
-    return min(8192, max(512, 96 * n_items))
+    return min(16384, max(512, 256 * n_items))
 
 
 # ───────────────────────────────────────────────────────────────
@@ -846,6 +851,7 @@ def _verdict_from_row(data: dict) -> RelevanceVerdict:
         confidence=conf,
         justification=justification,
         model_tier=ModelTier.JUDGE,
+        evidence_quote=data.get("evidence_quote") if isinstance(data.get("evidence_quote"), str) else "",
     )
 
 
