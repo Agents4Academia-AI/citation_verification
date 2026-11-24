@@ -49,7 +49,8 @@ def test_inconclusive_abstract_escalates_to_full_text(monkeypatch):
         out = []
         for it in items:
             if "WebText" in it["abstract"]:  # stage 2 evidence = full-text chunk
-                out.append(RelevanceVerdict(SupportsClaim.SUPPORTS, justification="confirmed in §Introduction"))
+                out.append(RelevanceVerdict(SupportsClaim.SUPPORTS, justification="confirmed in §Introduction",
+                                           evidence_quote="The model is fine-tuned on the WebText corpus."))
             else:  # stage 1: the abstract can't tell
                 out.append(RelevanceVerdict(SupportsClaim.INCONCLUSIVE, justification="not in abstract"))
         return out
@@ -63,8 +64,8 @@ def test_inconclusive_abstract_escalates_to_full_text(monkeypatch):
     ft_ev = [e for e in rec.evidence if e.kind == "full_text"]
     assert ft_ev  # full-text evidence recorded
     # provenance: the evidence is tagged with its channel + section + source URL
-    assert ft_ev[0].source.startswith("arxiv_eprint §")
-    assert "Introduction" in ft_ev[0].source
+    assert ft_ev[0].source == "arxiv_eprint (judge-selected passage)"
+    assert ft_ev[0].quote == "The model is fine-tuned on the WebText corpus."
     assert ft_ev[0].url == "https://arxiv.org/e-print/1706.03762"
 
 
