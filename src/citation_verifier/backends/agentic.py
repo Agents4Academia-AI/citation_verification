@@ -65,12 +65,35 @@ class AgenticBackend(BaseBackend):
         #   - if ENABLE_RELEVANCE_JUDGE is on, build the LLM judge (Claude Code
         #     subscription; STEP 2 via abstract[+intro]). SDK absent => None => abstain.
         self.judge = _setting(settings, "relevance_judge", None)
+        built_judge = False
         if self.judge is None and _setting(settings, "enable_relevance_judge", False):
             try:
                 from .relevance_judge import build_relevance_judge
                 self.judge = build_relevance_judge(settings)
+                built_judge = self.judge is not None
             except Exception:  # noqa: BLE001 — never let judge wiring break the run
                 self.judge = None
+        # The web-search seam: the last resort for a reference no index placed. A search
+        # is a model call, so it rides with the runs that use a model — the judge built
+        # from settings — and a model-free lookup pass never searches. Injected for tests.
+        self.web_searcher = _setting(settings, "web_searcher", None)
+        if self.web_searcher is None and built_judge and _setting(settings, "enable_web_search", True):
+            try:
+                from .web_search import WebSearcher
+
+                self.web_searcher = WebSearcher(settings)
+            except Exception:  # noqa: BLE001 — never let search wiring break the run
+                self.web_searcher = None
+        # The scan seam: a cited work whose PDF is a scan (no text layer) is read by a
+        # model. Like the search, only in runs that built the model judge. Injected for tests.
+        self.scan_reader = _setting(settings, "scan_reader", None)
+        if self.scan_reader is None and built_judge and _setting(settings, "read_scans", True):
+            try:
+                from .scan_reader import ScanReader
+
+                self.scan_reader = ScanReader(settings)
+            except Exception:  # noqa: BLE001 — never let scan wiring break the run
+                self.scan_reader = None
 
     # ──────────────────────────────────────────────────────────────
     def verify(
@@ -87,11 +110,15 @@ class AgenticBackend(BaseBackend):
         usage.model = f"bulk={self.bulk_model};judge={self.judge_model}"
 
         fill_correctness, fill_relevance, resolver = self._load_pipeline()
+        web = self._web_locator(resolver)
 
-        with self._timer() as sw:
+        from ..grounding.fulltext import reading_scans  # noqa: PLC0415 — lazy, network-free
+
+        with reading_scans(self.scan_reader), self._timer() as sw:
             # Pass 1 — correctness. Dedup identical references so each resolves
             # ONCE, and resolve the uniques concurrently (grounding is HTTP-bound).
-            self._correctness_pass(stubs, fill_correctness, resolver, usage, result)
+            self._correctness_pass(stubs, fill_correctness, resolver, usage, result, web)
+            self._fold_web_usage(usage, web, result)
 
             # Cost ceiling: skip the expensive judge pass if correctness alone
             # already crossed it (rare — bulk usage is a cheap estimate).
@@ -114,6 +141,7 @@ class AgenticBackend(BaseBackend):
 
         # Fold a self-accounting LLM judge's REAL token/cost usage into the run.
         self._fold_judge_usage(usage)
+        self._fold_scan_usage(usage, result)
         usage.wall_seconds = sw.seconds
 
         # Deterministic severity for every record (never judged).
@@ -130,6 +158,7 @@ class AgenticBackend(BaseBackend):
         resolver: Any,
         usage: RunUsage,
         result: VerificationResult,
+        web: Any = None,
     ) -> None:
         """STEP 1 for all stubs: dedup by reference, resolve uniques concurrently.
 
@@ -154,7 +183,7 @@ class AgenticBackend(BaseBackend):
             or _RESOLVER_CONCURRENCY
         )
         _parallel_each(
-            reps, lambda r: self._resolve_one(r, fill_correctness, resolver, result), workers
+            reps, lambda r: self._resolve_one(r, fill_correctness, resolver, result, web), workers
         )
 
         # Copy each representative's verdict onto its siblings (deep copy so each
@@ -169,7 +198,12 @@ class AgenticBackend(BaseBackend):
             result.records.append(stub)
 
     def _resolve_one(
-        self, rec: CitationRecord, fill_correctness: Any, resolver: Any, result: VerificationResult
+        self,
+        rec: CitationRecord,
+        fill_correctness: Any,
+        resolver: Any,
+        result: VerificationResult,
+        web: Any = None,
     ) -> None:
         """Run STEP 1 grounding for one record (degrade-not-crash).
 
@@ -178,7 +212,10 @@ class AgenticBackend(BaseBackend):
         ``fill_correctness`` mutates ``rec`` in place.
         """
         try:
-            fill_correctness(rec, resolver=resolver)
+            if web is None:
+                fill_correctness(rec, resolver=resolver)
+            else:
+                fill_correctness(rec, resolver=resolver, web=web)
         except Exception as exc:  # noqa: BLE001 — degrade-not-crash boundary
             rec.error = f"correctness stage failed: {exc}"
             result.errors.append(f"{rec.cite_key}: {rec.error}")
@@ -227,6 +264,15 @@ class AgenticBackend(BaseBackend):
                     rec.supports_claim = SupportsClaim.INCONCLUSIVE.value
             for rec in eligible:
                 rec.model_tier = ModelTier.JUDGE.value
+            down = getattr(self.judge, "unavailable", "")
+            if down:
+                # Every pair came back "inconclusive" for a reason that has nothing to do
+                # with the evidence. Say so where it cannot be missed.
+                from ..errors import unavailable_message
+
+                result.errors.append(
+                    unavailable_message(down, f"relevance was NOT judged for {len(eligible)} pair(s)")
+                )
             return
 
         # Per-record path: an injected non-batch judge, or deterministic abstain.
@@ -252,6 +298,55 @@ class AgenticBackend(BaseBackend):
                     )
 
     # ──────────────────────────────────────────────────────────────
+    def _web_locator(self, resolver: Any) -> Any:
+        """A web locator over this run's resolver, or ``None`` when web search is off."""
+        if self.web_searcher is None:
+            return None
+        try:
+            from ..grounding.web_lookup import locator_for
+
+            return locator_for(self.web_searcher, resolver, self.settings)
+        except Exception:  # noqa: BLE001
+            return None
+
+    def _fold_web_usage(self, usage: RunUsage, web: Any, result: VerificationResult) -> None:
+        """Fold the web searches' real usage into the run (BULK tier); say when the search
+        model could not be reached, so unresolved references are not read as searched."""
+        if web is None:
+            return
+        drain = getattr(self.web_searcher, "drain_usage", None)
+        wu = drain() if callable(drain) else None
+        if wu is not None and (wu.cost_usd or wu.input_tokens or wu.tool_calls):
+            usage.add(wu)
+            bucket = usage.by_tier.get(ModelTier.BULK.value)
+            if bucket is None:
+                bucket = RunUsage(backend=self.name, model=wu.model)
+                usage.by_tier[ModelTier.BULK.value] = bucket
+            bucket.add(wu)
+        if getattr(web, "unavailable", ""):
+            result.errors.append(
+                f"web search unavailable ({web.unavailable}); references no index found were "
+                "not searched on the web"
+            )
+
+    def _fold_scan_usage(self, usage: RunUsage, result: VerificationResult) -> None:
+        """Fold the scan reader's usage into the run (BULK tier); say when its model could
+        not be reached, so a scan left unread is not read as having no text."""
+        drain = getattr(self.scan_reader, "drain_usage", None)
+        su = drain() if callable(drain) else None
+        if su is not None and (su.cost_usd or su.input_tokens):
+            usage.add(su)
+            bucket = usage.by_tier.get(ModelTier.BULK.value)
+            if bucket is None:
+                bucket = RunUsage(backend=self.name, model=su.model)
+                usage.by_tier[ModelTier.BULK.value] = bucket
+            bucket.add(su)
+        if getattr(self.scan_reader, "unavailable", ""):
+            result.errors.append(
+                f"scan reading unavailable ({self.scan_reader.unavailable}); cited works whose "
+                "PDF is a scan were not read"
+            )
+
     def _fold_judge_usage(self, usage: RunUsage) -> None:
         """Fold a self-accounting LLM judge's REAL usage into the run + JUDGE tier."""
         ju = getattr(self.judge, "usage", None)

@@ -24,6 +24,16 @@ SMOKE_GOLD = REPO_ROOT / "evals" / "smoke" / "gold.jsonl"
 SPEC_FILE = REPO_ROOT / "spec" / "v0.1" / "record.schema.json"
 
 
+@pytest.fixture(autouse=True)
+def _closed_breakers():
+    """Every test starts with every source's breaker closed (they are process-wide)."""
+    from citation_verifier.grounding import paper_lookup
+
+    paper_lookup.reset_breakers()
+    yield
+    paper_lookup.reset_breakers()
+
+
 def _load_records(path: Path) -> list[CitationRecord]:
     """Parse a JSONL file of CitationRecords (validates against the schema)."""
     records: list[CitationRecord] = []

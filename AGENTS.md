@@ -13,6 +13,8 @@
 - **Lint:** `make lint`  (ruff).
 - **Verify a paper (needs LLM backend + `.env`):**
   `cverify <arxiv-id | arxiv-url | path.pdf> --backend agentic|claude_code`.
+- **Verify only the comparison tables:** `cverify <source> --tables only`
+  (`--tables off` skips them; default is on, with the citations).
 - **Check one reference (no LLM):**
   `python -m citation_verifier.grounding.paper_lookup "<reference string>"`.
 - **Regenerate / check the schema spec:** `make schema`.
@@ -56,7 +58,11 @@
   the pipeline modules (see the structure table in `README.md`).
 - `src/chbench/` — CitationHallucinationBench (dataset).
 - `evals/` — `run_eval.py`, `metrics.py`, `smoke/gold.jsonl`.
-- `config/{sources,venues}.yaml` — source params + venue normalization (no secrets).
+- `config/{sources,venues}.yaml` — source params + chbench harvest scope (no secrets).
+- `src/citation_verifier/data/venues.yaml` — the venue alias table (every spelling of a
+  conference/journal → one key), read by `citation_verifier/venues.py` for the
+  cited-vs-canonical venue check. Add a venue or a spelling there; inspect a pair with
+  `python -m citation_verifier.venues "<cited>" "<canonical>"`.
 - `papers/` — per-paper input/artifact dirs.
 
 ## Operating principles

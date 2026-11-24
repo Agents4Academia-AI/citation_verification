@@ -105,6 +105,13 @@ class VerificationResult:
     usage: RunUsage = field(default_factory=RunUsage)
     errors: list[str] = field(default_factory=list)
     source: PaperSource | None = None
+    # Comparison-table findings (``citation_verifier.tables.TableReport``), one per
+    # related-work table whose ✓/✗ cells were checked against the cited papers. Kept
+    # beside ``records`` rather than folded into them: a record is one (claim, citation)
+    # pair, and a table cell is a different unit — "cited method R has property D" —
+    # with its own verdict vocabulary. Empty when the paper has no such table or table
+    # verification is off. Typed loosely so the contract does not import the subsystem.
+    tables: list = field(default_factory=list)
 
     def __iter__(self):
         return iter(self.records)

@@ -29,7 +29,12 @@ whether a paper is real, and about its authors / venue / year, MUST be grounded
 in a `lookup_paper` result (Crossref / arXiv / DBLP, optionally Semantic Scholar
 / OpenAlex) or a web result you actually retrieved. If you cannot verify
 something, label it `unresolved` — never guess. A web hit alone never upgrades
-`unresolved -> yes` without a corroborating structured record.
+`unresolved -> yes` without a corroborating structured record — with one exception: a
+work that lives only on the web (software, a blog post, a model card, a leaderboard, a
+report) exists when its own page is found, its title matches, and the page itself names a
+cited author (its author tags, the byline beside the title, or — for an organisation — the
+site it owns). Its authors and year are then what the PAGE states, compared with the
+citation like any record's; never copied from the citation.
 
 ## Workflow
 

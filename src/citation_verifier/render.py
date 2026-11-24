@@ -120,9 +120,15 @@ def _citation_cell(record: CitationRecord) -> str:
 
 
 def _cite_marker(cite_key: str) -> str:
-    """A short per-row citation marker: ``[6]`` for ``ref-6``, else ``[<key>]``."""
-    m = re.match(r"ref-(\d+)$", cite_key or "")
-    return f"[{m.group(1)}]" if m else f"[{cite_key}]"
+    """A short per-row citation marker: ``[6]`` for ``ref-6``, else ``[<key>]``.
+
+    An entry of a second reference list (an appendix's own, ``s2-ref-6``) is shown with
+    the list it belongs to — its ``[6]`` is not the paper's ``[6]``.
+    """
+    m = re.match(r"(?:s(\d+)-)?ref-(\d+)$", cite_key or "")
+    if not m:
+        return f"[{cite_key}]"
+    return f"[{m.group(2)}, list {m.group(1)}]" if m.group(1) else f"[{m.group(2)}]"
 
 
 def _claim_cell(record: CitationRecord, *, marker: str | None = None) -> str:
@@ -297,8 +303,12 @@ def render_summary(records: list[CitationRecord]) -> str:
         "| References — Exists? | n |  | Claims — Relevance | n |",
         "|:---|---:|:-:|:---|---:|",
         f"| yes | {ex.get(Exists.YES.value, 0)} |  | {SUPPORTS_STR[SupportsClaim.SUPPORTS.value]} | {sc.get(SupportsClaim.SUPPORTS.value, 0)} |",
-        f"| unresolved | {ex.get(Exists.UNRESOLVED.value, 0)} |  | {SUPPORTS_STR[SupportsClaim.PARTIAL.value]} | {sc.get(SupportsClaim.PARTIAL.value, 0)} |",
-        f"| no (fabricated) | {ex.get(Exists.NO.value, 0)} |  | {SUPPORTS_STR[SupportsClaim.DOES_NOT.value]} | {sc.get(SupportsClaim.DOES_NOT.value, 0)} |",
+        f"| not found (unresolved) | {ex.get(Exists.UNRESOLVED.value, 0)} |  | {SUPPORTS_STR[SupportsClaim.PARTIAL.value]} | {sc.get(SupportsClaim.PARTIAL.value, 0)} |",
+        # A row that says "fabricated: 0" reads as a clean bill of health, and the
+        # pipeline cannot give one: it never declares a reference fabricated (a reference
+        # it cannot find is `unresolved`, for a person to check). The row is shown only
+        # when something upstream — a backend with web evidence, a gold file — did set it.
+        f"| {'no (fabricated) | ' + str(ex[Exists.NO.value]) if ex.get(Exists.NO.value) else ' | '} |  | {SUPPORTS_STR[SupportsClaim.DOES_NOT.value]} | {sc.get(SupportsClaim.DOES_NOT.value, 0)} |",
         f"| **total refs** | **{refs}** |  | {SUPPORTS_STR[SupportsClaim.INCONCLUSIVE.value]} | {sc.get(SupportsClaim.INCONCLUSIVE.value, 0)} |",
     ]
     breakdown = _inconclusive_breakdown(records)
@@ -320,7 +330,70 @@ def render_summary(records: list[CitationRecord]) -> str:
         lines += ["", "### Fix before submission"]
         for r in high:
             lines.append(f"- `{r.cite_key}` — {_cell(_citation_cell(r))}: {_severity_cell(r)}")
+    lines += _not_found_block(records)
     return "\n".join(lines)
+
+
+# Why a reference came back unresolved, read off the note the correctness stage left.
+# The order is the order of the report: what a person should check first comes first.
+_NOT_FOUND_CAUSES = (
+    ("searched", "could not retrieve a confident match",
+     "Searched every source and found no such paper — check these first"),
+    ("rejected", "abstained from a weak fuzzy-title match",
+     "The closest record found is a different paper"),
+    ("blocked", "url access blocked", "The cited URL could not be opened"),
+    ("no_reference", "no reference string available",
+     "No bibliography entry could be read for the citation"),
+    ("incomplete", "lookup incomplete",
+     "NOT fully searched — a source was rate-limiting or unreachable; re-run before reading anything into these"),
+)
+_NOT_FOUND_LIMIT = 40
+
+
+def _not_found_block(records: list[CitationRecord]) -> list[str]:
+    """The references that could not be matched to a real record, for a person to check.
+
+    This is where the report flags a possibly invented reference — and all it does is
+    flag. The pipeline never sets ``exists = no``: a reference absent from the indexes is
+    what a fabrication looks like, and equally a book, a thesis, a technical report, a
+    preprint from last week or a venue the indexes do not cover. Telling those apart needs
+    a person, so the references are listed, grouped by how hard the search actually
+    looked. A lookup that was cut short by a rate limit is kept apart from one that
+    completed and found nothing: only the second is evidence of anything.
+    """
+    by_cause: dict[str, list[CitationRecord]] = {}
+    seen: set[str] = set()
+    for r in records:
+        if _enum_value(r.exists) != Exists.UNRESOLVED.value or r.cite_key in seen:
+            continue
+        if r.cite_key == "run" and not r.cited_as.raw:
+            continue  # the placeholder row of a run that degraded entirely
+        seen.add(r.cite_key)
+        note = " ".join(r.metadata_issues or []).lower() or (r.error or "").lower()
+        cause = next((c for c, needle, _t in _NOT_FOUND_CAUSES if needle in note), "searched")
+        by_cause.setdefault(cause, []).append(r)
+    if not by_cause:
+        return []
+    total = sum(len(v) for v in by_cause.values())
+    out = [
+        "",
+        f"### Not found — check by hand ({total})",
+        "",
+        "*These references could not be matched to a real record. That is what an invented "
+        "reference looks like — and also a book, a thesis, a very recent preprint, or a "
+        "venue the indexes do not cover. The tool does not decide which: it never declares "
+        "a reference fabricated.*",
+    ]
+    for cause, _needle, title in _NOT_FOUND_CAUSES:
+        group = by_cause.get(cause) or []
+        if not group:
+            continue
+        out += ["", f"**{title} ({len(group)})**"]
+        for r in group[:_NOT_FOUND_LIMIT]:
+            out.append(f"- `{r.cite_key}` — {_cell(_citation_cell(r))}")
+        if len(group) > _NOT_FOUND_LIMIT:
+            out.append(f"- … and {len(group) - _NOT_FOUND_LIMIT} more (see the table above)")
+    return out
 
 
 def _usage_footer(result: VerificationResult) -> str:
@@ -385,15 +458,50 @@ def render_report(result: VerificationResult) -> str:
         The complete Markdown report string.
     """
     records = list(result.records)
-    parts = [
-        f"# Citation verification — `{result.paper_id}`",
-        render_table(records),
-        render_summary(records),
-    ]
+    parts = [f"# Citation verification — `{result.paper_id}`"]
+    if banner := _model_unavailable_banner(result):
+        parts.append(banner)
+    parts += [render_table(records), render_summary(records)]
     if skipped := _render_skipped(records):
         parts.append(skipped)
+    if tables := _render_tables(result):
+        parts.append(tables)
     parts.append(_usage_footer(result))
     return "\n\n".join(parts)
+
+
+def _model_unavailable_banner(result: VerificationResult) -> str:
+    """A warning for the top of the report when the model could not be reached.
+
+    Without it the report looks finished: existence and metadata are filled in and every
+    relevance cell says "inconclusive", which reads as "the evidence did not settle it".
+    """
+    from .errors import MODEL_UNAVAILABLE, model_unavailable_errors
+
+    down = model_unavailable_errors(result.errors)
+    if not down:
+        return ""
+    said = "; ".join(e[len(MODEL_UNAVAILABLE):].lstrip(": ") for e in down)
+    return (
+        "> **⚠ Incomplete report — the model could not be reached.** "
+        f"{_cell(said)}\n"
+        "> Existence and metadata checks below are unaffected. Every *inconclusive* / "
+        "*unverifiable* verdict here means **not judged**, not *undecided*."
+    )
+
+
+def _render_tables(result: VerificationResult) -> str:
+    """The comparison-table section, or ``""`` when the run has no table findings.
+
+    Rendered by the table subsystem (its verdict vocabulary is its own); imported lazily
+    so a report without tables never loads it.
+    """
+    reports = list(getattr(result, "tables", None) or [])
+    if not reports:
+        return ""
+    from .tables import render_table_reports
+
+    return render_table_reports(reports).rstrip()
 
 
 def to_json(records: list[CitationRecord], path: str | Path | None = None) -> str:

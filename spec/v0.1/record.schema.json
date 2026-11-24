@@ -395,7 +395,7 @@
             }
           ],
           "default": null,
-          "description": "'crossref' | 'arxiv' | 'dblp' | 's2' | 'openalex'.",
+          "description": "'crossref' | 'arxiv' | 'dblp' | 's2' | 'openalex' | 'openlibrary' | 'openreview' | 'url' | 'web'.",
           "title": "Source"
         },
         "match_method": {

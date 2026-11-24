@@ -51,7 +51,12 @@ class Settings(BaseModel):
         default=_DEFAULT_MODEL_JUDGE, description="Strong model for the JUDGE (relevance/justification) tier."
     )
     cost_ceiling_usd: float = Field(
-        default=0.50, ge=0.0, description="Per-run USD ceiling; 0 disables the cap. Orchestrator aborts gracefully past it."
+        default=10.0, ge=0.0,
+        description="Per-run USD ceiling; 0 disables the cap. A pass is not STARTED once "
+        "the run's spend has reached it (the relevance pass after correctness, then each "
+        "comparison table in turn) — so a run can overshoot by one pass, never by more. "
+        "Sized for a whole paper: measured runs spend $0.7-$3.9 on the citations alone and "
+        "roughly $0.09 per table cell on top (one call carrying the cited paper)."
     )
     enable_relevance_judge: bool = Field(
         default=True,
@@ -61,15 +66,40 @@ class Settings(BaseModel):
         "keyless abstention on supports_claim.",
     )
 
+    enable_table_verification: bool = Field(
+        default=True,
+        description="Verify the ✓/✗ cells of related-work comparison tables against the "
+        "cited papers, as part of every run. Results tables are never touched. Needs the "
+        "same model transport as the relevance judge; without one the tables are still "
+        "extracted and their columns defined, with every cell left unverifiable.",
+    )
+    table_max_cells: int = Field(
+        default=150, ge=0,
+        description="Ceiling on table cells judged per paper (one cell = one model call "
+        "carrying the whole cited paper). Tables past it are reported, not judged. 0 = no cap.",
+    )
+
     # ── Grounding sources ──
     crossref_mailto: str | None = Field(
         default=None, description="Email for Crossref's polite pool (no key needed; just higher rate limits)."
     )
     s2_api_key: str | None = Field(default=None, description="Semantic Scholar key; absent => S2 source skipped.")
-    openalex_api_key: str | None = Field(default=None, description="OpenAlex key; absent => OpenAlex source skipped.")
+    openalex_api_key: str | None = Field(default=None, description="OpenAlex key (its own daily budget); absent => the keyless budget, shared by every client on the IP.")
     enable_web_search: bool = Field(
-        default=False, description="Gate for last-resort web search/fetch grounding. False => never touch the web."
+        default=True,
+        description="Last-resort web search (a model with web search) for references no index "
+        "placed. Runs only in runs that use a model (the relevance judge on). False => never.",
     )
+    web_search_max_lookups: int = Field(
+        default=50, description="Web lookups allowed per paper (each is one model call)."
+    )
+    web_search_max_uses: int = Field(default=8, description="Searches the model may run in one lookup.")
+    read_scans: bool = Field(
+        default=True,
+        description="Have the model transcribe a cited work's PDF when it is a scan with no text layer "
+        "(only in runs that use a model).",
+    )
+    scan_max_pages: int = Field(default=20, description="Pages of one scanned PDF the model reads.")
 
     # ── Paths ──
     papers_dir: Path = Field(default=Path("papers"), description="Per-paper artifact dir (source, refs, report.json, run.json).")
@@ -164,12 +194,18 @@ def load_settings(env_file: str | Path | None = ".env") -> Settings:
         anthropic_api_key=_opt(get("ANTHROPIC_API_KEY")),
         model_bulk=_opt(get("MODEL_BULK")) or _DEFAULT_MODEL_BULK,
         model_judge=_opt(get("MODEL_JUDGE")) or _DEFAULT_MODEL_JUDGE,
-        cost_ceiling_usd=_as_float(get("COST_CEILING_USD"), 0.50),
+        cost_ceiling_usd=_as_float(get("COST_CEILING_USD"), 10.0),
         enable_relevance_judge=_as_bool(get("ENABLE_RELEVANCE_JUDGE"), True),
+        enable_table_verification=_as_bool(get("ENABLE_TABLE_VERIFICATION"), True),
+        table_max_cells=int(_as_float(get("TABLE_MAX_CELLS"), 150)),
         crossref_mailto=_opt(get("CROSSREF_MAILTO")),
         s2_api_key=_opt(get("S2_API_KEY")),
         openalex_api_key=_opt(get("OPENALEX_API_KEY")),
-        enable_web_search=_as_bool(get("ENABLE_WEB_SEARCH"), False),
+        enable_web_search=_as_bool(get("ENABLE_WEB_SEARCH"), True),
+        web_search_max_lookups=int(get("WEB_SEARCH_MAX_LOOKUPS") or 50),
+        web_search_max_uses=int(get("WEB_SEARCH_MAX_USES") or 8),
+        read_scans=_as_bool(get("READ_SCANS"), True),
+        scan_max_pages=int(get("SCAN_MAX_PAGES") or 20),
         papers_dir=Path(papers),
         chbench_data_dir=Path(chbench),
     )

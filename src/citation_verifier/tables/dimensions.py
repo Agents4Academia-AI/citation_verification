@@ -40,6 +40,8 @@ __all__ = [
     "parse_symbol_legend",
     "header_variants",
     "find_definition_snippets",
+    "table_context_passages",
+    "criterion_notes",
     "resolve_dimensions",
     "DEFAULT_TEST_QUESTION",
 ]
@@ -244,6 +246,43 @@ def _word_stems(word: str) -> set[str]:
     return out
 
 
+# Derivational suffixes, longest first. A header is a noun ("Refinement", "Efficiency",
+# "Occlusion") while the prose that explains it uses the verb or adjective ("refine only a
+# single rule", "an efficient scheme", "occluded parts"), and a matcher that only tolerates
+# inflection reports the column as one the paper never discusses. Measured: the sentence
+# that introduces a table and says what its columns mean was unreachable for two of four
+# columns, and a cited paper's four mentions of the very capability under check were
+# missed because the header said "occlusion" and the paper said "occluded".
+_DERIVATIONAL_SUFFIXES = (
+    "ization", "isation", "ability", "ibility", "ation", "ition", "ility", "ness",
+    "ment", "ence", "ance", "ency", "ancy", "tion", "sion", "ious", "eous", "ical",
+    "ally", "able", "ible", "ity", "ive", "ary", "ory", "ous", "ful", "ant", "ent",
+    "ing", "ed", "er", "al", "es", "s",
+)
+_MIN_DERIVED_STEM = 5
+
+
+def _derived_stem(word: str) -> str:
+    """The stem shared by a word's derivations, or ``""`` when it is too short to trust.
+
+    "refinement" -> "refin" (refine, refined, refining), "efficiency" -> "effici"
+    (efficient), "undetectability" -> "undetectab" (undetectable). Five letters minimum:
+    a shorter stem ("compl") stands for too many unrelated words.
+    """
+    w = (word or "").lower()
+    stem = w
+    for suf in _DERIVATIONAL_SUFFIXES:
+        if w.endswith(suf) and len(w) - len(suf) >= 3:
+            # "-ability" keeps its "ab": undetectability / undetectable share it.
+            stem = w[: -len(suf)] + ("ab" if suf in ("ability", "ibility") else "")
+            break
+    if stem.endswith("e") and len(stem) > _MIN_DERIVED_STEM:
+        stem = stem[:-1]
+    if len(stem) < _MIN_DERIVED_STEM or not stem.isalpha() or stem == w:
+        return ""
+    return stem
+
+
 @lru_cache(maxsize=512)
 def _term_regex(variant: str) -> re.Pattern[str]:
     """Word-boundary matcher for one spelling, tolerating space/hyphen interchange.
@@ -259,7 +298,12 @@ def _term_regex(variant: str) -> re.Pattern[str]:
             continue
         stems = sorted(_word_stems(word), key=len, reverse=True)
         alt = "|".join(re.escape(x) for x in stems)
-        parts.append(f"(?:{alt})" + r"(?:s|es|ing|ed)?")
+        inflected = f"(?:{alt})" + r"(?:s|es|ing|ed)?"
+        derived = _derived_stem(word)
+        if derived:
+            # The derivations too ("refine" for "Refinement"), still word-anchored.
+            inflected = f"(?:{inflected}|{re.escape(derived)}[a-z]{{0,7}})"
+        parts.append(inflected)
     # Allow punctuation BETWEEN the words: a header reads "Seq. Len." while the caption
     # writes "sequence length (Seq. Len)" — requiring only space/hyphen misses it.
     return re.compile(r"\b" + r"[\s\-.,/]+".join(parts) + r"\b", re.IGNORECASE)
@@ -435,20 +479,33 @@ _DESIGN_RATIONALE_RE = re.compile(
 )
 
 
-def strip_design_rationale(gloss: str) -> str:
-    """Drop the citing authors' own design choices from a column's definition.
+def split_design_rationale(gloss: str) -> tuple[str, list[str]]:
+    """Separate a column's definition from the citing authors' own design choice.
 
     A desideratum is often stated and then followed by what the authors did about it, and
-    only the first half is a condition on anyone else's method. Dropped whole sentences at
+    only the first half is a condition on anyone else's method. Split whole sentences at
     a time — clause-level surgery trips over the abbreviation dots ("i.e.") these
     sentences are full of.
+
+    Returns:
+        ``(definition, rationale_sentences)``. The rationale is not thrown away: it is how
+        the authors APPLIED the property when they filled in the table ("we prefer raw 3D
+        inputs" explains why an image-based method got a ✗), so it travels to the judge
+        as the citing paper's criterion — labelled as such, never as the definition.
     """
-    kept = [
-        part for part in _SENT_SPLIT.split(gloss or "")
-        if not _DESIGN_RATIONALE_RE.match(part.strip())
-    ]
+    kept: list[str] = []
+    dropped: list[str] = []
+    for part in _SENT_SPLIT.split(gloss or ""):
+        (dropped if _DESIGN_RATIONALE_RE.match(part.strip()) else kept).append(part)
     out = re.sub(r"\s+", " ", " ".join(kept)).strip(" ,;")
-    return out if len(out) >= 20 else (gloss or "")
+    if len(out) < 20:
+        return (gloss or ""), []
+    return out, [re.sub(r"\s+", " ", d).strip() for d in dropped if d.strip()]
+
+
+def strip_design_rationale(gloss: str) -> str:
+    """The definition half of :func:`split_design_rationale`."""
+    return split_design_rationale(gloss)[0]
 
 
 def _states_a_criterion(quote: str, header: str) -> bool:
@@ -575,6 +632,41 @@ _CITATION_RE = re.compile(
 _VERBATIM_RE = re.compile(
     r"\\begin\{(verbatim|lstlisting|quote|quotation)\}(.*?)\\end\{\1\}", re.DOTALL
 )
+# Formatting that wraps prose without changing it: the sentence inside `\textcolor{black}{…}`
+# (how a revision is highlighted) or `\emph{…}` is the sentence. Innermost group first,
+# repeated, so nesting unwraps too. A one-argument macro this module does not know
+# (`\revision{…}`, `\new{…}` — every paper names its own) is treated the same when what it
+# wraps is plainly prose: fifteen or more characters with a space in them. Structural
+# commands never qualify, whatever they wrap.
+_FORMAT_WRAP_RE = re.compile(
+    r"\\(?:textbf|textit|texttt|textsc|textrm|textsf|textup|emph|text|mbox|hbox|underline|"
+    r"uline|hl|textcolor\s*\{[^{}]*\}|colorbox\s*\{[^{}]*\})\s*\{([^{}]*)\}"
+)
+_STRUCTURAL_MACROS = frozenset(
+    "begin end label ref cref Cref autoref eqref cite citep citet citealp citeauthor "
+    "citeyear input include includegraphics caption section subsection subsubsection "
+    "paragraph subparagraph footnote url href resizebox multicolumn multirow newcommand "
+    "renewcommand def providecommand usepackage documentclass bibliography "
+    "bibliographystyle item frac sqrt mathbf mathrm mathcal mathit boldsymbol hat bar "
+    "vec tilde overline widehat widetilde".split()
+)
+_UNKNOWN_WRAP_RE = re.compile(r"\\([A-Za-z]{2,24})\*?\s*\{([^{}]{15,}?)\}")
+
+
+def _unwrap_formatting(text: str) -> str:
+    """Drop formatting macros around prose, keeping the prose."""
+    for _ in range(6):
+        new = _FORMAT_WRAP_RE.sub(r"\1", text)
+        new = _UNKNOWN_WRAP_RE.sub(
+            lambda m: m.group(2)
+            if m.group(1) not in _STRUCTURAL_MACROS and " " in m.group(2)
+            else m.group(0),
+            new,
+        )
+        if new == text:
+            break
+        text = new
+    return text
 
 
 def normalize_latex_prose(text: str) -> str:
@@ -591,7 +683,9 @@ def normalize_latex_prose(text: str) -> str:
     text = _CITATION_RE.sub(" ", text)
     text = _HEADING_RE.sub(lambda m: f" {m.group(1).strip().rstrip('.')}: ", text)
     text = _TEX_NOISE_RE.sub(" ", text)
-    return text
+    text = _unwrap_formatting(text)
+    # A tie (`Table~1`, `awareness~--`) is a space; an empty group (`\\sys{}`) is nothing.
+    return text.replace("~", " ").replace("{}", "")
 
 
 def find_definition_snippets(
@@ -603,6 +697,7 @@ def find_definition_snippets(
     limit: int = 4,
     siblings: list[str] | None = None,
     own_names: list[str] | None = None,
+    context: list[str] | None = None,
 ) -> list[tuple[str, str, int]]:
     """Passages that plausibly define ``header``, best first.
 
@@ -617,6 +712,9 @@ def find_definition_snippets(
         own_names: the citing paper's method name(s). A sentence that names its own
             method is describing that method, not the property, and using it as the
             definition asks every competitor whether it implements THIS paper's design.
+        context: sentences of the paragraph that introduces the table
+            (:func:`table_context_passages`). Scored like body prose with a bonus: a
+            definition given where the table is discussed outranks one found elsewhere.
 
     Returns:
         ``[(source, quote, score), …]`` where ``source`` is a :class:`GlossSource`
@@ -629,7 +727,7 @@ def find_definition_snippets(
     # Passages that use the term while describing the citing paper's own system. Excluded
     # from `found` — adopting one as the definition is how a table's punchline became a
     # column's criterion — but handed to the glosser as context.
-    context: list[str] = []
+    context_sentences: list[str] = []
 
     # Score the caption both sentence-by-sentence AND as a whole: an abbreviated header
     # ("Seq. Len.") makes the sentence splitter cut inside the very phrase being defined
@@ -654,6 +752,17 @@ def find_definition_snippets(
         s = _score_sentence(line, variants, in_definition_env=False, own_names=own_names)
         if s > 0:
             found.append((GlossSource.LEGEND.value, line.strip(), s + 3))
+
+    for sent in context or []:
+        if _describes_own_method(sent, own_names):
+            sent = _before_own_claim(sent, list(own_names or [])) or sent
+        s = _score_sentence(sent, variants, in_definition_env=False, own_names=own_names)
+        if s >= 4:
+            found.append((GlossSource.BODY.value, sent.strip(), s + 2))
+        elif s > 0:
+            found.append((GlossSource.MENTION.value, sent.strip(), s + 2))
+        elif any(_term_regex(v).search(sent) for v in variants):
+            context_sentences.append(sent)
 
     # Reviewer comments and the table floats themselves mention the term without ever
     # defining it — drop both before deciding whether the paper defines this column.
@@ -705,7 +814,7 @@ def find_definition_snippets(
             # they implement this paper's design, the second states a problem rather than
             # a criterion. Passed to the glosser as background instead, which is told to
             # read them for the subject and never adopt them as the definition.
-            context.append(sent)
+            context_sentences.append(sent)
             continue
         if s >= 4:  # definitional phrasing
             found.append((GlossSource.BODY.value, sent, s))
@@ -741,8 +850,315 @@ def find_definition_snippets(
         out.append((src, re.sub(r"\s+", " ", quote)[:600], score))
         if len(out) >= limit:
             break
-    for sent in context[:2]:
+    # Background for the glosser and raw material for the criterion notes. A sentence that
+    # says how the property is applied ("we require it to be X if …") is worth more than
+    # one that merely advertises the authors' system with the term in it, and the scan
+    # order (abstract first) puts the advertisements first — so rank, then cap.
+    context_sentences.sort(
+        key=lambda t: (
+            not _CRITERION_CUE_RE.search(t),
+            bool(_CONTRIBUTION_RE.search(t)),
+        )
+    )
+    for sent in context_sentences[:4]:
         out.append((_SELF_CONTEXT, re.sub(r"\s+", " ", sent)[:400], 0))
+    return out
+
+
+# `\ref{tab:x}` / `\cref{tab:x}` / `Table~\ref{tab:x}` — the sentence that points at the
+# table. `\label` is the table itself and is excluded.
+def _ref_to_label_re(label: str) -> re.Pattern[str]:
+    lab = re.escape(label.strip())
+    return re.compile(
+        r"\\(?:[cC]ref|autoref|vref|pageref|ref)\*?\s*\{\s*(?:[^{}]*,\s*)?" + lab + r"\s*(?:,[^{}]*)?\}"
+    )
+
+
+# In text extracted from a PDF the pointer is the bare "Table 1", but so is the caption's
+# own opening ("Table 1: Comparison of …" / "Table 1. …"); only the pointer is wanted.
+def _ref_to_number_re(number: int) -> re.Pattern[str]:
+    return re.compile(rf"\bTable\s+{int(number)}\b(?!\s*[:.]\s*[A-Z])")
+
+
+_PARAGRAPH_BREAK_RE = re.compile(r"\n[ \t]*\n")
+_CONTEXT_REACH = 2500  # characters of paragraph kept either side of the pointer
+
+
+def table_context_passages(
+    body_text: str,
+    *,
+    label: str = "",
+    number: int | None = None,
+    limit: int = 12,
+) -> list[str]:
+    """Sentences of the paragraph(s) in which the paper introduces the table.
+
+    Where a paper says what its comparison columns mean is, more often than anywhere
+    else, the paragraph that points at the table: "Table 1 compares … LLM-based methods
+    generate simple features or use feedback to iteratively refine only a single rule."
+    Those sentences rarely contain the column's own words, so a keyword search from the
+    header never reaches them — this is a second route in, from the table's side.
+
+    Args:
+        body_text: the citing paper's text (LaTeX source or extracted PDF text).
+        label: the table's ``\\label``, for LaTeX sources.
+        number: the table's printed number, for text without labels.
+        limit: at most this many sentences, in document order.
+
+    Returns:
+        Sentences (prose, TeX bookkeeping removed), deduplicated, or ``[]`` when nothing
+        points at the table.
+    """
+    text = body_text or ""
+    if not text or not (label or number):
+        return []
+    pats = []
+    if label:
+        pats.append(_ref_to_label_re(label))
+    if number:
+        pats.append(_ref_to_number_re(number))
+    is_latex = bool(_LOOKS_LIKE_LATEX.search(text))
+    out: list[str] = []
+    seen: set[str] = set()
+    for pat in pats:
+        for m in pat.finditer(text):
+            # The enclosing paragraph: back to the previous blank line, on to the next.
+            lo = max(0, m.start() - _CONTEXT_REACH)
+            hi = min(len(text), m.end() + _CONTEXT_REACH)
+            before = text[lo:m.start()]
+            after = text[m.end():hi]
+            brk = list(_PARAGRAPH_BREAK_RE.finditer(before))
+            if brk:
+                before = before[brk[-1].end():]
+            nxt = _PARAGRAPH_BREAK_RE.search(after)
+            if nxt:
+                after = after[: nxt.start()]
+            para = before + text[m.start():m.end()] + after
+            if is_latex:
+                para = _TEX_COMMENT_RE.sub(" ", para)
+            para = _TABLE_FLOAT_RE.sub(" ", para)
+            para = normalize_latex_prose(para)
+            para = re.sub(r"\s+", " ", para).strip()
+            for sent in _SENT_SPLIT.split(para):
+                sent = sent.strip()
+                if len(sent) < 25 or _RESIDUAL_MARKUP_RE.search(sent):
+                    continue
+                key = re.sub(r"\W+", "", sent.lower())[:120]
+                if key in seen:
+                    continue
+                seen.add(key)
+                out.append(sent[:600])
+                if len(out) >= limit:
+                    return out
+    return out
+
+
+# A sentence that says how the property is APPLIED — what qualifies, what disqualifies,
+# what the authors treat as equivalent — rather than merely using the word.
+_CRITERION_CUE_RE = re.compile(
+    r"\b(?:requir|prefer|guarantee|regard|consider|treat|qualif|satisf|handl|"
+    r"interpret|compromis|fail|lack|sacrific|violat|ensur|conform|suffic|"
+    r"necess|equivalent|interchangeab|intertwin|distinguish)\w*"
+    r"|\bmeans?\b|\bcounts?\b|\bdiffers?\b|\bcompl(?:y|ies|ied|ying|iance|iant)\b"
+    r"|\bi\.e\.|\bthat is\b|\bonly if\b|\bas long as\b|\bneed not\b|\botherwise\b"
+    r"|\bwhereas\b|\bat the expense\b|\brather than\b|\binstead of\b|\bregardless\b",
+    re.IGNORECASE,
+)
+# Bookkeeping that mentions the term without saying anything about it.
+_POINTER_ONLY_RE = re.compile(
+    r"\b(?:are|is)\s+(?:given|shown|presented|reported|listed|summari[sz]ed|described)?"
+    r"\s*(?:in|at)\s+(?:Section|Table|Figure|Appendix|Sec\.|Fig\.)\b"
+    # Narration of the paper's own experiments, not a criterion.
+    r"|\bwe\s+(?:will\s+|also\s+|then\s+|first\s+)?(?:introduce|present|discuss|describe|"
+    r"evaluate|report|show|measure|compare|include|study|analy[sz]e|conduct|perform|run|"
+    r"observe|find|summari[sz]e|visuali[sz]e|investigate)\b",
+    re.IGNORECASE,
+)
+# A contribution claim — about the authors' system, not about the property. Distinct from
+# the first-person CRITERION sentences that are wanted ("we require …", "we prefer …").
+_CONTRIBUTION_RE = re.compile(
+    r"\b(?:we|this\s+(?:paper|work|study))\s+(?:propose|present|introduce|develop|design|"
+    r"build|train|implement|instruct)(?:s|d|ed)?\b"
+    r"|\b(?:our|the\s+proposed)\s+(?:\w+\s+){0,3}(?:\([^()]{0,24}\)\s*)?(?:method|approach|"
+    r"framework|system|model|mechanism|algorithm|network|pipeline|search|module|detector|"
+    r"component)s?\b",
+    re.IGNORECASE,
+)
+_MAX_NOTES = 3
+_MAX_NOTE_CHARS = 320
+_MIN_NOTE_WORD = 7  # a header's longest word is a spelling of the column only when this long
+
+
+def _mentions(sentence: str, variants: list[str]) -> bool:
+    return any(_term_regex(v).search(sentence) for v in variants)
+
+
+def _clip(sentence: str, limit: int = _MAX_NOTE_CHARS) -> str:
+    s = re.sub(r"\s+", " ", sentence or "").strip()
+    if len(s) <= limit:
+        return s
+    cut = s[:limit].rsplit(" ", 1)[0]
+    return cut + " …"
+
+
+def _following_sentence(quote: str, prose: str) -> str:
+    """The sentence that follows ``quote`` in the paper, or ``""``."""
+    tail = re.sub(r"\s+", " ", (quote or "")).strip()[-60:]
+    if len(tail) < 20 or not prose:
+        return ""
+    pat = re.compile(r"\s+".join(re.escape(w) for w in tail.split()), re.IGNORECASE)
+    m = pat.search(prose)
+    if not m:
+        return ""
+    following = prose[m.end(): m.end() + 400].lstrip(" .;:")
+    nxt = _SENT_SPLIT.split(following, maxsplit=1)[0].strip()
+    if not nxt or _RESIDUAL_MARKUP_RE.search(nxt) or len(nxt) > 350:
+        return ""
+    return re.sub(r"\s+", " ", nxt)
+
+
+def _rationale_after(quote: str, prose: str) -> list[str]:
+    """The design-choice sentence that follows ``quote`` in the paper, if there is one.
+
+    A definition captured by its punctuation ("Anti-occlusion: the keypoints should be
+    repeatable under self-occlusion") stops at the full stop, and the authors' "Thus, we
+    prefer raw 3D inputs" that comes next never enters the quote at all — so it can be
+    neither stripped from the gloss nor kept as the criterion. Looked up here instead.
+    """
+    nxt = _following_sentence(quote, prose)
+    return [nxt] if nxt and _DESIGN_RATIONALE_RE.match(nxt) else []
+
+
+# A sentence that continues a definition rather than starting a new thought: "As a
+# result, the adversary cannot detect whether a given text is watermarked." A definition
+# captured by its punctuation stops at the first full stop, and dropping the sentence
+# that spells out what the property amounts to left "invisible upon inspection" with
+# its consequence — the actual criterion — cut off.
+_CONTINUATION_RE = re.compile(
+    r"^(?:As a result|As such|This (?:means|entails|implies|requires|ensures|includes|"
+    r"covers|comprises|refers|is)|That is|"
+    r"In other words|Namely|Formally|i\.e\.|Hence|Consequently|It (?:means|requires|"
+    r"entails|follows)|Specifically|More precisely)\b",
+    re.IGNORECASE,
+)
+
+
+def _continuation_after(quote: str, prose: str, own_names: list[str] | None) -> str:
+    """The sentence completing a definition, or ``""`` when the next sentence moves on."""
+    nxt = _following_sentence(quote, prose)
+    if not nxt or not _CONTINUATION_RE.match(nxt) or _describes_own_method(nxt, own_names):
+        return ""
+    return nxt
+
+
+def _prose_of(body_text: str) -> str:
+    """The paper's body as the sentence scans see it: comments, floats and markup gone."""
+    rest = body_text or ""
+    if _LOOKS_LIKE_LATEX.search(rest):
+        rest = _TEX_COMMENT_RE.sub(" ", rest)
+    rest = _TABLE_FLOAT_RE.sub(" ", rest)
+    return re.sub(r"\s+", " ", normalize_latex_prose(rest))
+
+
+def criterion_notes(
+    header: str,
+    *,
+    snippets: list[tuple[str, str, int]],
+    table_context: list[str],
+    rationale: list[str],
+    gloss_quote: str = "",
+    own_names: list[str] | None = None,
+    leaf_terms: list[str] | None = None,
+    siblings: list[str] | None = None,
+) -> list[str]:
+    """What the citing paper says about how it APPLIES a column, beyond defining it.
+
+    A table's marks are the authors' reading of prior work under their own criterion, and
+    that criterion is often stated apart from the definition: the design choice that
+    follows a desideratum ("thus we prefer raw 3D inputs"), a note on which notions they
+    treat as interchangeable, a sentence in the paragraph introducing the table that says
+    what disqualified the compared methods. A judge shown only the bare definition reads it
+    at its own — usually stricter, sometimes looser — level, and the same column then gets
+    judged by a different standard on every row.
+
+    These notes are handed to the judge labelled as the citing paper's criterion — they
+    say what to check, never whether the cited work passes — and are never adopted as
+    the definition.
+
+    Args:
+        header: the column header.
+        snippets: what :func:`find_definition_snippets` returned for it.
+        table_context: :func:`table_context_passages` for the table.
+        rationale: the sentences :func:`split_design_rationale` removed from the gloss.
+        gloss_quote: the passage adopted as the definition, which is not repeated here.
+        own_names: the citing paper's own method name(s); a clause about that method is
+            not a criterion on anyone else and is cut away.
+        leaf_terms: extra spellings to match (the leaf of a stacked header).
+        siblings: the other column headers; a sentence reciting several of them is the
+            table's summary of itself, not a criterion for this column.
+
+    Returns:
+        Up to three short sentences, most specific first.
+    """
+    variants = header_variants(header)
+    for term in leaf_terms or []:
+        variants += header_variants(term)
+    # "Task-imaginary" is discussed as "imaginary tasks", "Anti-occlusion" as "occluded":
+    # the header's longest word is a spelling of the column too, when long enough to be
+    # specific to it.
+    words = sorted(re.findall(rf"[A-Za-z]{{{_MIN_NOTE_WORD},}}", header or ""), key=len)
+    if words and words[-1].lower() not in {v.lower() for v in variants}:
+        variants += header_variants(words[-1])
+    others = [s for s in (siblings or []) if s and s.strip().lower() != (header or "").strip().lower()]
+    quote_key = re.sub(r"\W+", "", (gloss_quote or "").lower())[:120]
+    own = list(own_names or [])
+    seen: set[str] = set()
+    out: list[str] = []
+
+    def take(sentence: str) -> None:
+        if len(out) >= _MAX_NOTES:
+            return
+        sent = _before_own_claim(sentence, own) if _describes_own_method(sentence, own) else sentence
+        sent = re.sub(r"\s+", " ", sent or "").strip()
+        # A fragment (the scan cut a long sentence mid-word), bookkeeping, a passage still
+        # straddling a float, a contribution claim, or the table reciting itself.
+        if len(sent) < 25 or not (sent[0].isupper() or sent[0] in "(\"'0123456789"):
+            return
+        if "{" in sent or "}" in sent:  # residue of a macro the scan cut through
+            return
+        if _POINTER_ONLY_RE.search(sent) or _RESIDUAL_MARKUP_RE.search(sent):
+            return
+        if _CONTRIBUTION_RE.search(sent) or (others and _recites_the_table(sent, others)):
+            return
+        key = re.sub(r"\W+", "", sent.lower())[:120]
+        if not key or key == quote_key or key in seen:
+            return
+        seen.add(key)
+        out.append(_clip(sent))
+
+    # 1. The authors' own design choice, split off the definition: about this column by
+    #    construction, so it needs no further test.
+    for sent in rationale:
+        take(sent)
+    # 2. The paragraph that introduces the table. A sentence there that names the property
+    #    is about the table's reading of it; the sentence that follows often applies it to
+    #    the compared methods ("… at the expense of erroneous tasks"), so it rides along.
+    for i, sent in enumerate(table_context):
+        if not _mentions(sent, variants):
+            continue
+        nxt = table_context[i + 1] if i + 1 < len(table_context) else ""
+        if nxt and len(nxt) < 250 and not _mentions(nxt, variants) \
+                and not _describes_own_method(nxt, own):
+            take(f"{sent} {nxt}")
+        else:
+            take(sent)
+    # 3. Elsewhere in the body: a passing mention counts only when it says how the property
+    #    is applied, not merely that it exists.
+    for src, quote, _score in snippets:
+        if src not in (GlossSource.MENTION.value, _SELF_CONTEXT):
+            continue
+        if _mentions(quote, variants) and _CRITERION_CUE_RE.search(quote):
+            take(quote)
     return out
 
 
@@ -809,6 +1225,7 @@ def _is_grounded_in(gloss: str, col: dict) -> bool:
             col.get("caption") or "",
             " ".join(col.get("legend") or []),
             " ".join(s.get("quote") or "" for s in col.get("snippets") or []),
+            " ".join(col.get("table_context") or []),
             col.get("header") or "",
         ]
     )
@@ -826,8 +1243,10 @@ def resolve_dimensions(
     own_names: set[str] | list[str] | None = None,
     paper_id: str = "",
     table_id: str = "",
+    table_label: str = "",
 ) -> list[Dimension]:
-    """Fill ``gloss`` / ``gloss_source`` / ``gloss_quote`` / ``test_question`` in place.
+    """Fill ``gloss`` / ``gloss_source`` / ``gloss_quote`` / ``test_question`` /
+    ``criterion_notes`` in place.
 
     Deterministic first: each header is matched against the caption, the legend and the
     body. When a ``glosser`` is supplied it turns the retrieved passages into a crisp
@@ -849,10 +1268,24 @@ def resolve_dimensions(
         paper_id, table_id: identify the table for the gloss cache. Without them the
             glosser is called afresh every run, and because its wording becomes the
             retrieval query, the whole chain below it moves with it.
+        table_label: the table's ``\\label`` (LaTeX) — or, failing that, ``table_id`` is
+            read for a printed number (``"table-1"``) — so the paragraph that introduces
+            the table can be found (:func:`table_context_passages`).
 
     Returns:
         The same list, with the gloss fields populated.
     """
+    label = table_label or ""
+    number: int | None = None
+    if not label and table_id:
+        m = re.fullmatch(r"(?:table|tab)[-_ :]?(\d{1,3})", table_id.strip(), re.IGNORECASE)
+        if m:
+            number = int(m.group(1))
+        elif not re.fullmatch(r"table-\d+", table_id.strip()):
+            label = table_id.strip()
+    table_context = table_context_passages(body_text, label=label, number=number)
+    prose = _prose_of(body_text)
+
     payload: list[dict] = []
     for dim in dimensions:
         # A placeholder header ("(i)") carries no meaning on its own; recover the name
@@ -876,7 +1309,7 @@ def resolve_dimensions(
         for term in full_terms:
             snips = find_definition_snippets(
                 term, body_text, caption=caption, legend=legend, siblings=siblings,
-                own_names=list(own_names or []),
+                own_names=list(own_names or []), context=table_context,
             )
             if any(t[0] != _SELF_CONTEXT for t in snips):
                 break
@@ -885,7 +1318,7 @@ def resolve_dimensions(
             for term in leaf_terms:
                 snips = find_definition_snippets(
                     term, body_text, caption="", legend=None, siblings=siblings,
-                    own_names=list(own_names or []),
+                    own_names=list(own_names or []), context=table_context,
                 )
                 if any(t[0] != _SELF_CONTEXT for t in snips):
                     snips = _qualify_by_parent(snips, parent)
@@ -898,12 +1331,24 @@ def resolve_dimensions(
             snips = [(GlossSource.BODY.value, name_quote, 5)]
         # Context passages ride along for the glosser only — never as the gloss itself.
         best = next((t for t in snips if t[0] != _SELF_CONTEXT), None)
+        rationale: list[str] = []
         if best:
             src, quote, _ = best
             dim.gloss_source = src
             dim.gloss_quote = quote
+            # A punctuation-captured definition stops at its first full stop; take the
+            # sentence that completes it, when there is one.
+            more = _continuation_after(quote, prose, list(own_names or []))
+            if more:
+                quote = f"{quote.rstrip(' .;:')}. {more}"
+                dim.gloss_quote = quote
+                # The glosser must see the completed definition too, or it paraphrases
+                # the truncated one (and the cache key must change with the material).
+                snips = [(src, quote, sc) if q == best[1] else (src, q, sc) for src, q, sc in snips]
             # deterministic fallback; refined by the glosser below
-            dim.gloss = strip_design_rationale(quote)
+            dim.gloss, rationale = split_design_rationale(quote)
+            if not rationale:
+                rationale = _rationale_after(quote, prose)
         else:
             dim.gloss_source = GlossSource.HEADER_ONLY.value
             dim.gloss_quote = ""
@@ -911,11 +1356,20 @@ def resolve_dimensions(
         dim.test_question = (
             f"Does the cited work satisfy '{dim.header}'?" if dim.header else DEFAULT_TEST_QUESTION
         )
+        # How the paper applies the column, kept apart from what the column means.
+        dim.criterion_notes = criterion_notes(
+            dim.header, snippets=snips, table_context=table_context, rationale=rationale,
+            gloss_quote=dim.gloss_quote, own_names=list(own_names or []),
+            leaf_terms=leaf_terms, siblings=siblings,
+        )
         payload.append(
             {
                 "header": dim.header,
                 "caption": caption,
                 "kind": dim.kind,
+                # The paragraph that introduces the table: the columns are most often
+                # explained there, in words the header does not contain.
+                "table_context": list(table_context),
                 # The other columns of the same table. A gloss is only useful if it
                 # DISTINGUISHES this column from its neighbours — MARRS lists "Anaphora",
                 # "Ellipses" and "Conversational Entity Resolution" side by side, and a
@@ -950,6 +1404,15 @@ def resolve_dimensions(
             continue
         gloss = (got.get("gloss") or "").strip()
         question = (got.get("test_question") or "").strip()
+        # Other wordings of the property, for the search of the cited paper. Kept even
+        # when the gloss is rejected: they assert nothing, they only widen the net.
+        terms: list[str] = []
+        for t in got.get("search_terms") or []:
+            t = re.sub(r"\s+", " ", str(t)).strip(" .,;:\"'")
+            t = re.sub(r"\s*\([^()]*\)\s*$", "", t).strip()  # "… (absence)" labels
+            if 2 <= len(t) <= 40 and t.lower() not in {x.lower() for x in terms}:
+                terms.append(t)
+        dim.search_terms = terms[:12]
         if gloss and dim.gloss_source != GlossSource.HEADER_ONLY.value:
             dim.gloss = gloss
         elif gloss and _is_grounded_in(gloss, col):

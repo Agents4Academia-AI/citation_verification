@@ -170,7 +170,10 @@ class CitedAs(_Model):
 class Resolved(_Model):
     """The canonical record the reference resolved to (ground for correctness)."""
 
-    source: str | None = Field(default=None, description="'crossref' | 'arxiv' | 'dblp' | 's2' | 'openalex'.")
+    source: str | None = Field(
+        default=None,
+        description="'crossref' | 'arxiv' | 'dblp' | 's2' | 'openalex' | 'openlibrary' | 'openreview' | 'url' | 'web'.",
+    )
     match_method: MatchMethod = MatchMethod.NONE
     match_score: float | None = Field(default=None, ge=0.0, le=1.0)
     title: str | None = None

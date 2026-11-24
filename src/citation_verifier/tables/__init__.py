@@ -43,6 +43,7 @@ from typing import Any
 from .dimensions import find_definition_snippets, resolve_dimensions
 from .evidence import build_evidence_provider, compose_evidence
 from .latex_grid import (
+    _expand_macros,
     collect_macro_names,
     included_sources,
     looks_like_comparison_table,
@@ -67,6 +68,13 @@ from .model import (
     derive_cell_severity,
 )
 from .pdf_grid import tables_from_pdf
+from .pipeline import (
+    TableRun,
+    annotate_table_citations,
+    is_related_work_table,
+    verify_paper_tables,
+)
+from .render import render_table_report, render_table_reports
 from .verify import asymmetry_summary, verify_table
 
 __all__ = [
@@ -83,6 +91,9 @@ __all__ = [
     # convenience
     "extract_tables", "read_body_text", "verify_tables",
     "choose_extraction", "extraction_quality",
+    # whole-paper entry point (the orchestrator's table pass, and a tables-only run)
+    "verify_paper_tables", "TableRun", "is_related_work_table", "annotate_table_citations",
+    "render_table_report", "render_table_reports",
 ]
 
 
@@ -98,18 +109,25 @@ def read_body_text(source: Any) -> str:
     Returns:
         Concatenated text, or ``""`` when nothing is readable.
     """
-    work_dir = getattr(source, "work_dir", None)
-    if work_dir:
-        tex_dir = Path(work_dir) / "tex"
-        if tex_dir.is_dir():
+    tex_dir = _tex_dir(source)
+    if tex_dir is not None:
             parts = []
-            for p in sorted(tex_dir.rglob("*.tex")):
+            # The same files the tables are read from: a column "defined" by a sentence in
+            # an abandoned draft is defined by text the paper does not contain.
+            for p in included_sources(sorted(tex_dir.rglob("*.tex"))):
                 try:
                     parts.append(p.read_text(encoding="utf-8", errors="ignore"))
                 except OSError:
                     continue
             if parts:
-                return "\n".join(parts)
+                # Expand the paper's own aliases (`\\newcommand{\\AlgName}{LLM-FE}`) so a
+                # sentence about the authors' method is recognisable as one: with the
+                # macro left in, "\\AlgName refines features across islands" carries no
+                # name, passes the self-description filter, and was adopted as the
+                # definition of a column — which then asked every competitor whether it
+                # implements this paper's design.
+                text = "\n".join(parts)
+                return _expand_macros(text, collect_macro_names(text))
     pdf_path = getattr(source, "pdf_path", None)
     if pdf_path:
         try:
@@ -119,6 +137,21 @@ def read_body_text(source: Any) -> str:
         except Exception:  # noqa: BLE001 — no body text is survivable
             return ""
     return ""
+
+
+def _tex_dir(source: Any) -> Path | None:
+    """Where the paper's LaTeX sources are, or ``None``.
+
+    ``source.tex_dir`` when the extract layer has set it (an uploaded archive, an e-print
+    already materialised), else the conventional ``<work_dir>/tex``.
+    """
+    for cand in (getattr(source, "tex_dir", None), ):
+        if cand and Path(cand).is_dir():
+            return Path(cand)
+    work_dir = getattr(source, "work_dir", None)
+    if work_dir and (Path(work_dir) / "tex").is_dir():
+        return Path(work_dir) / "tex"
+    return None
 
 
 def _dedupe(tables: list[ComparisonTable]) -> list[ComparisonTable]:
@@ -185,12 +218,10 @@ def extract_tables(
         The tables found, possibly empty. Never raises.
     """
     paper_id = getattr(source, "paper_id", "") or ""
-    work_dir = getattr(source, "work_dir", None)
     out: list[ComparisonTable] = []
 
-    if work_dir:
-        tex_dir = Path(work_dir) / "tex"
-        if tex_dir.is_dir():
+    tex_dir = _tex_dir(source)
+    if tex_dir is not None:
             sources = []
             # Only the files the document actually pulls in: an arXiv tree ships drafts
             # and previous submissions beside the live ones, and one such draft carried an
@@ -390,6 +421,7 @@ def verify_tables(
             own_names=own,
             paper_id=table.paper_id,
             table_id=table.table_id,
+            table_label=table.label or "",
         )
         reports.append(
             verify_table(

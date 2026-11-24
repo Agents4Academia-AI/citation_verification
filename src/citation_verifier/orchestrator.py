@@ -10,8 +10,13 @@ The single public entry point (exported lazily as
                  over the stubs -> filled records + per-run :class:`RunUsage`.
   4. finalize  : where the backend did not set a model-judged severity, derive it
                  deterministically via :func:`schema.derive_severity`.
-  5. persist   : write ``papers/<id>/report.json``, ``run.json`` and the rendered
-                 human-readable ``report.md``.
+  3b. tables   : verify the related-work comparison tables — each ✓/✗ cell against the
+                 paper its row cites (:mod:`citation_verifier.tables`). The prose pass
+                 skips citations inside tables; this is where they are checked. Same
+                 references, same resolutions as the prose pass. Results tables are not
+                 touched. ``tables="only"`` runs this step alone.
+  5. persist   : write ``papers/<id>/report.json``, ``run.json``, ``tables.json`` and the
+                 rendered human-readable ``report.md``.
 
 Design rules honored from docs/decisions-phy.md:
   - degrade-not-crash: a per-pair failure becomes one ``unresolved/inconclusive`` row with
@@ -47,7 +52,11 @@ from .schema import (
     derive_severity,
 )
 
-__all__ = ["run_verification", "finalize_severity"]
+__all__ = ["run_verification", "finalize_severity", "TABLE_MODES"]
+
+# What ``run_verification(tables=…)`` accepts: verify tables with the citations (default),
+# leave them out, or verify nothing else.
+TABLE_MODES = ("on", "off", "only")
 
 
 def finalize_severity(records: list[CitationRecord]) -> None:
@@ -239,6 +248,99 @@ def _write_md(work_dir: Path, result: VerificationResult) -> None:
     (work_dir / "report.md").write_text(render_report(result) + "\n", encoding="utf-8")
 
 
+def _write_tables(work_dir: Path, result: VerificationResult, *, with_run: bool = False) -> None:
+    """Persist ``tables.json`` — the comparison-table findings, one report per table.
+
+    Kept apart from ``report.json``: that file is the list of ``CitationRecord``s the eval
+    harness and the other front-ends read, and its shape is the contract.
+
+    ``with_run`` adds the run's accounting and notes. A tables-only run writes no
+    ``run.json`` (that file belongs to the full report beside it), so without this what
+    the table pass cost — one model call per cell, each carrying a whole paper — was
+    recorded nowhere.
+    """
+    payload: dict = {
+        "paper_id": result.paper_id,
+        "tables": [t.model_dump(mode="json") for t in result.tables],
+    }
+    if with_run:
+        u = result.usage
+        payload["usage"] = {
+            "model": u.model, "cost_usd": u.cost_usd, "num_turns": u.num_turns,
+            "input_tokens": u.input_tokens, "output_tokens": u.output_tokens,
+            "cache_read_tokens": u.cache_read_tokens,
+            "cache_creation_tokens": u.cache_creation_tokens,
+            "wall_seconds": u.wall_seconds,
+        }
+        payload["errors"] = list(result.errors)
+    work_dir.mkdir(parents=True, exist_ok=True)
+    (work_dir / "tables.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+
+
+def _load_tables(work_dir: Path) -> list | None:
+    """Reload table reports from ``tables.json`` (for resume). ``None`` when absent."""
+    path = work_dir / "tables.json"
+    if not path.exists():
+        return None
+    try:
+        from .tables import TableReport
+
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        return [TableReport.model_validate(t) for t in raw.get("tables", [])]
+    except Exception:  # noqa: BLE001 — an unreadable file is a miss, not a failure
+        return None
+
+
+def _table_pass(
+    source: PaperSource,
+    result: VerificationResult,
+    settings: Settings,
+    progress: Callable[..., None],
+) -> None:
+    """Verify the paper's related-work tables and attach the reports to ``result``.
+
+    Degrade-not-crash: any failure is recorded in ``result.errors`` and the run goes on
+    with whatever was produced. The references and resolutions of the prose pass are
+    handed over, so a citation is the same paper in a table as in a sentence.
+    """
+    try:
+        from .tables import annotate_table_citations, verify_paper_tables
+    except Exception as exc:  # noqa: BLE001 — the subsystem must never break a run
+        result.errors.append(f"table verification unavailable: {exc!r}")
+        return
+
+    references = {r.cite_key: r.cited_as for r in result.records if r.cited_as.raw or r.cited_as.title}
+    resolved = {
+        r.cite_key: r.resolved
+        for r in result.records
+        if r.resolved is not None and getattr(r.exists, "value", r.exists) == Exists.YES.value
+    }
+    ceiling = float(getattr(settings, "cost_ceiling_usd", 0.0) or 0.0)
+    left = max(0.0, ceiling - result.usage.cost_usd) if ceiling else None
+    progress("verifying_tables")
+    try:
+        run = verify_paper_tables(
+            source,
+            settings=settings,
+            references=references or None,
+            resolved=resolved,
+            max_cells=int(getattr(settings, "table_max_cells", 150)),
+            budget_usd=left,
+        )
+    except Exception as exc:  # noqa: BLE001
+        result.errors.append(f"table verification failed: {exc!r}")
+        return
+    result.tables = list(run.reports)
+    result.errors.extend(run.errors)
+    result.usage.add(run.usage)
+    if run.usage.total_tokens or run.usage.cost_usd:
+        bucket = result.usage.by_tier.setdefault("tables", RunUsage(backend=result.backend))
+        bucket.add(run.usage)
+    annotate_table_citations(result.records, result.tables)
+
+
 def _get_extractor(source: PaperSource):
     """Lazily fetch the extractor for a source (sibling 'extract' package).
 
@@ -282,6 +384,7 @@ def run_verification(
     out_dir: str | Path | None = None,
     max_citations: int = 0,
     progress_cb: Callable[[dict], None] | None = None,
+    tables: str | None = None,
 ) -> VerificationResult:
     """Verify the citations in a paper draft and return a :class:`VerificationResult`.
 
@@ -296,6 +399,10 @@ def run_verification(
         max_citations: When > 0, verify only the first N extracted
             ``(claim, citation)`` stubs (keeps a run bounded in time/cost on a
             large bibliography); a note is appended to ``.errors``. 0 = all.
+        tables: ``"on"`` — also verify the related-work comparison tables (the
+            default, unless ``ENABLE_TABLE_VERIFICATION`` is off); ``"off"`` — prose
+            citations only; ``"only"`` — the tables and nothing else, which leaves
+            ``report.json`` alone and writes ``tables.json`` / ``tables.md``.
 
     Returns:
         A :class:`VerificationResult` with filled records, aggregated
@@ -303,6 +410,10 @@ def run_verification(
     """
     settings = settings or load_settings()
     started = time.monotonic()
+    if tables is None:
+        tables = "on" if getattr(settings, "enable_table_verification", True) else "off"
+    if tables not in TABLE_MODES:
+        raise ValueError(f"tables must be one of {TABLE_MODES}, got {tables!r}")
 
     def _progress(stage: str, **extra: object) -> None:
         # Best-effort progress for front-ends (web UI / bot); never breaks a run.
@@ -331,11 +442,39 @@ def run_verification(
         usage=RunUsage(backend=backend),
     )
 
+    # Tables only: no prose pass, and report.json / run.json are left exactly as they
+    # are — this mode must be safe to run in a directory that holds a full report.
+    if tables == "only":
+        prior_tables = _load_tables(work_dir) if resume else None
+        if prior_tables is not None:
+            result.tables = prior_tables
+        else:
+            _table_pass(paper_source, result, settings, _progress)
+            result.usage.wall_seconds = time.monotonic() - started
+            _write_tables(work_dir, result, with_run=True)
+        from .tables import render_table_reports
+
+        (work_dir / "tables.md").write_text(
+            (render_table_reports(result.tables) or "*No related-work comparison table found.*\n"),
+            encoding="utf-8",
+        )
+        result.usage.wall_seconds = time.monotonic() - started
+        _progress("done", paper_id=result.paper_id, tables=len(result.tables))
+        return result
+
     # Resume from a prior report if asked and available.
     if resume:
         prior = _load_resume(work_dir)
         if prior is not None:
             result.records = prior
+            # The tables of that run too — or, for a report written before tables were
+            # verified, the table pass now, on top of the resolutions already on file.
+            prior_tables = _load_tables(work_dir) if tables == "on" else []
+            if prior_tables is None:
+                _table_pass(paper_source, result, settings, _progress)
+                _write_tables(work_dir, result)
+            else:
+                result.tables = prior_tables
             finalize_severity(result.records)
             _append_source_links(result.records)
             # Restore the real token/cost accounting so a cached hit reports the
@@ -400,6 +539,10 @@ def run_verification(
             result.errors.append(f"backend {backend!r} failed: {exc!r}")
             result.records = stubs or [_degraded_stub(paper_source, repr(exc))]
 
+    # 3b) The related-work tables: every ✓/✗ cell against the paper its row cites.
+    if tables == "on":
+        _table_pass(paper_source, result, settings, _progress)
+
     # 4) Deterministic severity for any record the backend did not judge.
     finalize_severity(result.records)
     _append_source_links(result.records)
@@ -408,6 +551,8 @@ def run_verification(
     result.usage.wall_seconds = time.monotonic() - started
     _write_report(work_dir, result)
     _write_run(work_dir, result)
+    if tables == "on":
+        _write_tables(work_dir, result)
     _write_md(work_dir, result)
     _progress(
         "done",

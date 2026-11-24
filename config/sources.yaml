@@ -49,12 +49,26 @@ sources:
     timeout_seconds: 25
 
   openalex:
-    enabled: false                   # flip on once OPENALEX_API_KEY is set in .env
-    needs_key: true
+    enabled: false                   # broad search: flip on once OPENALEX_API_KEY is set in .env
+    needs_key: true                  # the fielded title search runs keyless (small shared budget)
     env_key: OPENALEX_API_KEY
     base_url: "https://api.openalex.org/works"
     dimension: [correctness]
     timeout_seconds: 25
+
+  openlibrary:
+    enabled: true                    # books (no DOI, so not in Crossref)
+    needs_key: false
+    base_url: "https://openlibrary.org/search.json"
+    dimension: [correctness]
+    timeout_seconds: 20
+
+  openreview:
+    enabled: true                    # workshop / ICLR / TMLR papers, with abstracts
+    needs_key: false
+    base_url: "https://api2.openreview.net/notes/search"
+    dimension: [correctness, relevance]
+    timeout_seconds: 20
 
 # ── chbench dataset-collection sources (seed descriptors) ─────────────────────
 # These drive sources.py: where to harvest candidate papers and known-natural

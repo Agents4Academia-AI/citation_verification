@@ -64,18 +64,77 @@ becomes N records (it can be obligatory in one spot, background in another).
    each `\cite` call-site, anchoring the exact reference to the exact claim
    sentence/section, and minting a deterministic `claim_id`. PDF is the fallback.
    Output: **record stubs** (key + `claim` + `cited_as`, judged axes left
-   `unresolved/inconclusive`). Extraction is its own checkpoint.
+   `unresolved/inconclusive`). Extraction is its own checkpoint. Every extractor cuts the
+   claim with one segmenter (`extract/sentences.py`): the whole sentence (up to 1000
+   characters, then the clauses around the citation), never across a heading or a
+   paragraph break, and verbatim. The PDF hyperlink path reads the document as one flow
+   in reading order — so a sentence continues across columns and pages — with headings as
+   boundaries and captions, footnotes and small type set apart; the numbered-marker path
+   does the same with the text's lines (captions, figure numbers and table grids moved out).
+   `claim.section` is filled from the headings. LaTeX citations are written out from the
+   bibliography ("Guo et al. (2017)") instead of being deleted with their sentence's subject.
 3. **Correctness** (`stages/correctness.py` over `grounding/`): resolve the
    reference against structured sources via the cascade **DOI > arXiv-id >
    fuzzy-title** (fuzzy gated by author overlap + year ±1), validate the cited
    URL, and fill `exists`, `resolved`, `metadata_issues`, `evidence`. Never from
    memory; if nothing resolves and web is gated off, the verdict is `unresolved/inconclusive`,
-   not `no`.
+   not `no`. One work often has several records — the article and its anniversary
+   reprint, a paper and a repost under a new DOI — so among records with the same title
+   and lead author the one dated as cited is preferred, and a record dated well away from
+   the cited year does not end the search. The venue comparison goes through an alias table (`venues.py` over
+   `data/venues.yaml`): every spelling of a venue maps to one key, so "NeurIPS", "NIPS"
+   and "Adv. Neural Inf. Process. Syst." are one venue; a mismatch is asserted only when
+   both sides are known venues that differ, and a preprint or proceedings-series record
+   ("arXiv", "PMLR") contradicts nothing. Beyond the paper indexes, the title tier asks
+   OpenAlex by fields (title + first author + year — it holds books and working papers),
+   Open Library for references that read as books, and OpenReview for workshop and
+   ICLR/TMLR papers (and, last, for any title nothing else placed). A record with nothing
+   to read (no abstract, no arXiv id) does not end the title tier: every remaining source is
+   asked and a readable record of the same work is preferred. A short abstract counts only
+   when it speaks of the title's subject (a series' boilerplate is a placeholder), by one
+   rule shared with the relevance judge. A title that repeats a phrase after a stray prefix
+   (copied from a broken record) is resolved first as the phrase it repeats. A not-found
+   note names the sources that were actually asked. An identifier is looked up at its registry (arXiv,
+   Crossref) before Semantic Scholar; when arXiv's query API does not answer, the paper's
+   own arXiv page supplies the record, so a printed arXiv id still matches exactly. A
+   source that keeps failing — rate-limited, out of
+   its daily budget, behind a bot check — is left alone for a cool-down (a per-host breaker in
+   `paper_lookup`) instead of being retried on every request. When nothing placed it, the web is the last resort
+   (`grounding/web_lookup.py` over `backends/web_search.py`, only in runs that use a model):
+   a model with web search names the work's pages, and the code fetches the index record an
+   identifier in them points to, or accepts a web-only work's own page when its title
+   matches and the page names a cited author beside it; the page's own authors and year
+   are then compared with the citation like a record's. For a technical report, thesis or working paper the model also searches the
+   issuing institution's own site, and an entry in that institution's report list (title
+   with the cited author beside it, on the institution's host) counts; the list's other
+   pages — same directory, same name but for the numbering — are read too. See DECISIONS.md §6.
 4. **Relevance** (`stages/relevance.py`): only when correctness holds — compare
    the retrieved abstract/snippet against the claim and fill `supports_claim`,
    `priority`, `confidence`, and a quoted `evidence` item (the justification).
+   The first pass reads the abstract and the Introduction (or, with neither, the opening
+   of the text); a verdict it cannot settle — inconclusive, partial, does not — is
+   re-judged on the full text, the whole paper when it is short enough. The full text
+   comes from one cascade (`grounding/fulltext.py`): arXiv, the record's link, the DOI's
+   open-access copy. A link that is a web page is followed to the work's PDF — the page's
+   `citation_pdf_url`, a link whose text is the title, a PDF link in the title's own list
+   entry — and that PDF counts only when it carries the title. A publisher's preview (the
+   first pages, offered when the whole is paywalled) is tried last and labelled: the
+   re-judge is told it holds the first pages only, never the complete text, and table cells
+   are not judged on it. A PDF that is a scan is
+   transcribed by a model (`backends/scan_reader.py`, only in runs that use a model) and
+   the verdict says it rests on a transcription. With no text at all, the pair stays
+   inconclusive and the explanation names what was tried.
 5. **Comparison** (`stages/comparison.py`): reserved seam (STEP 3) — for
    obligatory baselines, `compared_against`.
+5b. **Tables** (`tables/`, run by the orchestrator after the backend): the ✓/✗ cells of
+   related-work comparison tables, each verified against the paper its row cites. A
+   different unit from a record — "cited method R has property D", not a
+   `(claim, citation)` pair — so the findings travel beside the records
+   (`VerificationResult.tables`, `tables.json`), not inside them. The pass reuses the
+   prose pass's references and resolutions (`tables/pipeline.py`); a row the prose pass
+   did not cover goes through the same correctness stage, with the same web last resort
+   (built only when the table pass builds its model). Results tables and tables
+   without cited rows are out of scope. `tables="only"` runs this step alone.
 6. **Severity**: derived deterministically from
    `(exists, supports_claim, priority)` via `derive_severity` (see DECISIONS.md),
    so agent output and gold agree by construction.

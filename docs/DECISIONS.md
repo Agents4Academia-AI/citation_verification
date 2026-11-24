@@ -48,7 +48,7 @@ bounded context. A stuck/failed pair degrades to a single `unresolved/inconclusi
 `error` field set) and the run continues. Per-paper artifacts land under
 `papers/<paper_id>/`.
 
-## 6. Multi-source resolver; "never from memory"; gated web — [frozen core, [open] web policy]
+## 6. Multi-source resolver; "never from memory"; web as the last resort — [frozen]
 
 `lookup_paper` evolved into a **multi-source resolver** (`grounding/`) with a
 `source → dimension` map in `config/sources.yaml`: correctness from Crossref +
@@ -59,9 +59,22 @@ the fuzzy tier against *retrieved* fields. The cited URL is validated.
 
 - **[frozen]** The abstain rule: `unresolved/inconclusive` beats guessing; a web hit alone
   never upgrades `unresolved/inconclusive → yes` without a corroborating structured record.
-- **[open]** *Demoting WebSearch/WebFetch to a gated last resort* (off by
-  default, `ENABLE_WEB_SEARCH`). Proposed to narrow the baseline's broad web use;
-  to confirm at merge.
+  One exception: a work that lives only on the web (software, a blog post, a model card, a
+  leaderboard, a report) exists when its own page is found, its title matches, and the page
+  itself names a cited author — in its author tags or the byline beside the title (an
+  organisation: the site it owns); a name elsewhere on the page does not count. Its
+  authors and year are what the page states, compared with the citation like a record's,
+  never copied from it. **[decided 2026-10-27]**
+- **[decided 2026-10-26]** *Web search is the last resort, on by default*
+  (`ENABLE_WEB_SEARCH`, `WEB_SEARCH_MAX_LOOKUPS`). Only for a reference no index placed (or
+  whose only candidate was rejected), and only in runs that use a model. A model with web
+  search (`backends/web_search.py`) names the result URLs that are the work's pages — only
+  URLs its searches returned; code (`grounding/web_lookup.py`) reads them: an identifier in
+  the URL or the page is fetched from its index and matched by the resolver's gates, else
+  the page itself must pass the title + authorship rule above (a listing in the issuing
+  institution's report list counts the same way: title, author and date of the entry). Found nowhere, the reference stays
+  `unresolved`, with "not found on the web either — likely fabricated, check by hand"
+  (only when no source failed); `exists = no` is still never set automatically.
 
 ## 7. Two interchangeable backends + per-run cost accounting — [frozen]
 
@@ -134,5 +147,5 @@ the MVP) so comparison-objectiveness lands later without a breaking schema chang
    a different-model LLM judge (scalable, weaker).
 5. Cost ceiling per paper (~$0.50 for the demo?) and the total hackathon budget.
 
-> The `[open]` items above (gated web search, exact model choices) are for team
-> discussion at merge, not unilateral overrides of `SKILL.md`.
+> The `[open]` items above (exact model choices) are for team discussion at merge, not
+> unilateral overrides of `SKILL.md`.

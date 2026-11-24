@@ -19,7 +19,7 @@ dependencies = [
   "jsonschema>=4",    # eval validates records against spec/record.schema.json
   "rapidfuzz>=3",     # fuzzy title matching in the resolver cascade
   "bibtexparser>=1.4",# parse .bib / .bbl in the LaTeX extractor
-  "pyyaml>=6",        # config/sources.yaml, config/venues.yaml
+  "pyyaml>=6",        # config/*.yaml, and the venue alias table (data/venues.yaml)
 ]
 
 [project.optional-dependencies]

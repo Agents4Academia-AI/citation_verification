@@ -159,6 +159,23 @@ class Dimension(_Model):
     test_question: str = Field(
         default="", description="The yes/no question asked of each cited paper for this column."
     )
+    search_terms: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Other wordings of the property — synonyms, the mechanisms that provide it, "
+            "the usual phrasing of its absence — used to find it in a cited paper that "
+            "does not use the column's name. Widens the search; asserts nothing."
+        ),
+    )
+    criterion_notes: list[str] = Field(
+        default_factory=list,
+        description=(
+            "How the citing paper APPLIES the column, in its own sentences: the design "
+            "choice that follows the desideratum, notions it treats as interchangeable, "
+            "what it says disqualified the compared methods. Shown to the judge as the "
+            "paper's criterion, never adopted as the definition."
+        ),
+    )
 
 
 class TableRow(_Model):

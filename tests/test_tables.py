@@ -403,7 +403,7 @@ def test_cell_prompt_forbids_relaxing_a_formal_definition():
     assert "A different mechanism that achieves a similar end does not qualify" in s
     assert "name the exact part of the definition" in s
     assert "not actually about the named work" in s      # garbage evidence -> unclear
-    assert "absence is not refutation" in s
+    assert "never infer a limitation from the excerpts merely being silent" in s
     # …and the opposite failure: over-caution on a plain-words property hides real errors.
     assert "Do NOT demand a formal proof it never asked for" in s
     # The rule must be stated in the abstract — no example lifted from a test paper,
@@ -799,7 +799,7 @@ def test_evidence_provider_retries_a_rate_limited_lookup():
     r = _FlakyResolver()
     ev = build_evidence_provider(lookup=lambda _k: _Ref(), resolver=r, dimensions=[],
                                  use_full_text=False, retries=3, pace_seconds=0)
-    text, source = ev("ni2021data", "Meta-Maxup")
+    text, source, _meta = ev("ni2021data", "Meta-Maxup")
     assert r.calls == 3
     assert "Data Augmentation for Meta-Learning" in text and source == "u"
 
@@ -813,10 +813,10 @@ def test_evidence_provider_degrades_instead_of_raising():
         def resolve(self, *_a): raise RuntimeError("network down")
 
     ev = build_evidence_provider(lookup=lambda _k: object(), resolver=_Boom(), dimensions=[])
-    assert ev("k", "row") == ("", "k")
+    assert ev("k", "row") == ("", "k", {})
     # an unknown key is not an error either
     ev2 = build_evidence_provider(lookup=lambda _k: None, resolver=_Boom(), dimensions=[])
-    assert ev2("missing", "row") == ("", "missing")
+    assert ev2("missing", "row") == ("", "missing", {})
 
 
 def test_arxiv_search_is_not_gated_away_for_conference_references():
@@ -1412,11 +1412,11 @@ def test_a_tree_with_no_root_keeps_every_file():
 def test_silence_across_the_full_text_is_read_differently_from_a_missing_body():
     """"The paper never claims this" and "we only saw the abstract" are different answers.
 
-    Collapsing them into one abstention reported "could not check" for cells where the
-    cited paper had been read end to end — 46 of 63 unverifiable cells in one run. With
-    the full text in hand, a ✗ the paper never contradicts is consistent with the mark,
-    while a ✓ the paper never claims is the citing authors crediting prior work with
-    something its own paper does not assert.
+    A ✓ the paper never claims is the citing authors crediting prior work with something
+    its own paper does not assert — a finding. A ✗ the paper never contradicts is merely
+    CONSISTENT with the mark: "no evidence the method has X" is not "evidence it lacks
+    X", and treating it as support once confirmed a ✗ against a paper whose excerpts
+    happened not to include its four mentions of exactly that capability.
     """
     def table(mark):
         return ComparisonTable(
@@ -1437,7 +1437,9 @@ def test_silence_across_the_full_text_is_read_differently_from_a_missing_body():
             judge=lambda payload: [{"col_index": 1, "answer": answer, "justification": "n/a"}],
         ).findings[0]
 
-    assert run(CellMark.NO.value, "absent").verdict == CellVerdict.SUPPORTED.value
+    silent = run(CellMark.NO.value, "absent")
+    assert silent.verdict == CellVerdict.UNVERIFIABLE.value
+    assert "consistent with the ✗ but does not establish it" in silent.justification
     flagged = run(CellMark.YES.value, "absent")
     assert flagged.verdict == CellVerdict.MAY_NOT_SUPPORT.value
     assert flagged.severity == "medium"
@@ -1449,7 +1451,12 @@ def test_silence_across_the_full_text_is_read_differently_from_a_missing_body():
 def test_the_evidence_block_declares_how_much_of_the_paper_it_covers():
     """The judge cannot weigh silence without knowing whether it read the whole paper."""
     assert "title and abstract only" in compose_evidence("T", "A", [])
-    assert "full text" in compose_evidence("T", "A", [("intro", "a passage from the body")])
+    block = compose_evidence("T", "A", [("intro", "a passage from the body")],
+                             total_chars=53_000, named={1: False, 2: True})
+    assert "NOT the whole paper" in block and "53,000" in block
+    assert "mentioned in paper: no — property #1" in block
+    assert "mentioned in paper: yes — property #2" in block
+    assert "full text" not in block.lower().split("title:")[0]
 
 
 def test_a_term_keeps_the_punctuation_that_is_part_of_it():
@@ -1692,3 +1699,779 @@ def test_a_crashed_judge_call_says_so_on_every_cell_of_the_row():
     assert finding.verdict == CellVerdict.UNVERIFIABLE.value
     assert "pipeline failure" in finding.justification
     assert any("judge failed" in n for n in report.notes)
+
+
+def test_a_property_the_paper_names_cannot_be_called_absent_from_excerpts():
+    """Only the code knows what the whole paper contains; the judge sees excerpts.
+
+    Measured: "occluded" appears four times in a cited paper, none of them in the five
+    excerpts shown, and the judge concluded "the paper never discusses occlusion". The
+    recall pass now pulls in every passage naming the property, and a judge's 'absent' on
+    a property the paper does name is downgraded to 'unclear'.
+    """
+    table = ComparisonTable(
+        paper_id="p", table_id="t1",
+        dimensions=[Dimension(col_index=1, header="Anti-occlusion",
+                              kind=DimensionKind.BINARY.value,
+                              gloss="Keypoints stay repeatable under self-occlusion.",
+                              gloss_source=GlossSource.BODY.value)],
+        rows=[TableRow(row_index=0, label="KeypointNet", cite_keys=["k2018"])],
+        cells=[TableCell(cell_id="t1.r0.c1", row_index=0, col_index=1,
+                         raw="\\xmark", mark=CellMark.NO.value)],
+    )
+    finding = verify_table(
+        table,
+        evidence_for=lambda key, label: ("COVERAGE: 5 excerpts…", "u", {"named": {1: True}}),
+        judge=lambda payload: [{"col_index": 1, "answer": "absent", "justification": "not seen"}],
+    ).findings[0]
+    assert finding.verdict == CellVerdict.UNVERIFIABLE.value
+    assert "does mention this property by name elsewhere" in finding.justification
+
+
+def test_the_recall_pass_finds_the_property_by_stem():
+    """Relevance ranking is lexical overlap with the gloss, and "self-occlusion" does not
+    match "occluded". The recall pass matches on a stem so a passage naming the property
+    in another inflection is still brought to the judge."""
+    from citation_verifier.tables.evidence import _passages_naming
+    text = ("Given a single image, our model predicts keypoints. "
+            "Our method can even find occluded correspondences between images. "
+            "Training uses a consistency loss.")
+    hits = _passages_naming(text, "Anti-occlusion", limit=3, max_chars=300)
+    assert hits and "occluded" in hits[0]
+    assert _passages_naming(text, "SE(3)-equivariant", limit=3, max_chars=300) == []
+
+
+# ── the citing paper's own reading of its columns ──────────────────────────────
+def test_a_header_matches_the_words_it_derives_from():
+    """A header is a noun ("Refinement"); the prose that explains it uses the verb or the
+    adjective ("refine only a single rule", "an efficient scheme"). Without derivational
+    matching the sentence that says what a column means is reported as one that never
+    mentions it. Still word-anchored: "SP" must not be read into "SPRIN"."""
+    assert _term_regex("Refinement").search("methods refine only a single rule")
+    assert _term_regex("Efficiency").search("an efficient watermarking scheme")
+    assert _term_regex("Occlusion").search("predicts occluded parts")
+    assert _term_regex("Undetectability").search("the watermark is undetectable")
+    assert not _term_regex("SP").search("the SPRIN backbone")
+    assert not _term_regex("Complex").search("a complete run")
+
+
+def test_the_paragraph_that_introduces_the_table_is_found_by_its_label():
+    """Where a paper says what its columns mean is, more often than anywhere else, the
+    paragraph that points at the table — in words the headers do not contain."""
+    from citation_verifier.tables.dimensions import table_context_passages
+
+    body = (
+        "\\section{Intro}\n\nSome unrelated paragraph about datasets.\n\n"
+        "Table~\\ref{tab:cmp} compares our method to prior work. Prior methods generate "
+        "simple features or use feedback to iteratively refine only a single rule. In "
+        "contrast, ours refines many.\n\nAnother paragraph.\n"
+    )
+    got = table_context_passages(body, label="tab:cmp")
+    assert any("refine only a single rule" in s for s in got)
+    assert not any("unrelated paragraph" in s for s in got)
+    # Text without labels (a PDF) is reached by the printed number, but the caption's own
+    # opening ("Table 1: …") is not a pointer.
+    pdf = (
+        "Table 1: Comparison of methods. Method A B\n\n"
+        "As Table 1 shows, prior methods refine only a single rule at a time.\n\n"
+    )
+    got = table_context_passages(pdf, number=1)
+    assert got and "refine only a single rule" in got[0]
+    assert not any(s.startswith("Table 1: Comparison") for s in got)
+
+
+def test_the_table_paragraph_reaches_the_glosser_and_may_ground_its_gloss():
+    """A column the keyword search cannot reach (its only explanation shares no word with
+    the header) is still defined when the glosser reads it off the paragraph that
+    introduces the table; the gloss is accepted as `recovered`."""
+    dims = [Dimension(col_index=1, header="Multi-Feature — Refinement")]
+    body = (
+        "Table~\\ref{tab:cmp} compares AlgName to prior work. LLM-based methods use "
+        "feedback to iteratively refine only a single rule. In contrast, AlgName refines "
+        "many candidate features in parallel.\n\nWe evaluate on ten datasets.\n"
+    )
+    seen: list[dict] = []
+
+    def glosser(columns):
+        seen.extend(columns)
+        return [{
+            "gloss": "The method refines several candidate features per round rather than "
+                     "a single rule.",
+            "test_question": "Does the method refine several features per round?",
+        }]
+
+    resolve_dimensions(dims, body, glosser=glosser, own_names=["AlgName"],
+                       table_id="tab:cmp", table_label="tab:cmp")
+    assert seen and any("refine only a single rule" in s for s in seen[0]["table_context"])
+    # Graded no higher than a mention: the paper discusses the column where it introduces
+    # the table, it does not define it — good enough to check cells against, not to accuse.
+    assert dims[0].gloss_source in (GlossSource.MENTION.value, GlossSource.RECOVERED.value)
+    assert "single rule" in dims[0].gloss
+
+
+def test_the_authors_stated_criterion_travels_with_the_column_apart_from_its_definition():
+    """"Thus, we prefer raw 3D inputs" is not part of the property (a multi-view method must
+    not fail the column for its input format alone) — but it IS how the authors applied
+    the property when they filled in the table, and a judge that never sees it reads the
+    definition at its own level of strictness. It is kept as a note, labelled as the
+    citing paper's criterion."""
+    dims = [Dimension(col_index=1, header="Anti-occlusion")]
+    resolve_dimensions(
+        dims,
+        "Anti-occlusion: The keypoints should be repeatable in the face of self-occlusion. "
+        "Thus, we prefer raw 3D inputs (i.e., point clouds) to multi-view images.",
+    )
+    assert "multi-view" not in dims[0].gloss
+    assert any("prefer raw 3D inputs" in n for n in dims[0].criterion_notes)
+
+
+def test_a_scoping_remark_in_the_body_becomes_a_criterion_note():
+    """A paper that defines a column by an equation often adds, elsewhere, how loosely it
+    reads it ("we treat X and Y as interchangeable", "translations are handled by
+    normalisation"). Those sentences are the criterion the marks were made under."""
+    dims = [Dimension(col_index=1, header="SE(3)-equivariant")]
+    body = (
+        "The function is SE(3)-equivariant if for any point cloud $P$ the equation "
+        "$f(RP+t) = Rf(P)+t$ holds. "
+        "The concepts of SE(3)-invariant and SE(3)-equivariant are sometimes intertwined. "
+        "We require it to be SE(3)-invariant if the function selects indices of points; "
+        "otherwise, we require it to be SE(3)-equivariant if it returns coordinates. "
+        "We present a new SE(3)-equivariant detector that beats every baseline."
+    )
+    resolve_dimensions(dims, body)
+    assert "if for any point cloud" in dims[0].gloss
+    notes = " ".join(dims[0].criterion_notes)
+    assert "selects indices of points" in notes
+    assert "beats every baseline" not in notes  # a contribution claim is not a criterion
+
+
+def test_the_judge_sees_the_criterion_with_the_compared_methods_unnamed():
+    """The criterion may say how the property was applied to a named row ("X and Y approach
+    this via cross-task mixup, at the expense of erroneous tasks"). With the names in, that
+    is the table's mark in prose; with them out, the criterion survives and whether THIS
+    work is such a method still has to be read off its own evidence. Category labels
+    ("Rule-based") are ordinary words the criterion itself may use, and stay."""
+    from citation_verifier.tables.verify import redact_methods
+
+    t = _table()
+    resolve_dimensions(t.dimensions, ATU_BODY, caption=t.caption)
+    t.dimensions[0].criterion_notes = [
+        "Within-task augmentation guarantees validity, i.e., being task-aware. MetaAug "
+        "and MLTI differ: MLTI mixes across tasks at the expense of erroneous tasks."
+    ]
+    seen: list[dict] = []
+
+    def judge(payload):
+        seen.append(payload)
+        return [{"col_index": p["col_index"], "answer": "unclear"} for p in payload["properties"]]
+
+    verify_table(t, evidence_for=_evidence, judge=judge)
+    crit = seen[0]["properties"][0]["criterion"]
+    assert "erroneous tasks" in crit
+    assert "MLTI" not in crit and "MetaAug" not in crit
+    assert "claimed" not in str(seen) and "✓" not in str(seen) and "✗" not in str(seen)
+    assert redact_methods("The rule-based scheme is efficient.", ["Rule-based"]) == \
+        "The rule-based scheme is efficient."
+
+
+def test_the_cell_prompt_tells_the_judge_what_the_criterion_is_and_is_not():
+    """The criterion governs how strictly the definition is read, and is never evidence
+    about the cited work; 'lacks' must rest on the paper's own words, not on a shortcoming
+    the judge derives from a mechanism."""
+    from citation_verifier.tables.llm import CELL_SYSTEM as s
+
+    assert "how the citing paper applies it" in s
+    assert "NOT evidence about the cited work" in s
+    assert "a prediction about behaviour is your opinion" in s
+    assert "answer 'lacks' and quote the mechanism" in s
+
+
+def test_macro_aliases_are_expanded_in_the_body_text(tmp_path):
+    """With `\\newcommand{\\AlgName}{LLM-FE}` left unexpanded, "\\AlgName refines features"
+    carries no name, passes the self-description filter, and was adopted as a column's
+    definition. A macro that takes an argument is a template, not an alias."""
+    from types import SimpleNamespace
+
+    from citation_verifier.tables import read_body_text
+    from citation_verifier.tables.latex_grid import collect_macro_names
+
+    tex = tmp_path / "tex"
+    tex.mkdir()
+    (tex / "main.tex").write_text(
+        "\\newcommand{\\AlgName}{LLM-FE}\n\\newcommand{\\revision}[1]{#1}\n"
+        "\\AlgName refines features across islands. \\revision{Revised text here.}\n"
+    )
+    body = read_body_text(SimpleNamespace(work_dir=str(tmp_path), pdf_path=None))
+    assert "LLM-FE refines features" in body
+    assert "#1{Revised" not in body and "\\revision{Revised text here.}" in body
+    assert "revision" not in collect_macro_names((tex / "main.tex").read_text())
+
+
+def test_formatting_macros_around_prose_are_unwrapped():
+    """The sentence inside `\\textcolor{black}{…}` (a highlighted revision) or an unknown
+    one-argument wrapper the paper defines for itself is the sentence."""
+    got = normalize_latex_prose(
+        "\\textcolor{black}{Table~\\ref{tab:x} compares \\texttt{Ours} to prior work.} "
+        "\\revision{The rule-based scheme is efficient.} $\\mathbf{X}_u$ stays."
+    )
+    flat = re.sub(r"\s+", " ", got)
+    assert "Table compares Ours to prior work." in flat
+    assert "The rule-based scheme is efficient." in flat
+    assert "\\textcolor" not in got and "\\revision" not in got
+    assert "\\mathbf{X}_u" in got  # maths is left as written
+
+
+
+# ── finding a property the cited paper words differently ───────────────────────
+def test_the_recall_pass_finds_the_property_under_another_wording():
+    """The column's name is the citing paper's coinage; the cited paper has its own words.
+    A detector "proven to be rotation invariant" never says "equivariant", a method that
+    "handles missing parts" never says "occlusion" — and a search by the header alone
+    reported both as never mentioning the property."""
+    from citation_verifier.tables.evidence import _passages_naming
+
+    text = (
+        "Our detector is proven to be rotation invariant by estimating a local frame. "
+        "The loss is unrelated to any of this. "
+        "The keypoints stay stable when parts of the object are missing."
+    )
+    assert _passages_naming(text, ["SE(3)-equivariant"], limit=3, max_chars=300) == []
+    hits = _passages_naming(
+        text, ["SE(3)-equivariant", "rotation invariant", "missing parts"], limit=3, max_chars=300
+    )
+    assert any("rotation invariant" in h for h in hits)
+    assert any("parts of the object are missing" in h for h in hits)  # words in any order
+    assert not any("loss is unrelated" in h for h in hits)
+
+
+def test_the_coverage_block_lists_the_wordings_that_were_searched():
+    """"Mentioned nowhere" is only as strong as the wordings tried, so the judge and the
+    reader are shown them."""
+    block = compose_evidence(
+        "T", "A", [("intro", "a passage")], total_chars=1000,
+        named={1: False, 2: True},
+        search={1: {"terms": ["occlusion", "missing parts", "partial view"], "mentions": 0, "shown": 0},
+                2: {"terms": ["efficient"], "mentions": 9, "shown": 6}},
+    )
+    assert "mentioned in paper: no — property #1 (searched for: occlusion, missing parts, partial view)" in block
+    assert "mentioned in paper: yes — property #2 (searched for: efficient; 9 mentions, 6 shown)" in block
+
+
+def test_the_glossers_other_wordings_reach_the_column_and_its_retrieval_query():
+    from citation_verifier.tables.evidence import _dimension_queries, property_terms
+
+    t = _table()
+
+    def glosser(columns):
+        return [
+            {"gloss": "The augmented tasks stay valid tasks.", "test_question": "q?",
+             "search_terms": ["valid tasks", "label-preserving", " within-task mixup ", "valid tasks"]}
+            for _ in columns
+        ]
+
+    resolve_dimensions(t.dimensions, ATU_BODY, caption=t.caption, glosser=glosser)
+    aware = t.dimensions[0]
+    assert aware.search_terms == ["valid tasks", "label-preserving", "within-task mixup"]
+    assert "label-preserving" in _dimension_queries([aware])[0]
+    assert property_terms(aware)[:1] == ["aware"] and "within-task mixup" in property_terms(aware)
+
+
+def test_an_absent_verdict_says_which_wordings_were_searched():
+    """A ✗ the paper never contradicts is not established by silence (unverifiable), and
+    the reason names the wordings the search covered, so a reviewer can see what a
+    'never mentions' rests on."""
+    t = _table()
+    resolve_dimensions(t.dimensions, ATU_BODY, caption=t.caption)
+    meta = {"named": {1: False, 2: False},
+            "search": {1: {"terms": ["task-aware", "valid tasks"], "mentions": 0, "shown": 0}, 2: {}}}
+
+    def judge(payload):
+        return [{"col_index": p["col_index"], "answer": "absent", "justification": "silent"}
+                for p in payload["properties"]]
+
+    report = verify_table(
+        t, evidence_for=lambda key, label: ("COVERAGE: 5 excerpts…", "u", meta), judge=judge,
+    )
+    cell = next(f for f in report.findings if f.row_label == "MLTI" and f.dimension == "Task-aware")
+    assert cell.claimed == CellMark.NO.value
+    assert cell.verdict == CellVerdict.UNVERIFIABLE.value
+    assert "under any of: task-aware, valid tasks" in cell.justification
+
+
+def test_the_recall_pass_skips_page_chrome_and_near_miss_stems():
+    """Text of an HTML-served paper carries the site's navigation, a table of contents and
+    the author block; each "mentions" every section title and was filling the recall
+    slots. And a five-letter stem conflated "equivalent" with "equivariant"."""
+    from citation_verifier.tables.evidence import _passages_naming
+
+    text = (
+        "Report GitHub Issue Back to Abstract Download PDF Abstract 1 Introduction "
+        "2 Related Work 3.2 Rotation Invariant Feature Extraction 4 Experiments. "
+        "Jane Doe Affiliation: Somewhere Email: jane@example.org. "
+        "This is equivalent to pose-based manipulation. "
+        "Our features are rotation invariant by construction."
+    )
+    hits = _passages_naming(text, ["SE(3)-equivariant", "rotation invariant"], limit=6, max_chars=300)
+    assert hits == ["Our features are rotation invariant by construction."]
+
+
+def test_a_judge_that_has_read_every_mention_may_conclude_absence():
+    """With a wide net nearly every paper "mentions" some wording of a property — a
+    reference title, an acknowledgement — and a rule that forbade 'absent' whenever the
+    paper mentions it anywhere turned every such ✓ into 'unverifiable'; the 'may not
+    support' category disappeared. When every mention is shown, the judge has read all
+    the paper says under those wordings, and its 'absent' stands."""
+    t = _table()
+    resolve_dimensions(t.dimensions, ATU_BODY, caption=t.caption)
+    all_shown = {"named": {1: True}, "search": {1: {"terms": ["task-aware"], "mentions": 2, "shown": 2}}}
+    some_shown = {"named": {1: True}, "search": {1: {"terms": ["task-aware"], "mentions": 9, "shown": 6}}}
+
+    def judge(payload):
+        return [{"col_index": p["col_index"], "answer": "absent", "justification": "only a reference title"}
+                for p in payload["properties"]]
+
+    def cell(meta):
+        rep = verify_table(t, evidence_for=lambda key, label: ("COVERAGE…", "u", meta), judge=judge)
+        return next(f for f in rep.findings if f.row_label == "MetaAug" and f.dimension == "Task-aware")
+
+    assert cell(all_shown).claimed == CellMark.YES.value
+    assert cell(all_shown).verdict == CellVerdict.MAY_NOT_SUPPORT.value
+    assert "every passage mentioning this property (2) was read" in cell(all_shown).justification
+    assert cell(some_shown).verdict == CellVerdict.UNVERIFIABLE.value
+    assert "9 passages of which only 6 were shown" in cell(some_shown).justification
+
+
+def test_the_recall_pass_ignores_the_reference_list_and_counts_mentions():
+    from citation_verifier.tables.evidence import _mentions, clean_term
+
+    text = (
+        "Our scheme is efficient at insertion time.\n\n" + "More body text here. " * 20 + "\n\n"
+        "References\n\n[1] A. Author. Efficient estimation of word representations. 2013.\n"
+        "[2] B. Author. An efficient toolkit for sequence modeling. 2019.\n"
+    )
+    hits, total = _mentions(text, ["efficient"], limit=6, max_chars=200)
+    assert total == 1 and hits == ["Our scheme is efficient at insertion time."]
+    assert clean_term("single-rule refinement (absence)") == "single-rule refinement"
+
+
+def test_a_definition_keeps_the_sentence_that_completes_it():
+    """"Undetectability: The watermarks are invisible upon inspection. As a result, the
+    adversary cannot detect whether a given text is watermarked." — captured by its
+    punctuation the definition stopped at the first full stop, and the judge, left with
+    "invisible upon inspection", read a watermark's detectability BY ITS OWNER as the
+    opposite of undetectability."""
+    dims = [Dimension(col_index=1, header="Undetectability")]
+    resolve_dimensions(
+        dims,
+        "Criteria 5 Undetectability: The watermarks are invisible upon inspection. As a "
+        "result, the adversary cannot detect whether a given text is watermarked. We "
+        "evaluate this with a classifier in Section 5.",
+    )
+    assert "adversary cannot detect" in dims[0].gloss
+    assert "classifier" not in dims[0].gloss
+
+
+def test_a_failed_judge_call_is_retried_before_the_row_is_lost():
+    """A model call that fails is usually the transport having a bad minute, and one
+    uncaught failure costs every cell of that cited paper — measured at five and six
+    cells in two separate runs. The call is retried before the row is given up."""
+    import citation_verifier.tables.llm as llm
+
+    calls = {"n": 0}
+
+    class Flaky:
+        mode = "messages"
+        settings = None
+
+        def _run_messages(self, system, user, max_tokens, prefix=""):
+            calls["n"] += 1
+            if calls["n"] < 3:
+                raise RuntimeError("overloaded_error")
+            return '[{"col_index": 1, "answer": "has", "quote": "q", "justification": "j"}]'
+
+    monkey, llm._JUDGE_BACKOFF = llm._JUDGE_BACKOFF, 0.0
+    try:
+        got = llm.build_cell_judge(Flaky())({"row_label": "X", "evidence": "E",
+                                             "properties": [{"col_index": 1, "name": "P"}]})
+    finally:
+        llm._JUDGE_BACKOFF = monkey
+    assert calls["n"] == 3
+    assert got == [{"col_index": 1, "answer": "has", "quote": "q", "justification": "j"}]
+
+
+def test_a_call_that_never_succeeds_still_raises():
+    """The row must still degrade to 'never judged' rather than hang or return nothing."""
+    import citation_verifier.tables.llm as llm
+
+    class Dead:
+        mode = "messages"
+        settings = None
+
+        def _run_messages(self, system, user, max_tokens, prefix=""):
+            raise RuntimeError("api_error")
+
+    monkey, llm._JUDGE_BACKOFF = llm._JUDGE_BACKOFF, 0.0
+    try:
+        with pytest.raises(RuntimeError, match="api_error"):
+            llm.build_cell_judge(Dead())({"row_label": "X", "evidence": "E", "properties": []})
+    finally:
+        llm._JUDGE_BACKOFF = monkey
+
+
+def test_a_row_payload_is_addressed_by_row_index_not_by_position():
+    """Re-running only the rows a failed run lost leaves a table holding a subset of its
+    rows, and indexing the list by position then reads the wrong cited paper — or raises,
+    losing the row a second time. (A grid whose spacer rows were dropped is the same
+    shape of bug.)"""
+    from citation_verifier.tables.verify import build_row_payload
+
+    t = _table()
+    resolve_dimensions(t.dimensions, ATU_BODY, caption=t.caption)
+    keep = next(r for r in t.rows if r.label == "MLTI")
+    t.rows = [keep]                      # as a re-run of just this row would leave it
+    payload = build_row_payload(t, keep.row_index, list(t.dimensions), "E")
+    assert payload["row_label"] == "MLTI"
+    with pytest.raises(IndexError):
+        build_row_payload(t, 99, list(t.dimensions), "E")
+
+
+def test_a_multi_word_header_is_searched_as_a_phrase_not_as_its_words():
+    """"Screen Entity Resolution" searched word by word matched every sentence of a
+    coreference paper containing "resolution": the paper was recorded as mentioning the
+    property fifteen times, six were shown, and the judge — told the other nine existed —
+    could conclude nothing. A column name is a phrase and is matched as one. Words too
+    short to carry meaning are dropped, not required, or "Anti-occlusion" would never
+    match a paper that says "occluded"."""
+    from citation_verifier.tables.evidence import _header_phrase, _passages_naming
+
+    assert _header_phrase("Screen Entity Resolution") == "Screen Entity Resolution"
+    assert _header_phrase("Anti-occlusion") == "occlusion"
+    assert _header_phrase("(iv) SE(3)-equivariant") == "equivariant"
+
+    text = (
+        "We propose a coreference resolution model for documents. "
+        "The resolution of each mention is scored independently. "
+        "Our system resolves entities shown on the device screen for resolution."
+    )
+    hits = _passages_naming(text, "Screen Entity Resolution", limit=6, max_chars=200)
+    assert len(hits) == 1 and "device screen" in hits[0]
+
+
+def test_a_search_word_without_a_suffix_is_not_truncated():
+    """Cutting every word to five letters made "complex" match "complete" and
+    "compliance"; those passages were then counted as the paper discussing the property.
+    A word with a strippable suffix still matches its derivations."""
+    from citation_verifier.tables.evidence import _mentions
+
+    text = ("The pipeline is complete and runs in one pass. "
+            "We generate complex feature interactions. "
+            "Keypoints stay stable when the object is occluded.")
+    hits, total = _mentions(text, ["complex"], limit=6, max_chars=200)
+    assert total == 1 and "complex feature" in hits[0]
+    hits, total = _mentions(text, ["occlusion"], limit=6, max_chars=200)
+    assert total == 1 and "occluded" in hits[0]
+
+
+def test_the_evidence_always_carries_how_the_cited_work_is_built():
+    """A table property is more often settled by the cited work's construction than by
+    anything it says about the property: a detector trained on hand-annotated keypoints is
+    not unsupervised, and a crop-and-regress network carries no equivariance guarantee —
+    neither paper uses the column's word. A property-driven search never reaches those
+    passages, so they are collected separately and always sent."""
+    from citation_verifier.tables.evidence import _construction_passages
+
+    sections = [
+        ("Introduction", "Keypoints are useful for manipulation. Prior work is limited."),
+        ("3. Method", "We annotate semantic keypoints on 117 reconstructed scenes by hand. "
+                      "The network takes as input a cropped RGB-D image and predicts a "
+                      "heatmap per keypoint. This section is organised as follows."),
+        ("5. Experiments", "We report accuracy on 40 held-out mugs."),
+    ]
+    got = _construction_passages(sections, limit=8, max_chars=600)
+    text = " ".join(c for _h, c in got)
+    assert "annotate semantic keypoints" in text
+    assert "takes as input a cropped RGB-D image" in text
+    assert "organised as follows" not in text          # not a construction sentence
+    assert "held-out mugs" not in text                 # results, not construction
+    assert all(h.startswith("how the work works") for h, _c in got)
+
+
+def test_the_coverage_block_announces_the_construction_excerpts():
+    block = compose_evidence(
+        "T", "A",
+        [("how the work works — Method", "We train on hand-annotated keypoints."),
+         ("intro", "Some motivation.")],
+        total_chars=5000, named={1: False},
+        search={1: {"terms": ["unsupervised"], "mentions": 0, "shown": 0}},
+    )
+    assert "how the work works' (1)" in block
+    assert "settled by the construction" in block
+
+
+def test_the_cell_prompt_settles_a_property_from_the_construction():
+    """The judge must be able to do what a human reviewer does: read the architecture and
+    the training data and conclude. Predicting how well the method would PERFORM is still
+    out of bounds."""
+    from citation_verifier.tables.llm import CELL_SYSTEM as s
+
+    assert "its CONSTRUCTION is" in s
+    assert "the construction cannot have the property -> 'lacks'" in s
+    assert "predicting how well the method would PERFORM" in s
+    assert "Absence of the word is never itself the reason" in s
+    for leak in ("kPAM", "keypoint", "watermark", "meta-learning"):
+        assert leak not in s, f"CELL_SYSTEM leaks a corpus-specific example: {leak!r}"
+
+
+# ── the whole cited paper as the evidence ─────────────────────────────────────
+def test_a_cited_paper_that_fits_is_sent_whole():
+    """Retrieval is a source of error in its own right: a property the paper does discuss
+    is settled by a passage the ranking missed, and a property it never discusses cannot
+    be told apart from one whose passages were missed. Sending the paper entire removes
+    both, and "this work never claims that" becomes something the judge reads rather than
+    something the retrieval code vouches for."""
+    from citation_verifier.tables.evidence import compose_whole_paper
+
+    block = compose_whole_paper("A Title", "An abstract.", "Body of the paper. " * 50)
+    assert "COMPLETE text of the cited paper" in block
+    assert "what the paper does not say here, it does not say anywhere" in block
+    assert "Body of the paper." in block
+    assert "excerpt" not in block.lower()
+
+
+def test_the_whole_paper_travels_as_a_cacheable_prefix():
+    """The cited work is constant while the questions vary — across the columns of a row,
+    and again when the row is re-judged. It is sent as its own system block so the
+    Messages transport can cache it; the question carries only the properties."""
+    seen: list[dict] = []
+
+    class Recorder:
+        mode = "messages"
+        settings = None
+
+        def _run_messages(self, system, user, max_tokens, prefix=""):
+            seen.append({"system": system, "user": user, "prefix": prefix})
+            return '[{"col_index": 1, "answer": "has", "quote": "q", "justification": "j"}]'
+
+    from citation_verifier.tables.llm import build_cell_judge
+
+    build_cell_judge(Recorder())({
+        "row_label": "SomeMethod", "evidence": "FULL TEXT:\nthe whole paper",
+        "properties": [{"col_index": 1, "name": "P", "definition": "d"}],
+    })
+    call = seen[0]
+    assert "the whole paper" in call["prefix"] and "SomeMethod" in call["prefix"]
+    assert "the whole paper" not in call["user"]
+    assert "PROPERTY TO CHECK" in call["user"] and "[col 1] P" in call["user"]
+
+
+def test_a_complete_paper_lets_an_absent_answer_stand():
+    """The gate that refuses "absent" exists because the judge was shown excerpts and the
+    paper might say more elsewhere. With the complete text there is no elsewhere."""
+    t = _table()
+    resolve_dimensions(t.dimensions, ATU_BODY, caption=t.caption)
+
+    def judge(payload):
+        return [{"col_index": p["col_index"], "answer": "absent", "justification": "no claim"}
+                for p in payload["properties"]]
+
+    def cell(meta):
+        rep = verify_table(t, evidence_for=lambda key, label: ("COVERAGE…", "u", meta), judge=judge)
+        return next(f for f in rep.findings if f.row_label == "MetaAug" and f.dimension == "Task-aware")
+
+    got = cell({"complete": True, "total_chars": 40000})
+    assert got.claimed == CellMark.YES.value
+    assert got.verdict == CellVerdict.MAY_NOT_SUPPORT.value
+    assert "complete text of the paper was read" in got.justification
+    # …whereas with excerpts and unshown mentions the gate still fires.
+    partial = cell({"named": {1: True}, "search": {1: {"terms": ["t"], "mentions": 9, "shown": 6}}})
+    assert partial.verdict == CellVerdict.UNVERIFIABLE.value
+
+
+def test_the_cell_prompt_describes_both_coverage_regimes():
+    from citation_verifier.tables.llm import CELL_SYSTEM as s
+
+    assert "COMPLETE text of the cited paper" in s
+    assert "settle every question by reading" in s
+    assert "When the paper was too long or could not be fetched you get excerpts" in s
+
+
+def test_every_cell_is_asked_as_its_own_question():
+    """Asked together, the properties of a comparison table compete for one bounded answer
+    and for the model's attention, and one failed call took every cell of the row with it.
+    Asked separately, each cell gets a whole answer, a failure costs only that cell, and
+    the cited work — the long part of the request — is a prefix that does not change."""
+    t = _table()
+    resolve_dimensions(t.dimensions, ATU_BODY, caption=t.caption)
+    asked: list[dict] = []
+
+    def judge(payload):
+        asked.append(payload)
+        if payload["properties"][0]["name"] == "Task-imaginary":
+            raise RuntimeError("overloaded")
+        # Answer with the wrong index on purpose: the reply is to the question asked.
+        return [{"col_index": 99, "answer": "has", "quote": "q", "justification": "j"}]
+
+    report = verify_table(t, evidence_for=_evidence, judge=judge)
+    # "Model-adaptive" is undefined in this body and never reaches the judge.
+    cited = [p for p in asked if p["row_label"] == "MetaAug"]
+    assert len(cited) == 2 and all(len(p["properties"]) == 1 for p in cited)
+    # The other columns ride along by name so a near-neighbour's evidence is not borrowed.
+    assert cited[0]["other_properties"] == ["Task-imaginary", "Model-adaptive"]
+
+    by_col = {f.dimension: f for f in report.findings if f.row_label == "MetaAug"}
+    assert by_col["Task-aware"].verdict == CellVerdict.SUPPORTED.value      # ✓ + has
+    # Only the cell whose call failed is lost; its sibling is unaffected.
+    assert "pipeline failure" in by_col["Task-imaginary"].justification
+    assert "pipeline failure" not in by_col["Task-aware"].justification
+
+
+def test_the_cell_prompt_keeps_the_neighbouring_columns_apart():
+    from citation_verifier.tables.llm import CELL_SYSTEM as s
+
+    assert "answer the property you were ASKED, not the one next to it" in s
+
+
+def test_a_long_paper_does_not_ride_the_agent_sdk_command_line():
+    """The Agent-SDK transport carries a system prompt given as a STRING on the CLI
+    invocation, and a whole paper overruns it: the two longest papers of one corpus failed
+    there with CLIConnectionError on every attempt. So the paper travels as a system-prompt
+    FILE — which also makes it the prefix the transport caches: sent in the user message,
+    as it was for a while, no two cells of a row shared a prefix and each paid to send the
+    paper again."""
+    from pathlib import Path
+
+    import citation_verifier.tables.llm as llm
+
+    calls: list[dict] = []
+
+    class QueryJudge:
+        mode = "query"
+        settings = None
+
+        async def _run_query(self, sdk, system, user):
+            calls.append({"system": system, "user": user})
+            return '[{"col_index": 1, "answer": "has"}]'
+
+    paper = "FULL TEXT:\n" + ("body " * 30000)
+    run = llm._judge_transport(QueryJudge())
+    run(llm.CELL_SYSTEM, "PROPERTY TO CHECK: x", 400, paper)
+    run(llm.CELL_SYSTEM, "PROPERTY TO CHECK: y", 400, paper)
+    run(llm.CELL_SYSTEM, "PROPERTY TO CHECK: x", 400, paper + " another paper")
+    first, second, other = calls
+    assert first["system"]["type"] == "file"
+    text = Path(first["system"]["path"]).read_text(encoding="utf-8")
+    assert text.startswith(llm.CELL_SYSTEM) and text.endswith(paper)
+    assert paper not in first["user"] and first["user"] == "PROPERTY TO CHECK: x"
+    # The same paper is the same prefix whatever is asked about it; another paper is not.
+    assert second["system"] == first["system"] and second["user"] == "PROPERTY TO CHECK: y"
+    assert other["system"]["path"] != first["system"]["path"]
+    # Without a prefix nothing changes: the system prompt is the plain string.
+    run(llm.CELL_SYSTEM, "PROPERTY TO CHECK: z", 400)
+    assert calls[-1]["system"] == llm.CELL_SYSTEM
+
+
+# ── a paper too long for one request ──────────────────────────────────────────
+def test_a_paper_too_long_for_one_request_is_split_at_paragraph_boundaries():
+    from citation_verifier.tables.evidence import split_paper
+
+    para = "This is a paragraph of the paper. " * 20 + "\n\n"      # ~680 chars
+    text = para * 300                                              # ~204k chars
+    assert split_paper(text, max_chars=500_000) == [text]          # fits: one part
+    parts = split_paper(text, max_chars=120_000, max_segments=3)
+    assert len(parts) == 2
+    assert all(len(p) <= 120_000 for p in parts)
+    assert not any(p.endswith("This is a") for p in parts)         # never mid-sentence
+    # Reassembled, nothing is lost or duplicated.
+    assert "".join(p.replace("\n\n", "") for p in parts).replace(" ", "") == \
+        text.replace("\n\n", "").replace(" ", "").strip()
+    # Beyond the segment budget the caller must fall back to excerpts.
+    assert split_paper(text, max_chars=10_000, max_segments=3) == []
+
+
+def test_each_part_says_it_is_a_part():
+    """"Not claimed" from one part means "not in this part"; only the caller, holding
+    every part's answer, can say anything about the paper."""
+    from citation_verifier.tables.evidence import compose_whole_paper
+
+    one = compose_whole_paper("T", "", "body", part=1, of=1)
+    assert "COMPLETE text" in one and "PART" not in one
+    two = compose_whole_paper("T", "", "body", part=2, of=3)
+    assert "PART 2 OF 3" in two
+    assert "'absent' here means this part carries no such claim" in two
+
+
+def test_the_parts_of_a_split_paper_are_combined_conservatively():
+    from citation_verifier.tables.verify import combine_segment_answers as combine
+
+    has = {"answer": "has", "quote": "it does", "justification": "shown in part one"}
+    lacks = {"answer": "lacks", "quote": "it cannot", "justification": "ruled out in part two"}
+    absent = {"answer": "absent", "justification": "nothing here"}
+    unclear = {"answer": "unclear", "justification": "cannot tell"}
+    # One part that finds something decides the paper, wherever it sits.
+    assert combine([absent, has, unclear])["answer"] == "has"
+    assert combine([unclear, absent, lacks])["answer"] == "lacks"
+    # The paper never claims it only when EVERY part says so.
+    assert combine([absent, absent])["answer"] == "absent"
+    assert combine([absent, unclear])["answer"] == "unclear"
+    # Parts that disagree are not for the code to settle.
+    conflict = combine([has, lacks])
+    assert conflict["answer"] == "unclear"
+    assert "point different ways" in conflict["justification"]
+    assert "shown in part one" in conflict["justification"]
+    assert "ruled out in part two" in conflict["justification"]
+
+
+def test_a_split_paper_is_asked_part_by_part_and_answered_once():
+    t = _table()
+    resolve_dimensions(t.dimensions, ATU_BODY, caption=t.caption)
+    seen: list[tuple[str, str, str]] = []
+
+    def judge(payload):
+        seen.append((payload["row_label"], payload["properties"][0]["name"],
+                     payload["evidence"]))
+        answer = "has" if "PART 2" in payload["evidence"] else "absent"
+        return [{"col_index": payload["properties"][0]["col_index"], "answer": answer,
+                 "quote": "q", "justification": "j"}]
+
+    meta = {"complete": True, "segments": ["COVERAGE: PART 1 OF 2…", "COVERAGE: PART 2 OF 2…"]}
+    report = verify_table(
+        t, evidence_for=lambda key, label: ("COVERAGE: PART 1 OF 2…", "u", meta), judge=judge,
+    )
+    # One cell, both parts — and each part asked on its own.
+    one_cell = [e for r, c, e in seen if r == "MetaAug" and c == "Task-aware"]
+    assert len(one_cell) == 2
+    assert sum("PART 1" in e for e in one_cell) == 1
+    assert sum("PART 2" in e for e in one_cell) == 1
+    cell = next(f for f in report.findings
+                if f.row_label == "MetaAug" and f.dimension == "Task-aware")
+    assert cell.claimed == CellMark.YES.value
+    assert cell.verdict == CellVerdict.SUPPORTED.value    # the part that found it decides
+
+
+def test_the_report_leads_with_one_flagged_count():
+    """"Contradicted" and "may not support" say different things about the evidence and
+    stay apart in the schema, but a reader's next action is the same for both: look at the
+    cell. Counted separately at the top of a report, a table with three of each read as
+    though nothing much was wrong."""
+    from citation_verifier.tables.render import (
+        FLAGGED_VERDICTS,
+        flagged_count,
+        render_table_report,
+    )
+
+    assert flagged_count({"contradicted": 3, "may_not_support": 2, "supported": 9}) == 5
+    assert set(FLAGGED_VERDICTS) == {"contradicted", "may_not_support"}
+
+    t = _table()
+    resolve_dimensions(t.dimensions, ATU_BODY, caption=t.caption)
+
+    def judge(payload):
+        # MetaAug's ✓ is refuted; MLTI's ✗ is met by a work that never claims it.
+        answer = "lacks" if payload["row_label"] == "MetaAug" else "absent"
+        return [{"col_index": p["col_index"], "answer": answer, "justification": "j"}
+                for p in payload["properties"]]
+
+    report = verify_table(t, evidence_for=_evidence, judge=judge)
+    md = render_table_report(report)
+    assert "⚑ Flagged for review" in md
+    assert "**⚑ Flagged** — contradicted" in md

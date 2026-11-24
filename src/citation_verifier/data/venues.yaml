@@ -1,0 +1,738 @@
+# venues.yaml — the names a publication venue goes by.
+#
+# One entry per venue: every spelling a bibliography or a metadata source uses for it maps
+# to the entry's key. Read by citation_verifier.venues; see that module for how a string
+# is matched.
+#
+#   kind      conference | journal   an actual venue; two different ones are a mismatch
+#             preprint               a preprint server or paper host: says where a copy
+#                                    lives, not where (or whether) the work was published
+#             series                 a proceedings series ("PMLR", "LNCS"): names the
+#                                    volume, not the venue, so it contradicts no venue
+#   acronyms  single tokens. Recognised as listed, in ALL CAPS, or when the acronym is the
+#             whole string — "SODA" is the symposium, "soda" inside a name is a word. List
+#             a second spelling only when people really write it ("NIPS", "Arxiv").
+#             Do not list an acronym two venues share ("PRL", "FSE" is already taken).
+#   names     phrases, matched case-insensitively on word boundaries. Longer names win,
+#             so "… Machine Learning and Applications" is ICMLA and never ICML. A name
+#             with fewer than three distinctive words ("Nature", "Machine Learning")
+#             counts only when it is the whole venue string.
+#   hosts     for a journal that prints a conference's proceedings: citing the paper under
+#             either name is correct (ACM Transactions on Graphics / SIGGRAPH).
+#
+# NOT needed here, because the matcher handles them:
+#   * decorations — years, ordinals ("36th", "Thirty-sixth"), volume/page numbers,
+#     "Proceedings of the", a publisher prefix (IEEE, ACM, IEEE/CVF), a trailing "(ICML)";
+#   * word-by-word abbreviations of a listed name — "IEEE Trans. Pattern Anal. Mach.
+#     Intell.", "Adv. Neural Inf. Process. Syst.", "Proc. Int. Conf. Mach. Learn.".
+#
+# Some names below are not what anyone would write but what a metadata source returns
+# (Semantic Scholar files the journal Machine Learning under "Machine-mediated learning").
+# They are listed because the canonical side of the comparison comes from those sources.
+
+venues:
+  # ── machine learning / AI ────────────────────────────────────────────────
+  NeurIPS:
+    kind: conference
+    acronyms: [NeurIPS, NIPS, Neurips, NeuRIPS]
+    names:
+      - Advances in Neural Information Processing Systems
+      - Conference on Neural Information Processing Systems
+      - Neural Information Processing Systems
+  ICML:
+    kind: conference
+    acronyms: [ICML]
+    names: [International Conference on Machine Learning]
+  ICLR:
+    kind: conference
+    acronyms: [ICLR]
+    names: [International Conference on Learning Representations]
+  AAAI:
+    kind: conference
+    acronyms: [AAAI]
+    names:
+      - AAAI Conference on Artificial Intelligence
+      - National Conference on Artificial Intelligence    # its name until 2006
+  IJCAI:
+    kind: conference
+    acronyms: [IJCAI]
+    names:
+      - International Joint Conference on Artificial Intelligence
+      - International Joint Conferences on Artificial Intelligence
+  AISTATS:
+    kind: conference
+    acronyms: [AISTATS]
+    names: [International Conference on Artificial Intelligence and Statistics]
+  UAI:
+    kind: conference
+    acronyms: [UAI]
+    names:
+      - Conference on Uncertainty in Artificial Intelligence
+      - Uncertainty in Artificial Intelligence
+  COLT:
+    kind: conference
+    acronyms: [COLT]
+    names:
+      - Conference on Learning Theory
+      - Conference on Computational Learning Theory
+      - Annual Conference Computational Learning Theory   # Semantic Scholar
+      - Workshop on Computational Learning Theory         # its name until 1995
+  ECML-PKDD:
+    kind: conference
+    acronyms: [ECML, PKDD, ECMLPKDD]
+    names:
+      - European Conference on Machine Learning and Principles and Practice of Knowledge Discovery in Databases
+      - European Conference on Machine Learning and Knowledge Discovery in Databases
+      - Machine Learning and Knowledge Discovery in Databases
+      - European Conference on Machine Learning
+      - European Conference on Principles and Practice of Knowledge Discovery in Databases
+      - PKDD/ECML Workshops          # how Semantic Scholar files the whole conference
+  COLM:
+    kind: conference
+    acronyms: [COLM]
+    names: [Conference on Language Modeling]
+  FAccT:
+    kind: conference
+    acronyms: [FAccT]
+    names:
+      - "Conference on Fairness, Accountability, and Transparency"
+  AAMAS:
+    kind: conference
+    acronyms: [AAMAS]
+    names: [International Conference on Autonomous Agents and Multiagent Systems]
+  ACML:
+    kind: conference
+    acronyms: [ACML]
+    names: [Asian Conference on Machine Learning]
+  ICMLA:
+    kind: conference
+    acronyms: [ICMLA]
+    names: [International Conference on Machine Learning and Applications]
+  JMLR:
+    kind: journal
+    acronyms: [JMLR]
+    names: [Journal of Machine Learning Research]
+  TMLR:
+    kind: journal
+    acronyms: [TMLR]
+    names: [Transactions on Machine Learning Research]
+  MLJ:
+    kind: journal
+    acronyms: [MLJ]
+    names:
+      - Machine Learning
+      - Machine Learning Journal
+      - Machine-mediated learning     # Semantic Scholar's name for this journal
+  JAIR:
+    kind: journal
+    acronyms: [JAIR]
+    names: [Journal of Artificial Intelligence Research]
+  AIJ:
+    kind: journal
+    acronyms: [AIJ]
+    names: [Artificial Intelligence]
+  TNNLS:
+    kind: journal
+    acronyms: [TNNLS]
+    names:
+      - IEEE Transactions on Neural Networks and Learning Systems
+      - IEEE Transactions on Neural Networks      # its name until 2012
+  NeuralComputation:
+    kind: journal
+    names: [Neural Computation]
+  NeuralNetworks:
+    kind: journal
+    names: [Neural Networks]
+  Neurocomputing:
+    kind: journal
+    names: [Neurocomputing]
+  PatternRecognition:
+    kind: journal
+    names: [Pattern Recognition]
+  NatureMachineIntelligence:
+    kind: journal
+    names: [Nature Machine Intelligence]
+
+  # ── computer vision / graphics / multimedia ──────────────────────────────
+  CVPR:
+    kind: conference
+    acronyms: [CVPR]
+    names:
+      - Conference on Computer Vision and Pattern Recognition
+      - Computer Vision and Pattern Recognition
+  ICCV:
+    kind: conference
+    acronyms: [ICCV]
+    names: [International Conference on Computer Vision]
+  ECCV:
+    kind: conference
+    acronyms: [ECCV]
+    names: [European Conference on Computer Vision]
+  WACV:
+    kind: conference
+    acronyms: [WACV]
+    names:
+      - Winter Conference on Applications of Computer Vision
+      - IEEE Workshop/Winter Conference on Applications of Computer Vision   # Semantic Scholar
+      - Workshop on Applications of Computer Vision                          # its name until 2011
+  BMVC:
+    kind: conference
+    acronyms: [BMVC]
+    names: [British Machine Vision Conference]
+  ACCV:
+    kind: conference
+    acronyms: [ACCV]
+    names: [Asian Conference on Computer Vision]
+  3DV:
+    kind: conference
+    acronyms: [3DV]
+    names: [International Conference on 3D Vision]
+  ICPR:
+    kind: conference
+    acronyms: [ICPR]
+    names: [International Conference on Pattern Recognition]
+  ICIP:
+    kind: conference
+    acronyms: [ICIP]
+    names: [International Conference on Image Processing]
+  MICCAI:
+    kind: conference
+    acronyms: [MICCAI]
+    names:
+      - International Conference on Medical Image Computing and Computer-Assisted Intervention
+      - Medical Image Computing and Computer-Assisted Intervention
+  SIGGRAPH:
+    kind: conference
+    acronyms: [SIGGRAPH]
+    names:
+      - Special Interest Group on Computer Graphics and Interactive Techniques Conference
+      - Special Interest Group on Computer Graphics and Interactive Techniques
+      - International Conference on Computer Graphics and Interactive Techniques
+  ACMMM:
+    kind: conference
+    acronyms: [ACMMM]
+    names:
+      - ACM International Conference on Multimedia
+      - ACM Multimedia
+      - ACM MM
+  TPAMI:
+    kind: journal
+    acronyms: [TPAMI, PAMI]
+    names: [IEEE Transactions on Pattern Analysis and Machine Intelligence]
+  IJCV:
+    kind: journal
+    acronyms: [IJCV]
+    names: [International Journal of Computer Vision]
+  TIP:
+    kind: journal
+    acronyms: [TIP]
+    names: [IEEE Transactions on Image Processing]
+  TMM:
+    kind: journal
+    acronyms: [TMM]
+    names: [IEEE Transactions on Multimedia]
+  TCSVT:
+    kind: journal
+    acronyms: [TCSVT]
+    names: [IEEE Transactions on Circuits and Systems for Video Technology]
+  TMI:
+    kind: journal
+    acronyms: [TMI]
+    names: [IEEE Transactions on Medical Imaging]
+  MedIA:
+    kind: journal
+    names: [Medical Image Analysis]
+  TOG:
+    kind: journal
+    acronyms: [TOG]
+    names: [ACM Transactions on Graphics]
+    hosts: [SIGGRAPH]
+  TVCG:
+    kind: journal
+    acronyms: [TVCG]
+    names: [IEEE Transactions on Visualization and Computer Graphics]
+    hosts: [VIS]
+  VIS:
+    kind: conference
+    names:
+      - IEEE Visualization Conference
+      - IEEE Visualization and Visual Analytics
+      - IEEE VIS
+  CGF:
+    kind: journal
+    names: [Computer Graphics Forum]
+    hosts: [Eurographics]
+  Eurographics:
+    kind: conference
+    acronyms: [Eurographics, EUROGRAPHICS]
+    names: [Annual Conference of the European Association for Computer Graphics]
+  CVIU:
+    kind: journal
+    acronyms: [CVIU]
+    names: [Computer Vision and Image Understanding]
+
+  # ── natural language / speech ────────────────────────────────────────────
+  ACL:
+    kind: conference
+    acronyms: [ACL]
+    names:
+      - Annual Meeting of the Association for Computational Linguistics
+      - Meeting of the Association for Computational Linguistics
+  EMNLP:
+    kind: conference
+    acronyms: [EMNLP]
+    names:
+      - Conference on Empirical Methods in Natural Language Processing
+      - Empirical Methods in Natural Language Processing
+  NAACL:
+    kind: conference
+    acronyms: [NAACL]
+    names:
+      - Conference of the North American Chapter of the Association for Computational Linguistics
+      - North American Chapter of the Association for Computational Linguistics
+  EACL:
+    kind: conference
+    acronyms: [EACL]
+    names:
+      - Conference of the European Chapter of the Association for Computational Linguistics
+      - European Chapter of the Association for Computational Linguistics
+  AACL:
+    kind: conference
+    acronyms: [AACL]
+    names: [Asia-Pacific Chapter of the Association for Computational Linguistics]
+  COLING:
+    kind: conference
+    acronyms: [COLING]
+    names: [International Conference on Computational Linguistics]
+  CoNLL:
+    kind: conference
+    acronyms: [CoNLL]
+    names: [Conference on Computational Natural Language Learning]
+  IJCNLP:
+    kind: conference
+    acronyms: [IJCNLP]
+    names: [International Joint Conference on Natural Language Processing]
+  LREC:
+    kind: conference
+    acronyms: [LREC]
+    names:
+      - International Conference on Language Resources and Evaluation
+      - Language Resources and Evaluation Conference
+  WMT:
+    kind: conference
+    acronyms: [WMT]
+    names:
+      - Conference on Machine Translation
+      - Workshop on Statistical Machine Translation    # its name until 2015
+  SemEval:
+    kind: conference
+    acronyms: [SemEval, Semeval]
+    names: [International Workshop on Semantic Evaluation]
+  TACL:
+    kind: journal
+    acronyms: [TACL]
+    names: [Transactions of the Association for Computational Linguistics]
+  ComputationalLinguistics:
+    kind: journal
+    names: [Computational Linguistics]
+  INTERSPEECH:
+    kind: conference
+    acronyms: [INTERSPEECH, Interspeech]
+    names:
+      - Annual Conference of the International Speech Communication Association
+      - Conference of the International Speech Communication Association
+  ICASSP:
+    kind: conference
+    acronyms: [ICASSP]
+    names: ["International Conference on Acoustics, Speech and Signal Processing"]
+  TASLP:
+    kind: journal
+    acronyms: [TASLP]
+    names: ["IEEE/ACM Transactions on Audio, Speech, and Language Processing"]
+
+  # ── data mining / retrieval / web / databases ────────────────────────────
+  KDD:
+    kind: conference
+    acronyms: [KDD, SIGKDD]
+    names:
+      - International Conference on Knowledge Discovery and Data Mining
+      - Conference on Knowledge Discovery and Data Mining
+      - Knowledge Discovery and Data Mining
+  PAKDD:
+    kind: conference
+    acronyms: [PAKDD]
+    names: [Pacific-Asia Conference on Knowledge Discovery and Data Mining]
+  WWW:
+    kind: conference
+    acronyms: [WWW]
+    names:
+      - The Web Conference
+      - International World Wide Web Conference
+      - International Conference on World Wide Web
+      - World Wide Web Conference
+  SIGIR:
+    kind: conference
+    acronyms: [SIGIR]
+    names:
+      - International ACM SIGIR Conference on Research and Development in Information Retrieval
+      - Conference on Research and Development in Information Retrieval
+  WSDM:
+    kind: conference
+    acronyms: [WSDM]
+    names:
+      - International Conference on Web Search and Data Mining
+      - Web Search and Data Mining
+  CIKM:
+    kind: conference
+    acronyms: [CIKM]
+    names:
+      - International Conference on Information and Knowledge Management
+      - Conference on Information and Knowledge Management
+  RecSys:
+    kind: conference
+    acronyms: [RecSys, Recsys]
+    names: [Conference on Recommender Systems]
+  ICDM:
+    kind: conference
+    acronyms: [ICDM]
+    names: [International Conference on Data Mining]
+  SDM:
+    kind: conference
+    acronyms: [SDM]
+    names: [SIAM International Conference on Data Mining]
+  VLDB:
+    kind: conference
+    acronyms: [VLDB, PVLDB]
+    names:
+      - International Conference on Very Large Data Bases
+      - Proceedings of the VLDB Endowment
+  SIGMOD:
+    kind: conference
+    acronyms: [SIGMOD]
+    names: [International Conference on Management of Data]
+  PACMMOD:
+    kind: journal
+    acronyms: [PACMMOD]
+    names: [Proceedings of the ACM on Management of Data]
+    hosts: [SIGMOD]
+  ICDE:
+    kind: conference
+    acronyms: [ICDE]
+    names: [International Conference on Data Engineering]
+  TKDE:
+    kind: journal
+    acronyms: [TKDE]
+    names: [IEEE Transactions on Knowledge and Data Engineering]
+
+  # ── robotics ─────────────────────────────────────────────────────────────
+  ICRA:
+    kind: conference
+    acronyms: [ICRA]
+    names: [International Conference on Robotics and Automation]
+  IROS:
+    kind: conference
+    acronyms: [IROS]
+    names: [International Conference on Intelligent Robots and Systems]
+  RSS:
+    kind: conference
+    acronyms: [RSS]
+    names: ["Robotics: Science and Systems"]
+  CoRL:
+    kind: conference
+    acronyms: [CoRL]
+    names: [Conference on Robot Learning]
+  ISRR:
+    kind: conference
+    acronyms: [ISRR]
+    names:
+      - International Symposium of Robotics Research
+      - International Symposium on Robotics Research
+  RAL:
+    kind: journal
+    acronyms: [RAL]
+    names: [IEEE Robotics and Automation Letters]
+  IJRR:
+    kind: journal
+    acronyms: [IJRR]
+    names: [International Journal of Robotics Research]
+  TRO:
+    kind: journal
+    acronyms: [TRO]
+    names: [IEEE Transactions on Robotics]
+
+  # ── systems / security / software / HCI / theory ─────────────────────────
+  OSDI:
+    kind: conference
+    acronyms: [OSDI]
+    names: [Symposium on Operating Systems Design and Implementation]
+  SOSP:
+    kind: conference
+    acronyms: [SOSP]
+    names: [Symposium on Operating Systems Principles]
+  NSDI:
+    kind: conference
+    acronyms: [NSDI]
+    names: [Symposium on Networked Systems Design and Implementation]
+  ASPLOS:
+    kind: conference
+    acronyms: [ASPLOS]
+    names: [International Conference on Architectural Support for Programming Languages and Operating Systems]
+  EuroSys:
+    kind: conference
+    acronyms: [EuroSys, Eurosys]
+    names: [European Conference on Computer Systems]
+  SIGCOMM:
+    kind: conference
+    acronyms: [SIGCOMM]
+    names: [ACM SIGCOMM Conference]
+  USENIXSecurity:
+    kind: conference
+    names: [USENIX Security Symposium]
+  USENIXATC:
+    kind: conference
+    names: [USENIX Annual Technical Conference]
+  SP:
+    kind: conference
+    names:
+      - IEEE Symposium on Security and Privacy
+      - Symposium on Security and Privacy
+      - "IEEE S&P"
+  CCS:
+    kind: conference
+    acronyms: [CCS]
+    names: [Conference on Computer and Communications Security]
+  NDSS:
+    kind: conference
+    acronyms: [NDSS]
+    names: [Network and Distributed System Security Symposium]
+  ICSE:
+    kind: conference
+    acronyms: [ICSE]
+    names: [International Conference on Software Engineering]
+  FSE:
+    kind: conference
+    acronyms: [FSE, ESEC]
+    names:
+      - Symposium on the Foundations of Software Engineering
+      - International Symposium on Foundations of Software Engineering
+  ASE:
+    kind: conference
+    acronyms: [ASE]
+    names: [International Conference on Automated Software Engineering]
+  PLDI:
+    kind: conference
+    acronyms: [PLDI]
+    names: [Conference on Programming Language Design and Implementation]
+  POPL:
+    kind: conference
+    acronyms: [POPL]
+    names: [Symposium on Principles of Programming Languages]
+  OOPSLA:
+    kind: conference
+    acronyms: [OOPSLA]
+    names: ["Conference on Object-Oriented Programming, Systems, Languages, and Applications"]
+  ICFP:
+    kind: conference
+    acronyms: [ICFP]
+    names: [International Conference on Functional Programming]
+  PACMPL:
+    kind: journal
+    acronyms: [PACMPL]
+    names: [Proceedings of the ACM on Programming Languages]
+    hosts: [POPL, PLDI, OOPSLA, ICFP]
+  CHI:
+    kind: conference
+    acronyms: [CHI]
+    names: [Conference on Human Factors in Computing Systems]
+  UIST:
+    kind: conference
+    acronyms: [UIST]
+    names: [Symposium on User Interface Software and Technology]
+  CSCW:
+    kind: conference
+    acronyms: [CSCW]
+    names:
+      - Conference on Computer-Supported Cooperative Work and Social Computing
+      - Conference on Computer Supported Cooperative Work
+  PACMHCI:
+    kind: journal
+    acronyms: [PACMHCI]
+    names: [Proceedings of the ACM on Human-Computer Interaction]
+    hosts: [CSCW]
+  CogSci:
+    kind: conference
+    acronyms: [CogSci]
+    names: [Annual Meeting of the Cognitive Science Society]
+  STOC:
+    kind: conference
+    acronyms: [STOC]
+    names: [Symposium on Theory of Computing]
+  FOCS:
+    kind: conference
+    acronyms: [FOCS]
+    names: [Symposium on Foundations of Computer Science]
+  SODA:
+    kind: conference
+    acronyms: [SODA]
+    names: [Symposium on Discrete Algorithms]
+  TIT:
+    kind: journal
+    acronyms: [TIT]
+    names: [IEEE Transactions on Information Theory]
+  TSP:
+    kind: journal
+    acronyms: [TSP]
+    names: [IEEE Transactions on Signal Processing]
+  CACM:
+    kind: journal
+    acronyms: [CACM]
+    names: [Communications of the ACM]
+  JACM:
+    kind: journal
+    acronyms: [JACM]
+    names: [Journal of the ACM]
+  CSUR:
+    kind: journal
+    acronyms: [CSUR]
+    names: [ACM Computing Surveys]
+  IEEEAccess:
+    kind: journal
+    names: [IEEE Access]
+  PIEEE:
+    kind: journal
+    names: [Proceedings of the IEEE]
+
+  # ── general science / statistics ─────────────────────────────────────────
+  Nature:
+    kind: journal
+    names: [Nature]
+  Science:
+    kind: journal
+    names: [Science]
+  PNAS:
+    kind: journal
+    acronyms: [PNAS]
+    names:
+      - Proceedings of the National Academy of Sciences of the United States of America
+      - Proceedings of the National Academy of Sciences
+      - Proceedings of the National Academy of Sciences USA
+  NatureCommunications:
+    kind: journal
+    names: [Nature Communications]
+  NatureMethods:
+    kind: journal
+    names: [Nature Methods]
+  NatureMedicine:
+    kind: journal
+    names: [Nature Medicine]
+  NatureNeuroscience:
+    kind: journal
+    names: [Nature Neuroscience]
+  ScienceAdvances:
+    kind: journal
+    names: [Science Advances]
+  ScientificReports:
+    kind: journal
+    names: [Scientific Reports]
+  Cell:
+    kind: journal
+    names: [Cell]
+  PLOSONE:
+    kind: journal
+    names: [PLOS ONE]
+  NEJM:
+    kind: journal
+    acronyms: [NEJM]
+    names: [New England Journal of Medicine]
+  Lancet:
+    kind: journal
+    names: [The Lancet]
+  JAMA:
+    kind: journal
+    acronyms: [JAMA]
+    names: [Journal of the American Medical Association]
+  Bioinformatics:
+    kind: journal
+    names: [Bioinformatics]
+  PRL:
+    kind: journal
+    names: [Physical Review Letters]
+  AnnalsOfStatistics:
+    kind: journal
+    names: [Annals of Statistics]
+  JASA:
+    kind: journal
+    acronyms: [JASA]
+    names: [Journal of the American Statistical Association]
+  JRSSB:
+    kind: journal
+    acronyms: [JRSSB]
+    names: ["Journal of the Royal Statistical Society: Series B"]
+  Biometrika:
+    kind: journal
+    names: [Biometrika]
+  Econometrica:
+    kind: journal
+    names: [Econometrica]
+
+  # ── preprint servers ─────────────────────────────────────────────────────
+  arXiv:
+    kind: preprint
+    acronyms: [arXiv, ArXiv, Arxiv, arxiv, CoRR]
+    names: [Computing Research Repository]
+  bioRxiv:
+    kind: preprint
+    acronyms: [bioRxiv, BioRxiv, biorxiv]
+  medRxiv:
+    kind: preprint
+    acronyms: [medRxiv, MedRxiv, medrxiv]
+  OpenReview:
+    kind: preprint
+    acronyms: [OpenReview, Openreview, openreview]
+  SSRN:
+    kind: preprint
+    acronyms: [SSRN]
+    names: [Social Science Research Network]
+  ChemRxiv:
+    kind: preprint
+    acronyms: [ChemRxiv]
+  TechRxiv:
+    kind: preprint
+    acronyms: [TechRxiv]
+  PsyArXiv:
+    kind: preprint
+    acronyms: [PsyArXiv]
+  ResearchSquare:
+    kind: preprint
+    names: [Research Square]
+
+  # ── proceedings series / hosts (name the volume, not the venue) ──────────
+  PMLR:
+    kind: series
+    acronyms: [PMLR]
+    names:
+      - Proceedings of Machine Learning Research
+      - JMLR Workshop and Conference Proceedings
+      - Journal of Machine Learning Research Workshop and Conference Proceedings
+      - "JMLR W&CP"
+  LNCS:
+    kind: series
+    acronyms: [LNCS]
+    names: [Lecture Notes in Computer Science]
+  LNAI:
+    kind: series
+    acronyms: [LNAI]
+    names: [Lecture Notes in Artificial Intelligence]
+  CCIS:
+    kind: series
+    acronyms: [CCIS]
+    names: [Communications in Computer and Information Science]
+  CEUR:
+    kind: series
+    names: [CEUR Workshop Proceedings]
+  ICPS:
+    kind: series
+    names: [ACM International Conference Proceeding Series]
+  ACLAnthology:
+    kind: series
+    names: [ACL Anthology]
