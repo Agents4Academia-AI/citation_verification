@@ -758,10 +758,11 @@ def _parallel_map(items: list, fn, max_workers: int) -> list:
 def _max_output_tokens(n_items: int) -> int:
     """Allow for grouped JSON framing, labels, confidence and justification.
 
-    The old 96-token-per-claim allowance truncated otherwise valid judgments.
+    Attribution, excluded-contribution, and evidence-gap fields need room beyond
+    the verdict label. The old 96-token allowance truncated valid judgments.
     Keep a bounded allowance; the transport explicitly rejects a clipped answer.
     """
-    return min(8192, max(4096, 256 * n_items))
+    return min(32768, max(8192, 384 * n_items))
 
 
 # ───────────────────────────────────────────────────────────────
