@@ -836,8 +836,7 @@ _VERDICT_ALIASES = {
 # support. Conservative: only fires on explicit contradiction language, not on
 # mere absence ("does not mention/clarify", which is honest abstention).
 _CONTRADICTION_RE = re.compile(
-    r"\bcontradict|\bdoes not support\b|\bdo not support\b|\binconsistent with\b"
-    r"|\brefut|\bchronolog|\bthe opposite\b",
+    r"^contradicts\s*:|\bthe evidence contradicts the claim\b",
     re.IGNORECASE,
 )
 
