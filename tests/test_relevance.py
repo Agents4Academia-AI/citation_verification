@@ -353,3 +353,13 @@ def test_negated_or_out_of_scope_contradiction_is_not_a_label_override():
         "The evidence supports the aggregate observation, not the claimed global quantifier.",
     ]:
         assert _verdict_from_row({"supports_claim": "partial", "justification": reason}).supports_claim.value == "partial"
+
+
+def test_explicit_affirmative_contradiction_still_overrides_soft_labels():
+    from citation_verifier.backends.relevance_judge import _verdict_from_row
+    for reason in [
+        "Contradicts: the source gives the opposite result.",
+        "The evidence contradicts the claim directly.",
+    ]:
+        for label in ("supports", "partial"):
+            assert _verdict_from_row({"supports_claim": label, "justification": reason}).supports_claim.value == "does_not"

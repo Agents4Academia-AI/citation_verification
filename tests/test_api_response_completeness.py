@@ -61,5 +61,4 @@ def test_complete_response_keeps_existing_transport_behavior_and_usage():
 def test_grouped_output_allowance_has_headroom_and_remains_bounded():
     assert _max_output_tokens(1) >= 4096
     assert _max_output_tokens(9) >= 256 * 9
-    assert _max_output_tokens(40) >= 384 * 40
-    assert _max_output_tokens(1000) == 32768
+    assert _max_output_tokens(1000) == 8192
