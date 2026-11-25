@@ -324,6 +324,21 @@ def _extract_tex_from_eprint(data: bytes) -> str:
         return ""
 
 
+def _usable_eprint(text: str) -> bool:
+    """A PDF-inclusion wrapper is metadata, not the paper's LaTeX body."""
+    if len(text.strip()) < _TEX_MIN_CHARS:
+        return False
+    if r"\includepdf" not in text:
+        return True
+    body = re.sub(r"(?m)(?<!\\)%.*$", "", text)
+    if r"\begin{document}" in body:
+        body = body.split(r"\begin{document}", 1)[1]
+    body = re.sub(r"\\includepdf(?:merge)?(?:\s*\[[^]]*\])?\s*\{[^}]*\}", "", body)
+    body = re.sub(r"\\(?:begin|end)\{[^}]*\}", "", body)
+    # Permit real prose alongside an included appendix; reject wrapper-only files.
+    return len(re.findall(r"[A-Za-z]{2,}", body)) >= 50
+
+
 def fetch_full_text_with_source(
     arxiv_id: str | None, *, timeout: int = 30, max_chars: int = 200_000
 ) -> FullTextResult:
@@ -341,7 +356,7 @@ def fetch_full_text_with_source(
     # answers first can differ, and a different channel yields different text, from which
     # different passages are then selected. Set CITATION_VERIFIER_CACHE="" to disable.
     hit = fulltext_cache.read(f"arxiv:{stem}")
-    if hit is not None:
+    if hit is not None and (hit[1] != "arxiv_eprint" or _usable_eprint(hit[0])):
         return FullTextResult(hit[0], hit[1], hit[2])
     got = _fetch_arxiv_full_text(stem, timeout=timeout, max_chars=max_chars)
     if got.text:
@@ -359,12 +374,12 @@ def _fetch_arxiv_full_text(stem: str, *, timeout: int, max_chars: int) -> FullTe
     if html:
         return FullTextResult(html, "arxiv_html", html_url)
     tex = _extract_tex_from_eprint(_http_get_bytes(_ARXIV_EPRINT_URL.format(stem=stem), timeout))
-    if len(tex) >= _TEX_MIN_CHARS:
+    if _usable_eprint(tex):
         return FullTextResult(tex[:max_chars], "arxiv_eprint", _ARXIV_EPRINT_URL.format(stem=stem))
     pdf_text = _fetch_arxiv_pdf_text(stem, timeout)
     if pdf_text:
         return FullTextResult(pdf_text[:max_chars], "arxiv_pdf", f"https://arxiv.org/pdf/{stem}")
-    return FullTextResult(tex[:max_chars], "arxiv_eprint", _ARXIV_EPRINT_URL.format(stem=stem)) if tex else FullTextResult("")
+    return FullTextResult("")
 
 
 def full_text_of(resolved: Any) -> str:
