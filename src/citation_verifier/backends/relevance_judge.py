@@ -531,6 +531,15 @@ class LLMRelevanceJudge:
         with self._lock:
             self.usage.add(usage_from_message(resp, self.model, "agentic"))
             self.calls += 1
+        if getattr(resp, "stop_reason", None) == "max_tokens":
+            # The permissive parser can salvage complete objects from a truncated
+            # array. They are only a prefix, not a completed judgment of the batch.
+            # Surface a run error instead of accepting that prefix and rejudging
+            # whichever citations happened to fall after the output boundary.
+            raise self._mark_unavailable(
+                f"incomplete Messages API judgment: output token limit ({max_tokens}) reached; "
+                "increase the response allowance or reduce the judgment batch size"
+            )
         return "".join(
             getattr(b, "text", "") for b in resp.content if getattr(b, "type", None) == "text"
         )
@@ -747,8 +756,12 @@ def _parallel_map(items: list, fn, max_workers: int) -> list:
 
 
 def _max_output_tokens(n_items: int) -> int:
-    """Output-token cap for a chunk of ``n_items`` (one small JSON object each)."""
-    return min(8192, max(512, 96 * n_items))
+    """Allow for grouped JSON framing, labels, confidence and justification.
+
+    The old 96-token-per-claim allowance truncated otherwise valid judgments.
+    Keep a bounded allowance; the transport explicitly rejects a clipped answer.
+    """
+    return min(8192, max(4096, 256 * n_items))
 
 
 # ───────────────────────────────────────────────────────────────
