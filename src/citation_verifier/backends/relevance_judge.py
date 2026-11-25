@@ -636,7 +636,23 @@ _GROUP_SYSTEM = (
     "[section] tags), and a list of `claims` (each a `claim_id` + the claim text "
     "from the citing paper). For EACH claim decide, using ONLY that citation's "
     "evidence (never prior knowledge), whether the cited work supports THAT specific "
-    "claim. Choose the label by this rubric:\n"
+    "claim. First identify what the citation actually attributes to this source. "
+    "Separate that attribution from explicitly identified new results, proofs, "
+    "experimental settings, or adaptations of the citing authors. Do not demand "
+    "that the source contain those authors' new contributions. When attribution "
+    "is ambiguous, explain the ambiguity rather than silently choosing a favorable scope. "
+    "Preserve ALL qualifiers within the attribution: global/pointwise versus aggregate, "
+    "universal versus empirical, assumptions, rates, constants, and domains. Evidence "
+    "of average underconfidence does not establish underconfidence at every confidence "
+    "level. Read supplied LaTeX mathematics literally; never repair it by guessing. "
+    "A weaker upper bound does not contradict a stronger claimed upper bound: "
+    "unless the source explicitly rules it out, this is insufficient support, not contradiction. "
+    "State the attributed clause and decisive evidence or gap in the justification. "
+    "A new corollary in the citing manuscript may recover a cited observation. "
+    "Verify the observation; the source need not contain the new corollary, its number, "
+    "or the citing authors' notation. Missing such a corollary is NEVER itself "
+    "off-topic evidence or a reason for partial support. "
+    "Choose the label by this rubric:\n"
     "- 'supports': the evidence states or backs the specific claimed fact, result, "
     "or method (do not infer from prior knowledge).\n"
     "- 'partial': the evidence is on-topic and related but weaker or narrower than "
@@ -669,9 +685,21 @@ _GROUP_SYSTEM = (
     "Return ONE JSON array, exactly one object per input CITATION, echoing its "
     "`cite_key`, with one verdict per claim_id: "
     '[{"cite_key":"...","claims":[{"claim_id":"...",'
+    '"attributed_claim":"exact source-dependent assertion, preserving qualifiers",'
+    '"excluded_author_contribution":"own result/settings excluded, or none",'
+    '"evidence_gap":"specific source-dependent gap, or none",'
     '"supports_claim":"supports|partial|does_not|inconclusive",'
     '"priority":"obligatory|helpful","confidence":0.0-1.0,'
-    '"justification":"one short sentence"}]}]. Output JSON only, no prose.'
+    '"justification":"one short sentence"}]}]. '
+    "Before assigning a label, identify the source-dependent assertion and any excluded "
+    "author contribution in the required fields. Excluded author contributions CANNOT "
+    "be the evidence_gap or downgrade the label. Mathematical example: evidence of "
+    "R<=sqrt(T)*K*log(K) gives PARTIAL support to a claim R<=sqrt(T*K*log(K)); "
+    "the former bound alone does not contradict the latter. CONTRADICTION requires "
+    "an actual counterexample, incompatible value, or explicit denial, not merely "
+    "a different bound. Every verdict MUST include claim_id copied exactly from its "
+    "input claim, including for a single-claim citation. Never omit claim_id. "
+    "Output JSON only, no prose."
 )
 
 
@@ -823,8 +851,7 @@ _VERDICT_ALIASES = {
 # support. Conservative: only fires on explicit contradiction language, not on
 # mere absence ("does not mention/clarify", which is honest abstention).
 _CONTRADICTION_RE = re.compile(
-    r"\bcontradict|\bdoes not support\b|\bdo not support\b|\binconsistent with\b"
-    r"|\brefut|\bchronolog|\bthe opposite\b",
+    r"^contradicts\s*:|\bthe evidence contradicts the claim\b",
     re.IGNORECASE,
 )
 
